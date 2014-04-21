@@ -1,0 +1,86 @@
+\documentclass[12pt, titlepage]{article} 
+
+\usepackage[utf8x]{inputenc}
+\usepackage{graphicx}
+\usepackage{amsfonts}
+\usepackage{amsmath}
+\usepackage{cite}
+
+% code
+\usepackage{listings}
+\usepackage{color}
+
+% code definitions
+\definecolor{dkgreen}{rgb}{0,0.6,0}
+\definecolor{gray}{rgb}{0.5,0.5,0.5}
+\definecolor{mauve}{rgb}{0.58,0,0.82}
+\lstset{frame=tb,
+  language=Java,
+  aboveskip=3mm,
+  belowskip=3mm,
+  showstringspaces=false,
+  columns=flexible,
+  basicstyle={\small\ttfamily},
+  numbers=none,
+  numberstyle=\tiny\color{gray},
+  keywordstyle=\color{blue},
+  commentstyle=\color{dkgreen},
+  stringstyle=\color{mauve},
+  breaklines=true,
+  breakatwhitespace=true
+  tabsize=3
+}
+
+\title{Pratical Types for Python \\ Literature Survey}
+\author{Daniel Randall}
+\date{}
+
+\begin{document}
+\maketitle
+
+\tableofcontents
+\newpage
+
+\section{Introduction}
+
+
+\section{Background Research}
+\subsection{Overview}
+
+
+\subsection{Technical Research}
+
+\subsubsection*{Types in Programming Languages}
+
+\subsubsection*{Success Typings}
+The phrase `success typings' was coined by Lindhal and Sagonas in the 2006 paper \textit{Pratical Type Inference Based in Success Typings}.~\cite{lindhal06} The aim of a success typing is to fully describe all possible intended uses of a function. This description is given as type signature for a function $f$: $(\bar{\alpha}) \rightarrow \beta$, where $(\bar{\alpha})$ refers to the type of the function parameters, and $\bar{\alpha}$ is a shorthand for $\alpha_1, \alpha_2,...\alpha_n$, and $\beta$ is the type of the return value. Both types are the `largest' possible types, ie. subtypes are acceptable. For instance, consider the following function as described in the Lindhal et al. paper for the funtional language \textit{Erlang}:
+\begin{lstlisting}[mathescape]
+	and(true, true) $\rightarrow$ true;
+	and(false, _) $\rightarrow$ false;
+	and(_, false) $\rightarrow$ false;
+\end{lstlisting}
+where the symbol `\_' represents a \textit{don't care} option for pattern matching, meaning it will match any value for the corresponding parameter. \\
+An acceptable success typing for this function, and, indeed, for any function would be: $(any(), any()) \rightarrow any()$ where $any()$ denotes the set of all Erlang terms. Such a typing would raise no warnings about the any use of the function and so can be used when no typing information can be inferred about a function. However, a more useful typing for the function in question is $(any(), any()) \rightarrow bool()$ where the return type of the function is restricted to all subtypes of $bool()$. Since we have the \textit{don't cares} any parameter paired with an instance of $false$, such as $(42, false)$, is a valid use of the function. This optimistic approach avoids any possible false positives from any warnings from reasoning about the typing. This typing does allow for warnings to be issued as a result of type clashes in matching a value which is not a subtype of $bool()$ with the result of the function. \\
+A success typing is inferred by building constraints by traversing the code and then solving them. \\
+Constraints are built by providing a list of derivation rules
+
+\subsubsection*{Python}
+
+\subsubsection*{Javascript}
+Javascript is... \\
+Abstract interpretation lattice \\
+
+
+\subsubsection*{Ruby}
+* Requires type annotations to library functions \\
+* Employs constraint solving to derive types to user defined functions
+
+\section{Project Plan}
+
+
+\bibliography{mybib}{}
+\bibliographystyle{plain}
+
+\end{document}
+
+
