@@ -1,0 +1,15 @@
+Static type inference in Python:
+http://lambda-the-ultimate.org/node/1519
+
+Gradual typing
+
+Type feedback
+
+Type inference for Perl:
+http://www.umiacs.umd.edu/~bargle/project2.pdf
+
+Applications implementing type inference for Python:
+- Shed Skin - Python code to C++
+- Psyco
+- PyPy - type inference on restricted part of Python, RPython
+- Starkiller - Python code to C++
