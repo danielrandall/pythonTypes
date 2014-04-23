@@ -62,10 +62,14 @@ Only programs about to go wrong are rejected. (get info from Soft Typing paper)
 \subsubsection*{Hindley-Milner}
 
 Get info from:
-Brett Cannon	
+Brett Cannon	 \\
+Not useful as does not allow polymorphic argument to be of a different type in different locations.
+
 
 \subsubsection*{Cartesian Product Algorithm}
 - Starkiller
+
+\subsubsection*{Iterative type analysis}
 
 \subsubsection*{Success Typings}
 The phrase `success typings' was coined by Lindhal and Sagonas in the 2006 paper \textit{Pratical Type Inference Based in Success Typings}.~\cite{lindhal06} The aim of a success typing is to fully describe all possible intended uses of a function. This description is given as type signature for a function $f$: $(\bar{\alpha}) \rightarrow \beta$, where $(\bar{\alpha})$ refers to the type of the function parameters, and $\bar{\alpha}$ is a shorthand for $\alpha_1, \alpha_2,...\alpha_n$, and $\beta$ is the type of the return value. Both types are the `largest' possible types, ie. subtypes are acceptable. For instance, consider the following function as described in the Lindhal et al. paper for the funtional language \textit{Erlang}:

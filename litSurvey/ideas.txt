@@ -1,6 +1,9 @@
 Static type inference in Python:
 http://lambda-the-ultimate.org/node/1519
 
+List of papers for type inference:
+https://code.google.com/p/python-type-inference/wiki/Resources
+
 Gradual typing
 
 Type feedback
@@ -10,6 +13,12 @@ http://www.umiacs.umd.edu/~bargle/project2.pdf
 
 Applications implementing type inference for Python:
 - Shed Skin - Python code to C++
-- Psyco
+- Psyco - JIT compiler to emit x86 assembly (works on ints and strings)
 - PyPy - type inference on restricted part of Python, RPython
-- Starkiller - Python code to C++
+- Starkiller - Python code to C++ using Cartesian Product
+- Brett Cannon thesis - incorporates type inference into the compiler
+- John Aycock (Aggressive Type Inference) - for Python-to-Perl translator, uses strong assumptions on how variables are used.
+- Pylint/PyChecker/PyFlakes
+
+Some discussion:
+https://groups.google.com/forum/#!topic/python-static-type-checking/1GzaxkP6TEw
