@@ -18,7 +18,10 @@ Applications implementing type inference for Python:
 - Starkiller - Python code to C++ using Cartesian Product
 - Brett Cannon thesis - incorporates type inference into the compiler
 - John Aycock (Aggressive Type Inference) - for Python-to-Perl translator, uses strong assumptions on how variables are used.
-- Pylint/PyChecker/PyFlakes
+- Pylint/PyChecker/PyFlakes/MyPy
+- Nuitka - 
 
 Some discussion:
 https://groups.google.com/forum/#!topic/python-static-type-checking/1GzaxkP6TEw
+
+http://www.reddit.com/r/Python/comments/1or1hn/type_inferencechecking_projects/

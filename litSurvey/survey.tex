@@ -48,30 +48,31 @@
 \section{Introduction}
 
 
-\section{Background Research}
-\subsection{Overview}
+
+\section{Overview}
 
 
-\subsection{Technical Research}
 
-\subsubsection*{Types in Programming Languages}
+\section*{Types in Programming Languages}
 
-\subsubsection*{Dynamic Type Systems}
+\section*{Dynamic Type Systems}
 Only programs about to go wrong are rejected. (get info from Soft Typing paper)
 
-\subsubsection*{Hindley-Milner}
+\section*{Type Inference}
+
+\subsection*{Hindley-Milner}
 
 Get info from:
 Brett Cannon	 \\
 Not useful as does not allow polymorphic argument to be of a different type in different locations.
 
 
-\subsubsection*{Cartesian Product Algorithm}
+\subsection*{Cartesian Product Algorithm}
 - Starkiller
 
-\subsubsection*{Iterative type analysis}
+\subsection*{Iterative type analysis}
 
-\subsubsection*{Success Typings}
+\subsection*{Success Typings}
 The phrase `success typings' was coined by Lindhal and Sagonas in the 2006 paper \textit{Pratical Type Inference Based in Success Typings}.~\cite{lindhal06} The aim of a success typing is to fully describe all possible intended uses of a function. This description is given as type signature for a function $f$: $(\bar{\alpha}) \rightarrow \beta$, where $(\bar{\alpha})$ refers to the type of the function parameters, and $\bar{\alpha}$ is a shorthand for $\alpha_1, \alpha_2,...\alpha_n$, and $\beta$ is the type of the return value. Both types are the `largest' possible types, ie. subtypes are acceptable. For instance, consider the following function as described in the Lindhal et al. paper for the funtional language \textit{Erlang}:
 \begin{lstlisting}[mathescape]
 	and(true, true) $\rightarrow$ true;
@@ -119,16 +120,20 @@ $Sol$ is a mapping from type expressions and type variables to conrete types. $S
 where $Sol_1 \sqcup Sol_2$ denotes the point-wise least upper bound of the solutions. \\
 Each case represents a different type of constraint which we may encounter (subtype, conjunction or disjunction). The subtype case states that a solution satisfies a subtypeconstraint if the mapping satisfies the subtype constraint and neither of its constituents is \textit{none()}. The conjunction case states that the solution must satisfy all conjunctive parts. The disjunction case that the solution is the point-wise least upper bound of all disjuncts.
 
-\subsubsection*{Soft Typing}
+\subsection*{Soft Typing}
 
 
-\subsubsection*{Python}
+\subsection*{Python}
 Core language
 
 Problems \\
-- Different code can be used during compile time and run time 
+- Different code can be used during compile time and run time  \\
 
-\subsubsection*{Javascript}
+Attempts \\
+\subsubsection*{Localized Type Inference of Atomic Types in Python}
+
+
+\subsection*{Javascript}
 Javascript is... \\
 Abstract interpretation lattice \\
 
