@@ -53,27 +53,33 @@
 
 
 
-\section*{Types in Programming Languages}
+\section{Types in Programming Languages}
 
-\section*{Dynamic Type Systems}
+\section{Dynamic Type Systems}
 Only programs about to go wrong are rejected. (get info from Soft Typing paper)
 
-\section*{Type Inference}
+\subsection{Control flow}
+Control flow is important to understand for dynamic type systems. To quote Cooper and Kennedy~\cite{controlFlowCooperKennedy}:
+\begin{quote}
+	\emph{``Flow insensitive information describes data flow events which occur on at least one path through a procedure... By contrast, flow sensitive information describes data flow events which occur on every path through a procedure.''}
+\end{quote}
 
-\subsection*{Hindley-Milner}
+\section{Type Inference}
+
+\subsection{Hindley-Milner}
 
 Get info from:
 Brett Cannon	 \\
 Not useful as does not allow polymorphic argument to be of a different type in different locations.
 
 
-\subsection*{Cartesian Product Algorithm}
+\subsection{Cartesian Product Algorithm}
 - Starkiller
 
-\subsection*{Iterative type analysis}
+\subsection{Iterative type analysis}
 
-\subsection*{Success Typings}
-The phrase `success typings' was coined by Lindhal and Sagonas in the 2006 paper \textit{Pratical Type Inference Based in Success Typings}.~\cite{lindhal06} The aim of a success typing is to fully describe all possible intended uses of a function. This description is given as type signature for a function $f$: $(\bar{\alpha}) \rightarrow \beta$, where $(\bar{\alpha})$ refers to the type of the function parameters, and $\bar{\alpha}$ is a shorthand for $\alpha_1, \alpha_2,...\alpha_n$, and $\beta$ is the type of the return value. Both types are the `largest' possible types, ie. subtypes are acceptable. For instance, consider the following function as described in the Lindhal et al. paper for the funtional language \textit{Erlang}:
+\subsection{Success Typings}
+The phrase `success typings' was coined by Lindhal and Sagonas in the 2006 paper \textit{Practical Type Inference Based in Success Typings}~\cite{lindhal06}. The aim of a success typing is to fully describe all possible intended uses of a function. This description is given as type signature for a function $f$: $(\bar{\alpha}) \rightarrow \beta$, where $(\bar{\alpha})$ refers to the type of the function parameters, and $\bar{\alpha}$ is a shorthand for $\alpha_1, \alpha_2,...\alpha_n$, and $\beta$ is the type of the return value. Both types are the `largest' possible types, ie. subtypes are acceptable. For instance, consider the following function as described in the Lindhal et al. paper for the funtional language \textit{Erlang}:
 \begin{lstlisting}[mathescape]
 	and(true, true) $\rightarrow$ true;
 	and(false, _) $\rightarrow$ false;
@@ -99,7 +105,7 @@ $C$ represents nested conjuctions and disjunction of subtype constraints:
 \begin{align*} 
 	P \coloncolonequals integer() \mid float() \mid atom() \mid pid()| 42 | foo | \ldots
 \end{align*}
-and the judgment $A \vdash e : \tau, C$ should be read as ``given the environment $A$ the expression $e$ has type $Sol(\tau)$ whenever $Sol$ is a solution to the constraints in C''. \\
+and the judgement $A \vdash e : \tau, C$ should be read as ``given the environment $A$ the expression $e$ has type $Sol(\tau)$ whenever $Sol$ is a solution to the constraints in C''. \\
 Then one such derivation rule is the rule for a struct:
                 \[
 \inference*[STRUCT]{  A \vdash  e_1 : \tau_1, C_1 \ldots e_n : \tau_n, C_n}
@@ -120,30 +126,57 @@ $Sol$ is a mapping from type expressions and type variables to conrete types. $S
 where $Sol_1 \sqcup Sol_2$ denotes the point-wise least upper bound of the solutions. \\
 Each case represents a different type of constraint which we may encounter (subtype, conjunction or disjunction). The subtype case states that a solution satisfies a subtypeconstraint if the mapping satisfies the subtype constraint and neither of its constituents is \textit{none()}. The conjunction case states that the solution must satisfy all conjunctive parts. The disjunction case that the solution is the point-wise least upper bound of all disjuncts.
 
-\subsection*{Soft Typing}
+\subsection{Soft Typing}
 
+\subsection{Aggressive Type Inference}
+Aggressive type inference (ATI) is a technique developed by John Aycock~\cite{aggressiveType} which follows the idea that:
+\begin{quote}
+	\emph{``Giving people a dynamically-typed language does not mean that they write dynamically-typed programs.''}
+\end{quote}
+Aycock backs up this hypothesis by citing a study~\cite{typeInferenceIcon} which reveals that around 80\% of operators in a set of \textit{Icon} programs maintain the same type throughout their lifetime. \\
+He exploits this by using a flow-insensitive method and does not use union types. Meaning the algorithm does not look through all routes to determine all possible types for a variable and only labels a variable with a single not type, not a union of multiple types. The algorithm works by iteratively analysing the code to infer the types of variables and by propagating the types on each iteration.
+\paragraph{Limitations}\mbox{}\\
+The limitations of Aycock's approach are quite clear; the types involved in dynamic behaviour are not reliably extracted. How much of an issue this poses is up for debate;
+A study on this, more recent and relevant to our interests than the \textit{Icon} analysis put forward by Aycock, has been conducted by Alex Holkner and James Harland~\cite{evaluatingDynamicBehaviour}. This study details the evaluation of twenty four open source Python systems. Their results argue that dynamic features are actually widely used. For instance, they find that all systems studied employ dynamic code execution. Holkner and Harland concede that there study is small in comparison to the amount of Python code available, however if their results are to be extrapolated then Aycock's assumption is not so reasonable.
 
-\subsection*{Python}
+\subsection{Python}
 Core language
 
 Problems \\
 - Different code can be used during compile time and run time  \\
 
 Attempts \\
-\subsubsection*{Localized Type Inference of Atomic Types in Python}
+\subsubsection{Starkiller}
+Starkiller was designed by Michael Salib as the type inference method of a Python-to-C++ compiler~\cite{starkiller}. The algorithm used was based loosely on Agesen’s Cartesian Product Algorithm and achieves a complete type inference of Python source code.
+
+\paragraph*{Limitations}\mbox{}\\
+Unable to infer types for the dynamic constructs such as \textit{eval}, or \textit{exec}. Exceptions are unsupported. The implementation is flow-insensitive.
+
+\subsubsection{Localized Type Inference of Atomic Types in Python}
+Types for local, atomic variables are inferred in an attempt to improve the performance of Python.The type inference is done by intercepting bytecode from the compiler and modifying it by injecting additional bytecode relating the the types of variables. The idea was the processor could utilise this information to improve performance.
+\paragraph{Limitations}\mbox{}\\
+While not a real limitation, Cannon's solution intercepts the compiler in order to improve performance. This not our aim and we need not complicate things by working with bytecode but stick to managing the source code.
+
+\subsubsection*{Precise Type Analysis}
+
+\subsubsection{Pyty}
+Developed by Jeff Ruberg~\cite{pyty}, Pyty is a bug checker which analyses annotated source code to detect errors related to the misuse of types.
+\paragraph{Limitations}\mbox{}\\
+Pyty requires the need for annotations to the source code in a specific format. This is quite tedious and prevents from being an `out-of-the-box' solution to our problem.
 
 
-\subsection*{Javascript}
+\subsection{Javascript}
 Javascript is... \\
 Abstract interpretation lattice \\
 
 
-\subsubsection*{Ruby}
+\subsection{Ruby}
 Ruby is... \\
 Furr et al. developed Diamondback Ruby (DRuby)~\cite{furr09} in order  \\
 DRuby is not sound - accepts programs which are dynamically incorrect.
 * Requires type annotations to library functions \\
-* Employs constraint solving to derive types to user defined functions
+* Employs constraint solving to derive types to user defined functions \\
+An extension to Diamondback Ruby, $\mathcal{P}$Ruby, was created in order to handle difficult dynamic language constructs such as the \textit{eval} method which converts a string into executable program code.~\cite{pRuby} This is done by instrumenting the code such that, when the program is then run, all uses of the troublesome constructs are documented. This allows a \textit{profile} to be built which fully describes how they were used. With this profile the dynamic code can be inserted into the program in place of the dynamic constructs. The modified program can then be statically analysed just like any other. Furr et al. use DRuby for the analysis.
 
 \section{Project Plan}
 
