@@ -23,5 +23,6 @@ Applications implementing type inference for Python:
 
 Some discussion:
 https://groups.google.com/forum/#!topic/python-static-type-checking/1GzaxkP6TEw
+https://groups.google.com/forum/#!forum/python-static-type-checking
 
 http://www.reddit.com/r/Python/comments/1or1hn/type_inferencechecking_projects/

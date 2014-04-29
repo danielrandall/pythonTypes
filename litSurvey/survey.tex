@@ -6,6 +6,7 @@
 \usepackage{amsmath}
 \usepackage{cite}
 \usepackage{colonequals}
+\usepackage{url}
 
 % derivations
 \usepackage{semantic}
@@ -70,13 +71,18 @@ Control flow is important to understand for dynamic type systems. To quote Coope
 
 Get info from:
 Brett Cannon	 \\
-Not useful as does not allow polymorphic argument to be of a different type in different locations.
+Not useful as the technique does not allow polymorphic argument to be of a different type in different locations.
 
 
 \subsection{Cartesian Product Algorithm}
-- Starkiller
+Infers types for method calls
+\paragraph*{Limitations}\mbox{}\\
+The size of the Cartesian products grows exponentially with the number of arguments. However the size is bounded by the number of types available.
 
-\subsection{Iterative type analysis}
+\subsection{Iterative Type Analysis}
+Infers types for method body.
+
+\subsection{Gradual Typing}
 
 \subsection{Success Typings}
 The phrase `success typings' was coined by Lindhal and Sagonas in the 2006 paper \textit{Practical Type Inference Based in Success Typings}~\cite{lindhal06}. The aim of a success typing is to fully describe all possible intended uses of a function. This description is given as type signature for a function $f$: $(\bar{\alpha}) \rightarrow \beta$, where $(\bar{\alpha})$ refers to the type of the function parameters, and $\bar{\alpha}$ is a shorthand for $\alpha_1, \alpha_2,...\alpha_n$, and $\beta$ is the type of the return value. Both types are the `largest' possible types, ie. subtypes are acceptable. For instance, consider the following function as described in the Lindhal et al. paper for the funtional language \textit{Erlang}:
@@ -146,24 +152,61 @@ Problems \\
 - Different code can be used during compile time and run time  \\
 
 Attempts \\
+\subsubsection{Psyco}
+Psyco is a just-in-time (JIT) compiler for Python, designed to improve performance~\cite{psyco}. Psyco replaces the main interpreter loop of Python in order to examine the bytecode and, where appropriate, emits specialized bytecode in its place. CITATION NEEDED
+\paragraph*{Limitations}\mbox{}\\
+Psyco only attempts to infer locally defined \textit{ints} and \textit{strings} and pays little interest to any other types.
+
+\subsection{Shed Skin}
+Shed Skin is a Python-to-C++ compiler developed by Mark Dufour which boasts up to a 40-fold performance increase over Psyco~\cite{shedskin}. Shedskin employs the Cartesian Product Algorithm alongside iterative class-splitting. Class-splitting is...
+\paragraph*{Limitations}\mbox{}\\
+The programs consumed by Shed Skin are required to be implicitly statically typed. Meaning the type of a variable can not dynamically change. Shed Skin also does not support a number of Python features such as \textit{eval} and \textit{isinstance}.
+
 \subsubsection{Starkiller}
 Starkiller was designed by Michael Salib as the type inference method of a Python-to-C++ compiler~\cite{starkiller}. The algorithm used was based loosely on Agesen’s Cartesian Product Algorithm and achieves a complete type inference of Python source code.
-
 \paragraph*{Limitations}\mbox{}\\
-Unable to infer types for the dynamic constructs such as \textit{eval}, or \textit{exec}. Exceptions are unsupported. The implementation is flow-insensitive.
+Unable to infer types for the dynamic constructs such as \textit{eval}, or \textit{exec}. Exceptions are unsupported. The implementation is flow-insensitive and so is not as precise as it could be.
 
 \subsubsection{Localized Type Inference of Atomic Types in Python}
-Types for local, atomic variables are inferred in an attempt to improve the performance of Python.The type inference is done by intercepting bytecode from the compiler and modifying it by injecting additional bytecode relating the the types of variables. The idea was the processor could utilise this information to improve performance.
-\paragraph{Limitations}\mbox{}\\
-While not a real limitation, Cannon's solution intercepts the compiler in order to improve performance. This not our aim and we need not complicate things by working with bytecode but stick to managing the source code.
+Types for local, atomic variables are inferred in an attempt to improve the performance of Python.The type inference is done by intercepting bytecode from the compiler and modifying it by injecting additional bytecode relating the the types of variables. The idea was the processor could utilise this information to improve performance. Cannon's work differs to Psyco in that the work is done inside of Python's compiler, rather than the interpreter. \\
+The algorithm described is capable of handling integrals, \textit{float}, \textit{complex}, \textit{basestring}, \textit{list}, \textit{tuple} and \textit{dict}.\paragraph{Limitations}\mbox{}\\
+The limitations involve only in inferring types for local variables, meaning that the implementation is largely useless when used on programs designed with Object Oriented Programming (OOP) in mind, as noted by Cannon. While not a real limitation, Cannon's solution intercepts the compiler in order to improve performance. This is not our aim and we need not complicate things by working with bytecode.
 
-\subsubsection*{Precise Type Analysis}
+\subsubsection{Precise Type Analysis}
 
 \subsubsection{Pyty}
 Developed by Jeff Ruberg~\cite{pyty}, Pyty is a bug checker which analyses annotated source code to detect errors related to the misuse of types.
 \paragraph{Limitations}\mbox{}\\
 Pyty requires the need for annotations to the source code in a specific format. This is quite tedious and prevents from being an `out-of-the-box' solution to our problem.
 
+\subsubsection{PyPy}
+One of PyPy's goals is to develop a Just-In-Time (JIT) compiler for Python. PyPy's interpreter is written in RPython which removes dynamic features in order to reduce of the complexity of type inference.
+\paragraph{Limitations}\mbox{}\\
+The major limitation of PyPy is the use of RPython. One feature of RPython is that it does not allow variables to change their type.
+
+\subsubsection{PySonar}
+PySonar was developed by Yin Wang while an intern at Google between 2009 and 2010~\cite{pySonar}. PySonar is a type inferencer and indexer, using abstract interpretation, intended for the internal use within Google's Grok project. PySonar claims to be able to resolve the names of 97\% of the Python standard library.
+\paragraph{Limitations}\mbox{}\\
+Focuses mainly a less dynamic subset of Python which is `easier' to analyse (from Guido).
+
+\subsubsection{Pyntch}
+Created by Yusuke Shinyama, Pyntch uses type inference in Python in order to find bugs~\cite{pyntch}. \\
+Project activity has ceased since 2009.
+\paragraph{Limitations}\mbox{}\\
+Can return false positives.
+
+\subsubsection{Pylint}
+Analyses the source code for errors without importing/running it
+\paragraph{Limitations}\mbox{}\\
+Can often return a lot of false positives and offers of command-line options in an attempt to suppress them.
+
+\subsubsection{PyChecker}
+Runs the code to analyse it.
+
+\subsubsection{PyFlakes}
+Analyses the source code for errors without importing/running it. Designed to be quick.
+\paragraph{Limitations}\mbox{}\\
+Often does not return all errors.
 
 \subsection{Javascript}
 Javascript is... \\
