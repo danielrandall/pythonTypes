@@ -8,6 +8,9 @@
 \usepackage{colonequals}
 \usepackage{url}
 
+% Multi-row columns in a table
+\usepackage{multirow}
+
 % derivations
 \usepackage{semantic}
 
@@ -60,18 +63,43 @@
 Only programs about to go wrong are rejected. (get info from Soft Typing paper)
 
 \subsection{Control flow}
-Control flow is important to understand for dynamic type systems. To quote Cooper and Kennedy~\cite{controlFlowCooperKennedy}:
+To quote Cooper and Kennedy~\cite{controlFlowCooperKennedy}:
 \begin{quote}
 	\emph{``Flow insensitive information describes data flow events which occur on at least one path through a procedure... By contrast, flow sensitive information describes data flow events which occur on every path through a procedure.''}
 \end{quote}
+Consider the following example:
+\begin{lstlisting}
+	if (y):	
+		x = 5     // S1
+	else:
+		x = 5.0   // S2
+	f(x)		// S3
+\end{lstlisting}
+A flow-sensitive algorithm would infer the type of $x$ at S1 to be $\left\{ {int}\right\}$ and $\left\{ {float}\right\}$ at S2. While a flow-insensitive algorithm would infer the type of $x$ to be $\left\{ {int, float}\right\}$ at S1, S2 and S3.
+\subsection{Execution Flow}
+Execution flow is important to understand for dynamic type systems. The decision on whether to ignore the flow of execution or not changes the types inferred for a variable. Consider the following trivial block of code:
+\begin{lstlisting}
+	x = 5
+	x = 5.0
+\end{lstlisting}
+A flow-insensitive algorithm would infer the type of \textit{x} to be the set $\left\{ {int, float}\right\}$. A flow-sensitive algorithm is able to rewrite the constraint graph to allow a more accurate representation of the flow, allowing it to infer more accurately the type of $x$ is the set $\left\{ {float}\right\}$. \\
+A flow-sensitive algorithm is clearly the more accurate approach but requires a comparatively complex algorithm which consumes more information than a flow-insensitive approach.
+
 
 \section{Type Inference}
-
 \subsection{Hindley-Milner}
+The Hindley-Milner algorithms was developed by Robin Milner based off the work of J. Roger Hindley. Hindley described the \textit{principal
+type schema}~\cite{hindley69}, ``which is the most general polymorphic type of an expression, and showed that if a combinatorial term has a type, then it has a principal type''~\cite{cardelli87}. Milner's contribution was an extension to Hindley's \textit{principal type schema} which included the ``notion of generic and non-generic type variables, which is essential for handling declarations of polymorphic functions.'' Milner's work culminated in the type inference for the ML language~\cite{milner84}. \\
 
-Get info from:
-Brett Cannon	 \\
+
+\paragraph{Limitations}\mbox{}\\
 Not useful as the technique does not allow polymorphic argument to be of a different type in different locations.
+
+\subsubsection{Pyty}
+Developed by Jeff Ruberg~\cite{pyty}, Pyty is a bug checker which analyses annotated source code to detect errors related to the misuse of types. Pyty employs Hindley-Milner as its type inferencing algorithm.
+\paragraph{Limitations}\mbox{}\\
+Pyty requires the need for annotations to the source code in a specific format. This is quite tedious and prevents from being an `out-of-the-box' solution to our problem.
+
 
 
 \subsection{Cartesian Product Algorithm}
@@ -85,17 +113,17 @@ Infers types for method body.
 \subsection{Gradual Typing}
 
 \subsection{Success Typings}
-The phrase `success typings' was coined by Lindhal and Sagonas in the 2006 paper \textit{Practical Type Inference Based in Success Typings}~\cite{lindhal06}. The aim of a success typing is to fully describe all possible intended uses of a function. This description is given as type signature for a function $f$: $(\bar{\alpha}) \rightarrow \beta$, where $(\bar{\alpha})$ refers to the type of the function parameters, and $\bar{\alpha}$ is a shorthand for $\alpha_1, \alpha_2,...\alpha_n$, and $\beta$ is the type of the return value. Both types are the `largest' possible types, ie. subtypes are acceptable. For instance, consider the following function as described in the Lindhal et al. paper for the funtional language \textit{Erlang}:
+The phrase `success typings' was coined by Lindhal and Sagonas in the 2006 paper \textit{Practical Type Inference Based in Success Typings}~\cite{lindhal06}. The aim of a success typing is to fully describe all possible intended uses of a function. This description is given as type signature for a function $f$: $(\bar{\alpha}) \rightarrow \beta$, where $(\bar{\alpha})$ refers to the type of the function parameters, and $\bar{\alpha}$ is a shorthand for $\alpha_1, \alpha_2,...\alpha_n$, and $\beta$ is the type of the return value. Both types are the `largest' possible types, i.e.\ subtypes are acceptable. For instance, consider the following function as described in the Lindhal et al. paper for the funtional language \textit{Erlang}:
 \begin{lstlisting}[mathescape]
 	and(true, true) $\rightarrow$ true;
 	and(false, _) $\rightarrow$ false;
 	and(_, false) $\rightarrow$ false;
 \end{lstlisting}
 where the symbol `\_' represents a \textit{don't care} option for pattern matching, meaning it will match any value for the corresponding parameter. \\
-An acceptable success typing for this function, and, indeed, for any function would be: $(any(), any()) \rightarrow any()$ where $any()$ denotes the set of all Erlang terms. Such a typing would raise no warnings about the any use of the function and so can be used when no typing information can be inferred about a function. However, a more useful typing for the function in question is $(any(), any()) \rightarrow bool()$ where the return type of the function is restricted to all subtypes of $bool()$. Since we have the \textit{don't cares} any parameter paired with an instance of $false$, such as $(42, false)$, is a valid use of the function. This optimistic approach avoids any possible false positives from any warnings from reasoning about the typing and so will never reject a well-formed program. This typing does allow for warnings to be issued as a result of type clashes in matching a value which is not a subtype of $bool()$ with the result of the function. \\
+An acceptable success typing for this function, and, indeed, for any function with two arguments, would be: $(any(), any()) \rightarrow any()$ where $any()$ denotes the set of all Erlang types. Such a typing would raise no warnings about the any use of the function and so can be used when no typing information can be inferred about a function. However, a more useful typing for the function in question is $(any(), any()) \rightarrow bool()$ where the return type of the function is restricted to all subtypes of $bool()$. Since we have the \textit{don't cares} any parameter paired with an instance of $false$, such as $(42, false)$, is a valid use of the function. This optimistic approach avoids any possible false positives from any warnings from reasoning about the typing and so will never reject a well-formed program. This typing does allow for warnings to be issued as a result of type clashes in matching a value which is not a subtype of $bool()$ with the result of the function. \\
 A success typing is inferred by building constraints by traversing the code and then solving them. \\
 Constraints are built by providing a list of derivation rule. Assume the following definitions:
-$e$ is any expression which can be built it in a language,
+$e$ is any expression which can be built in a language, \\
 $\tau$ is a type, such as a boolean or integer, \\
 $A$ represents an environment with bindings of variables of the form $\{\ldots, x \mapsto \tau_x, \ldots\}$, \\
 $C$ represents nested conjuctions and disjunction of subtype constraints:
@@ -117,8 +145,8 @@ Then one such derivation rule is the rule for a struct:
 \inference*[STRUCT]{  A \vdash  e_1 : \tau_1, C_1 \ldots e_n : \tau_n, C_n}
                                         {A \vdash  c(e_1, \ldots, e_n) : c(\tau_1, \ldots, \tau_n), C_1 \land \ldots \land C_n}
                 \]
-The struct rules states that given a number of elements, each with their own type, then they can be grouped into a tuple structure in the environment with each individual element retaining their type. The constraints for each element are added to the environment in a conjunction. \\
-$Sol$ is a mapping from type expressions and type variables to conrete types. $Sol$ is a solution to a constraint set $C$ if:
+The struct rule states that given a number of elements, each with its own type, then they can be grouped into a tuple structure in the environment with each individual element retaining their type. The constraints for each element are added to the environment in a conjunction. \\
+$Sol$ is a mapping from type expressions and type variables to concrete types. $Sol$ is a solution to a constraint set $C$ if:
 \begin{align*} 
 	Sol \models T_1 \subseteq T_2 \iff none() \subset Sol(T_1) \subseteq Sol(T_2)
 \end{align*}
@@ -130,7 +158,7 @@ $Sol$ is a mapping from type expressions and type variables to conrete types. $S
 	                                            Sol = Sol_1 \sqcup Sol_2 \end{cases}
 \end{align*}
 where $Sol_1 \sqcup Sol_2$ denotes the point-wise least upper bound of the solutions. \\
-Each case represents a different type of constraint which we may encounter (subtype, conjunction or disjunction). The subtype case states that a solution satisfies a subtypeconstraint if the mapping satisfies the subtype constraint and neither of its constituents is \textit{none()}. The conjunction case states that the solution must satisfy all conjunctive parts. The disjunction case that the solution is the point-wise least upper bound of all disjuncts.
+Each case represents a different type of constraint which we may encounter (subtype, conjunction or disjunction). The subtype case states that a solution satisfies a subtype constraint if the mapping satisfies the subtype constraint and neither of its constituents is \textit{none()}. The conjunction case states that the solution must satisfy all conjunctive parts. The disjunction case that the solution is the point-wise least upper bound of all disjuncts.
 
 \subsection{Soft Typing}
 
@@ -173,11 +201,6 @@ The algorithm described is capable of handling integrals, \textit{float}, \texti
 The limitations involve only in inferring types for local variables, meaning that the implementation is largely useless when used on programs designed with Object Oriented Programming (OOP) in mind, as noted by Cannon. While not a real limitation, Cannon's solution intercepts the compiler in order to improve performance. This is not our aim and we need not complicate things by working with bytecode.
 
 \subsubsection{Precise Type Analysis}
-
-\subsubsection{Pyty}
-Developed by Jeff Ruberg~\cite{pyty}, Pyty is a bug checker which analyses annotated source code to detect errors related to the misuse of types.
-\paragraph{Limitations}\mbox{}\\
-Pyty requires the need for annotations to the source code in a specific format. This is quite tedious and prevents from being an `out-of-the-box' solution to our problem.
 
 \subsubsection{PyPy}
 One of PyPy's goals is to develop a Just-In-Time (JIT) compiler for Python. PyPy's interpreter is written in RPython which removes dynamic features in order to reduce of the complexity of type inference.
@@ -223,6 +246,21 @@ An extension to Diamondback Ruby, $\mathcal{P}$Ruby, was created in order to han
 
 \section{Project Plan}
 
+\subsection*{Time Scale}
+With the beginning of the project taken as the 1st of May and end of the project taken as the 1st of September, the proposed time scale for the completion of parts of this project are as follows:
+\begin{center}
+    \begin{tabular}{| l | p{12cm} |}
+    \hline
+    \textbf{Month} & \textbf{Plan} \\ \hline
+    \textbf{May} & Find area where we can usefully apply Success Typings. \\ \hline
+    \multirow{2}{*}{\textbf{June}} & Identify small but interesting subset of Python. \\
+    					              & Begin implementing typing algorithm for the subset. \\ \hline
+    \multirow{2}{*}{\textbf{July}} & Complete implementation of the typing algorithm. \\
+    					              & Write the formal rules necessary for the typing algorithm. \\ \hline
+    \textbf{August} & Iterate the above process - implementation and formal write up for additional parts of the Python language - covering as much of the language as possible until the deadline. \\
+    \hline
+    \end{tabular}
+\end{center}
 
 \bibliography{mybib}{}
 \bibliographystyle{plain}
