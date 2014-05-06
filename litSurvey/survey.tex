@@ -51,9 +51,11 @@
 
 \section{Introduction}
 \subsection{Motivation}
-This project aims to design and implement a type checker for Python which returns no false positives. The basis for our implementation is a field called success typings. We harness this technique in order to provide a over-approximation of how a function is intended to be used. This allows us to determine that a violation of a function's contract is guaranteed to be a legitimate programming error. We shall describe success typing as well as the general theory behind type systems in section 2. We will then examine similar products and techniques and show the limitations in their application. \\
-\indent Using the methods and techniques we described, we shall begin to define our solution and evaluate the best way to solve the problems we shall face. These problems shall include how to manage friends, files and the keys to the files. Once we decide upon the best methods we shall then set about evaluating the best 3\textsuperscript{rd} party software we can use to achieve these tasks and why we should not implement our own solutions. \\
-\indent Once our solution has been implemented we shall proceed to describe what we have done and begin to evaluate it. We will evaluate our implementation in three ways: speed, ease of use and the number of false positives/negatives it reports. We will benchmark our solution against an existing file sharing platform before we allow a number of the users to test drive our work. We will see in which environments our work excels and in which it fails to make an impression.
+High level, dynamically typed languages such as Python have been gaining popularity in recent years. One reason for this is a high level of productivity involved in using such languages, partly due to the programmer being free from having to declare the types of the variables used. However the benefits gained from this design decision are at the exepense of the security provided by a statically typed language. Type errors which are esily caught by a compiler for a statically typed language, such as Java or C++, can be be left unnoticed in Python source code into the release stage of a product where its execution may prove fatal. Specifying types is regarded as superflous by many in the Python community. While there was has been significant talk of adding optional static typing to Python~\cite{guido1}~\cite{guido2}~\cite{guido3}, the backlash from such discussions is strong enough such that it is very unlikely we shall see this addition to the Python language anytime soon. \\
+Tools attempting to provide the benefits of a statically typed language to Python do exist, such as Pylint\footnote{\url{http://www.pylint.org/}} and PyChecker\footnote{\url{http://pychecker.sourceforge.net/}}, however their usability is hampered by the false positives returned and the amount of configuration needed. \\
+This project aims to design and implement a type checker for Python which returns no false positives. The basis for our implementation is a field called success typings. We harness this technique in order to provide a over-approximation of how a function is intended to be used. This allows us to determine that a violation of a function's contract is guaranteed to be a legitimate programming error. We describe success typing as well as the general theory behind type systems in section 2. We then examine similar products and techniques and show the limitations in their application. \\
+\indent Using the methods and techniques we described, we begin to define our solution and evaluate the best way to solve the problems we shall face. Once we decide upon the best methods we then set about evaluating the best 3\textsuperscript{rd} party software we can use to achieve these tasks and why we should not implement our own solutions. \\
+\indent In section 3 we describe what we have done and begin to evaluate it. We evaluate our implementation in three ways: speed, ease of use and the number of false positives/negatives it reports. We benchmark our solution against an existing file sharing platform before we allow a number of users to test drive our work. We see in which environments our work excels and in which it fails to make an impression.
 
 \subsection{Objectives}
 The objectives for this project are as follows:
@@ -73,7 +75,7 @@ In order for this to hold in programming languages, the phrases (e.g.\ variables
 A type system can used for detecting errors, documentation, language safety, abstraction and efficiency~\cite{pierce02}. This report focuses on error detection.
 
 \subsection{Static and Dynamic Type Systems}
-Static type systems require programs to be written such that all variables are labelled with a type. Static type systems are conservative, meaning that can reject programs which may never cause an error at run-time. Consider the following example for the statically typed C++ language:
+Static type systems require programs to be written such that all variables are labelled with a type. Static type systems are conservative, meaning that they can reject programs which may never cause an error at run-time. Consider the following example for the statically typed C++ language:
 \begin{lstlisting}
 	if (true) {	
 		int x = 5;
@@ -81,7 +83,7 @@ Static type systems require programs to be written such that all variables are l
 		int x = 5 + "Hello world";
 	}
 \end{lstlisting}
-The C++ compiler will not accept this code despite the fact it will behave well at run-time. This is because the type system is able to determine the \textit{absence} of type errors but not the \textit{presence}. \\
+The C++ compiler will not accept this code despite the fact it will, intuitively, behave well at run-time. This is because the type system is able to determine the \textit{absence} of type errors but not the \textit{presence}. \\
 Dynamic type systems do not require a label for variables until run-time where ``run-time type tags are used to distinguish different kinds of structures in the heap.''~\cite{pierce02} Dynamic type systems do not suffer from the same conservative nature as statically typed languages. For instance, the equivalent program to the previous C++ example in Python is:
 \begin{lstlisting}
 	if (True):	
@@ -100,7 +102,7 @@ A flow insensitive analysis takes no account of the order of execution~\cite{nie
 		x = 5.0   // S2
 	f(x)		// S3
 \end{lstlisting}
-A flow-sensitive algorithm would infer the type of $x$ at S1 to be $\left\{ {int}\right\}$ and $\left\{ {float}\right\}$ at S2. While a flow-insensitive algorithm would infer the type of $x$ to be $\left\{ {int, float}\right\}$ at S1, S2 and S3. \\
+A flow-sensitive algorithm would infer the type of $x$ at S1 to be $\left\{ {int}\right\}$ and $\left\{ {float}\right\}$ at S2, while a flow-insensitive algorithm would infer the type of $x$ to be $\left\{ {int, float}\right\}$ at S1, S2 and S3. \\
 Another case in which ignoring the flow of execution can change the types inferred is represented by the following trivial block of code:
 \begin{lstlisting}
 	x = 5
@@ -108,13 +110,13 @@ Another case in which ignoring the flow of execution can change the types inferr
 \end{lstlisting}
 A flow-insensitive algorithm would infer the type of \textit{x}, for any future occurrences of $x$, to be the set $\left\{ {int, float}\right\}$. A flow-sensitive algorithm is able to re-write the constraint graph to allow a more accurate representation of the flow, allowing it to infer more accurately the type of $x$ as the set $\left\{ {float}\right\}$. \\
 A flow-sensitive algorithm is clearly the more accurate approach but requires a comparatively complex algorithm which consumes more information than a flow-insensitive approach. \\
-Ryder~\cite{ryder03} suggests that the difference between a flow-sensitive and flow-insensitive approach is minimal in regards to object-oriented programs due to the size methods being small. While Python can be, and is, used for object-oriented programming, a significant number of Python programs are written as scripts and so the benefits of a flow-sensitive algorithm can not ruled out in our case.
+Ryder~\cite{ryder03} suggests that the difference between a flow-sensitive and flow-insensitive approach is minimal in regards to object-oriented programs due to the size of methods being small. While Python can be, and is, used for object-oriented programming, a significant number of Python programs are written as scripts and so the benefits of a flow-sensitive algorithm can not ruled out in our case.
 
 \section{Type Inference}
 The main problem which is required to be solved by this project is how to statically infer the types in Python without executing the program. \\
 In this section we look at a number of the existing techniques to achieve this while keeping in mind the objectives described at the beginning of this report.
 \subsection{Hindley-Milner}
-The Hindley-Milner algorithms was developed by Robin Milner based off the work of J. Roger Hindley. Hindley described the \textit{principal
+The Hindley-Milner algorithm was developed by Robin Milner based on the work of J. Roger Hindley. Hindley described the \textit{principal
 type schema}~\cite{hindley69}, ``which is the most general polymorphic type of an expression, and showed that if a combinatorial term has a type, then it has a principal type.''~\cite{cardelli87} Milner's contribution was an extension to Hindley's \textit{principal type schema} which included the ``notion of generic and non-generic type variables, which is essential for handling declarations of polymorphic functions.''~\cite{cardelli87} Milner's work culminated in the type inference for the ML language~\cite{milner84}. \\
 The Hindley-Milner algorithm uses the operations performed on expressions to generate constraints on the types of those expressions. This is done by annotating the nodes of an expression tree with the constraints in a bottom up fashion\footnote{The Hindley-Milner algorithm can be implemented top-down, called the $\mathcal{M}$ algorithm, or bottom-up, called $\mathcal{W}$~\cite{heeren02}. However, the bottom-up version appears to much more common.}. \\ The constraint is solved to infer a type for a term using a \textit{unification} algorithm.
 Bugs can be detected by determining whether there are inconsistencies in the set of constraints.
@@ -143,7 +145,7 @@ The Cartesian Product Algorithm works by modelling data flow as opposed to the c
 	else:
 		x = 5.0  
 \end{lstlisting}
-The inferred types for $x$ would be the set $\left\{ {int, float}\right\}$, where the possible \textit{int} type is found in the \textit{then} branch and the \textit{float} type is found in the \textit{else} branch. The type from each branch are added to the set of possible types for $x$. The CPA algorithm guarantees that the type of the variable is contained within the set. \\
+The inferred types for $x$ would be the set $\left\{ {int, float}\right\}$, where the possible \textit{int} type is found in the \textit{then} branch and the \textit{float} type is found in the \textit{else} branch. The types from each branch are added to the set of possible types for $x$. The CPA algorithm guarantees that the type of the variable is contained within the set. \\
 In order to infer the types handed to a function by taking the Cartesian product of the set of possible types for all given arguments. Consider the following code:
 \begin{lstlisting}
 	if (y):	
@@ -171,7 +173,7 @@ Types for local, atomic variables are inferred in an attempt to improve the perf
 The algorithm described is capable of handling integrals, \textit{float}, \textit{complex}, \textit{basestring}, \textit{list}, \textit{tuple} and \textit{dict}.\paragraph{Limitations}\mbox{}\\
 The limitations involve only in inferring types for local variables, meaning that the implementation is largely useless when used on programs designed with Object Oriented Programming (OOP) in mind, as noted by Cannon. While not a real limitation, Cannon's solution intercepts the compiler in order to improve performance. This is not our aim and we need not complicate things by working with bytecode.
 
-\subsection{Gradual Typing}
+%\subsection{Gradual Typing}
 
 
 \subsection{Success Typings}
@@ -255,18 +257,14 @@ Pylint is an error checking tool for Python which statically analyses Python sou
 Can often return a lot of false positives and offers a number of command-line options in an attempt to allow users to suppress them.
 
 \subsubsection{PyChecker}
-Runs the code to analyse it.
-
-\subsubsection{PyFlakes}
-Analyses the source code for errors without importing/running it. Designed to be quick.
+PyChecker is an bug checker for Python which checks for type errors among a host of other errors. PyChecker is similar to Pylint except it does not checker the coding style of the source program. PyChecker also differs in that it needs to runs the code in order to analyse it.
 \paragraph{Limitations}\mbox{}\\
-Often does not return all errors.
+PyChecker can return spurious errors and warnings. PyChecker imports the code it is analysing which can have undesirable side effects.
 
 \subsubsection{PySonar}
 PySonar was developed by Yin Wang while an intern at Google between 2009 and 2010~\cite{pySonar}. PySonar is a type inferencer and indexer, using abstract interpretation, intended for the internal use within Google's Grok project. PySonar claims to be able to resolve the names of 97\% of the Python standard library.
 \paragraph{Limitations}\mbox{}\\
-Focuses mainly a less dynamic subset of Python which is `easier' to analyse (from Guido).
-
+PySonar is focused on indexing the code it analyses and so it does not report any possible type errors. The program focuses mainly on a less dynamic subset of Python which is `easier' to analyse (from Guido).
 \subsubsection{Pyntch}
 Created by Yusuke Shinyama, Pyntch uses type inference in Python in order to find bugs~\cite{pyntch}. \\
 Project activity has ceased since 2009.
@@ -278,7 +276,7 @@ Can return false positives.
 %Abstract interpretation lattice \\
 
 
-\subsection{Ruby}
+\subsubsection{Ruby}
 Ruby is a dynamically typed scripting language, similar to Python. \\
 Furr et al. developed Diamondback Ruby (DRuby)~\cite{furr09} in order to discover type errors. DRuby works by using type annotations to library functions in order to generate constraints to infer the types for user defined functions. \\
 DRuby is not sound as it accepts programs which are dynamically incorrect. DRuby also reports false positives. \\
