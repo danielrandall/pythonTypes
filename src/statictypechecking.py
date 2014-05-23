@@ -56,6 +56,7 @@ import sys
 isPython3 = sys.version_info >= (3,0,0)
 
 import imp
+from pprint import pprint
 
 try:
     if use_leo_globals: # This is better for EKR's debugging.
@@ -2061,7 +2062,7 @@ class BaseType:
     #@+node:ekr.20121217041832.7814: *4* << about the type classes >>
     '''BaseType is the base class for all type classes.
 
-    Subclasses of BaseType represent inferened types.
+    Subclasses of BaseType represent inferenced types.
 
     Do not change self.kind casually: self.kind (and __repr__ which simply
     returns self.kind) are real data: they are used by the TypeInferer class.
@@ -2235,13 +2236,11 @@ class Int_Type(Num_Type):
         Num_Type.__init__(self,int)
 
         
-
-#@+node:ekr.20120821113451.3628: *3* class String_Type
 class String_Type(BaseType):
     
     def __init__(self):
         BaseType.__init__(self,'String')
-#@+node:ekr.20121209053123.7894: *3* class Tuple_Type
+
 class Tuple_Type(BaseType):
     
     def __init__(self,node):
@@ -2251,9 +2250,7 @@ class Tuple_Type(BaseType):
         # kind = 'Tuple(%s)' % (Utils().format(node))
         kind = 'Tuple(@%s)' % id(node)
         BaseType.__init__(self,kind)
-#@-others
 
-#@+node:ekr.20130331062640.5475: ** class BuildTables (not used yet)
 class BuildTables:
     
     '''create global attribute tables.'''
@@ -2353,6 +2350,7 @@ class P1(AstFullTraverser):
         # Undo references to Dummy_Node objects.
         root.stc_parent = None
         root.stc_context = None
+        
     #@+node:ekr.20130319203546.9529: *3*  p1.visit (big gc anomaly)
     def visit(self,node):
         '''Inject node references in all nodes.'''
@@ -2415,6 +2413,7 @@ class P1(AstFullTraverser):
         # Restore the context & parent.
         self.context = node.stc_context
         self.parent = node.stc_parent
+        
     #@+node:ekr.20130319203546.9556: *3* p1.define_name
     def define_name(self,cx,name,defined=True):
         '''
@@ -2576,6 +2575,7 @@ class P1(AstFullTraverser):
         for z in node.body:
             self.visit(z)
         self.context = None
+       # print(node.stc_symbol_table)
     #@+node:ekr.20130319203546.9550: *4* p1.Name
     # Name(identifier id, expr_context ctx)
 
@@ -2623,8 +2623,21 @@ class PatternFormatter (AstFormatter):
     def do_Str (self,node):
         '''This represents a string constant.'''
         return 'Str' # return repr(node.s)
-    #@-others
-#@+node:ekr.20121101025702.3885: ** class SSA_Traverser
+ 
+# currently not used...
+class Phi_Node():
+    ''' Class used to represent a phi node in the SSA. Allows us to represent
+    a variable which is assigned to in more than one branch.
+    
+    The only real difference is that its values is a list of variables from
+    which it can adopt its type from. '''
+    
+    def __init__(self, var, targets):
+        self.var = var
+        self.targets = targets
+
+
+
 class SSA_Traverser(AstFullTraverser):
     
     ''' The SSA_Traverser class traverses the AST tree,
@@ -2632,6 +2645,9 @@ class SSA_Traverser(AstFullTraverser):
     
     Definitions of a symbol N kill previous definitions of N. 'if' and
     'while' statement add entries to reaching sets.
+    
+    Phi nodes are implemented by adding a list to the if and case nodes. This
+    was seen as simpler than modifying the AST. 
     '''
     
     def __init__(self):
@@ -2640,14 +2656,13 @@ class SSA_Traverser(AstFullTraverser):
     def __call__(self,node):
         return self.run(node)
 
-    #@+others
-    #@+node:ekr.20121208095442.7807: *3* ssa.dump_dict
+
     def dump_dict (self,aDict,tag=''):
         
         g.trace(tag)
         for key in sorted(aDict.keys()):
             print('  %s = [%s]' % (key,self.u.format(aDict.get(key,[]))))
-    #@+node:ekr.20130320183917.9481: *3* ssa.lookup
+
     # Similar to p1.lookup, but node can be any node.
     def lookup(self,node,key):
         
@@ -2674,7 +2689,7 @@ class SSA_Traverser(AstFullTraverser):
         # else:
             # g.trace(node,key)
             # return None
-    #@+node:ekr.20121208095442.7806: *3* ssa.merge_dicts
+
     def merge_dicts (self,aDict,aDict2):
         
         '''Merge the lists in aDict2 into aDict.'''
@@ -2686,7 +2701,17 @@ class SSA_Traverser(AstFullTraverser):
                 if val not in aList:
                     aList.append(val)
             aDict[key] = aList
-    #@+node:ekr.20121101025702.3888: *3* ssa.run (entry point)
+            
+    def changed_dicts(self, newDict, oldDict):
+        ''' The order of the parameters is important.
+            Adds keys in newDict but in oldDict to oldDict with value 0. A 
+            bit of a hack but makes it easier. '''
+        newKeys = set(newDict.keys())
+        oldKeys = set(oldDict.keys())
+        intersection = newKeys.intersection(oldKeys)
+        added = newKeys - oldKeys
+        return set(o for o in intersection if oldDict[o] != newDict[o]) | added
+
     def run (self,root):
 
         self.u = Utils()
@@ -2695,28 +2720,19 @@ class SSA_Traverser(AstFullTraverser):
             # where a is an assignment.
         assert isinstance(root,ast.Module)
         self.visit(root)
-    #@+node:ekr.20121119074005.5605: *3* ssa.visit
-    def visit(self,node):
-        
-        '''Compute the dictionary of assignments live at any point.'''
 
+    def visit(self,node):
+        '''Compute the dictionary of assignments live at any point.'''
         method = getattr(self,'do_' + node.__class__.__name__)
         method(node)
-    #@+node:ekr.20121119074005.5602: *3* ssa.visitors
-    #@+node:ekr.20130329114558.5698: *4* ssa.complex statements (*revise*)
-    #@+node:ekr.20130329114558.5470: *5* ssa.ExceptHandler (new)
-    # Python 2: ExceptHandler(expr? type, expr? name, stmt* body)
-    # Python 3: ExceptHandler(expr? type, identifier? name, stmt* body)
 
     def do_ExceptHandler(self,node):
-        
         for z in node.body:
             self.visit(z)
-    #@+node:ekr.20121101025702.3997: *5* ssa.For
+
     # For(expr target, expr iter, stmt* body, stmt* orelse)
 
     def do_For(self,node):
-        
         ### what if target conflicts with an assignment??
         self.visit(node.iter)
         for z in node.body:
@@ -2729,17 +2745,52 @@ class SSA_Traverser(AstFullTraverser):
         # return aDict
     #@+node:ekr.20121101025702.3999: *5* ssa.If
     def do_If (self,node):
-
-        # Refs in the test refer to previous aDict.
+        ''' Checks whether if and else branches use the same name. If they do
+            then we must create a phi node which uses both.
+            TODO: Optimise this function. 
+            TODO: Make it work for vars not previously declared.'''
+        node.phis = [] # All ifs have an empty list.
+        
         self.visit(node.test)
+        beforeD = self.d.copy()
         for z in node.body:
             self.visit(z)
+        ifD = self.d.copy()
+        ifChanged = self.changed_dicts(ifD, beforeD)
+        
         if node.orelse:
             for z in node.orelse:
                 self.visit(z)
-            # self.merge_dicts(aDict,aDict2)
+            elseD = self.d.copy()
+            elseChanged = self.changed_dicts(elseD, ifD)
+            # vars changed in both branches
+            elseIfChanged = set(ifChanged) & set(elseChanged)
+            self.editPhiList(elseIfChanged, [elseD, ifD], node)
+            changedOnceElse = set(elseChanged) - elseIfChanged
+            self.editPhiList(changedOnceElse, [elseD, beforeD], node)
+            ifChangedOnly = set(ifChanged) - elseIfChanged
+        else:
+            ifChangedOnly = ifChanged
+        self.editPhiList(ifChangedOnly, [ifD, beforeD], node)
+        for phi in node.phis:
+            pprint(phi.var)
+            pprint(phi.targets)
+            
+    def editPhiList(self, nameList, dictList, node):
+        for name in nameList:
+            self.d[name] += 1
+            targets = []
+            for nameDict in dictList:
+                # Check for if the variables had not been previously
+                #  initialised
+                if name not in nameDict:
+                    targets.append(0)
+                else:
+                    targets.append(nameDict[name])
+            newPhi = Phi_Node(name + str(self.d[name]), targets)
+            node.phis.append(newPhi)
         
-    #@+node:ekr.20130329114558.5581: *5* ssa.Try (Python 3 only) (new)
+    
     # Python 3 only: Try(stmt* body, excepthandler* handlers, stmt* orelse, stmt* finalbody)
 
     def do_Try(self,node):
@@ -2752,7 +2803,7 @@ class SSA_Traverser(AstFullTraverser):
             self.visit(z)
         for z in node.finalbody:
             self.visit(z)
-    #@+node:ekr.20130329114558.5473: *5* ssa.TryExcept (new)
+
     # TryExcept(stmt* body, excepthandler* handlers, stmt* orelse)
 
     def do_TryExcept(self,node):
@@ -2767,7 +2818,7 @@ class SSA_Traverser(AstFullTraverser):
             self.visit(z)
             # self.merge_dicts(aDict,aDict2)
        
-    #@+node:ekr.20130329114558.5474: *5* ssa.TryFinally (new)
+
     # TryFinally(stmt* body, stmt* finalbody)
 
     def do_TryFinally(self,node):
@@ -2823,6 +2874,7 @@ class SSA_Traverser(AstFullTraverser):
         
         old_d = self.d
         self.d = {}
+        self.body = node.body
         for z in node.body:
             self.visit(z)
         self.d = old_d
@@ -2855,38 +2907,10 @@ class SSA_Traverser(AstFullTraverser):
     # Assign(expr* targets, expr value)
 
     def do_Assign(self,node):
-        
-        trace = False and not g.app.runningAllUnitTests
-
-        # The RHS uses previous reaching definitions.
-        junk = self.visit(node.value)
-
-        # This assignment kills all other assignments to the targets.    
+        self.visit(node.value)
         for target in node.targets:
-            junk = self.visit(target) # bug fix: 2012/12/25
-            kind = self.kind(target)
-            if kind=='Name':
-                name = target.id
-                ### aDict[name] = [node.value]
-                ### junk_d = self.lookup(node,name)
-            elif kind == 'Attribute':
-                # Special case for ivars.
-                if (self.kind(target.value) == 'Name' and
-                    target.value.id == 'self' and
-                    self.kind(target.value.ctx) == 'Load'
-                ):
-                    ivar = target.attr # always a string.
-                    # d = self.lookup(node,ivar)
-                    ###
-                    # e = target.value.e
-                    # cx = e.cx.class_context
-                    # d = cx.ivars_dict
-                    # aList = d.get(ivar,[])
-                    # aList.append(node.value)
-                    # d [ivar] = aList
-                    # if trace: g.trace('(ssa) define %s:%s.%s: %s' % (
-                        # cx.name,e.name,ivar,
-                        # self.u.dump_ivars_dict(d)),align=self.align)
+            self.visit(target)
+
     #@+node:ekr.20130329114558.5668: *5* ssa.AugAssign
     # AugAssign(expr target, operator op, expr value)
 
@@ -2910,20 +2934,24 @@ class SSA_Traverser(AstFullTraverser):
         for z in node.names:
             self.visit(z)
     #@+node:ekr.20121101025702.3980: *5* ssa.Name
+    
     def do_Name(self,node):
+        ''' If the id is True or false then ignore. WHY ARE TRUE AND FALSE
+            IDENTIFIED THE SAME WAY AS VARIABLES. GAH. '''
+        if (node.id == "True" or node.id == "False"):
+            return
+        # If the variable is being assigned a new value
+        if isinstance(node.ctx, ast.Store):
+            if node.id in self.d:
+                self.d[node.id] += 1
+            else:
+                self.d[node.id] = 1
+            node.id = node.id + str(self.d[node.id])
         
-        trace = False and not g.app.runningAllUnitTests
-        name = node.id
-        if isinstance(node.ctx,ast.Load):
-            ### node.reach = aDict.get(name,[])
-            cx = self.u.compute_node_cx(node)
-            st = cx.stc_symbol_table
-            ssa_d = st.ssa_d
-            # if trace:
-                # g.trace('ssa %15s reach:[%s]' % (
-                   # name,self.u.format(node.reach)))
-        elif isinstance(node.ctx,ast.Param):
-            pass # Done in ssa.arguments.
+        # If the variable is being used
+        elif isinstance(node.ctx,ast.Load):
+            node.id = node.id + str(self.d[node.id])
+
     #@-others
 #@+node:ekr.20130321094706.9517: ** class Stats
 class Stats(BaseStats):
@@ -3086,10 +3114,11 @@ class TypeInferrer (AstFullTraverser):
     
     '''A class to infer the types of objects.'''
     
-    # def __init__ (self):
-        # AstFullTraverser.__init__(self)
+   # def __init__ (self):
+    #    AstFullTraverser.__init__(self)
 
     def __call__(self,node):
+        self.init()
         return self.run(node)
     
     #@+others
@@ -3130,6 +3159,9 @@ class TypeInferrer (AstFullTraverser):
             u.first_line(u.format(node)))
     #@+node:ekr.20130320080025.9500: *3* ti.init
     def init(self):
+        
+        self.variableTypes = {} # Used as string:name -> []:types
+        self.currently_assigning = False
 
         self.stats = Stats()
         self.u = Utils()
@@ -3162,7 +3194,6 @@ class TypeInferrer (AstFullTraverser):
     #@+node:ekr.20130315094857.9471: *3* ti.run (entry point)
     def run (self,root):
         
-        self.init()
         self.visit(root)
     #@+node:ekr.20130315094857.9484: *3* ti.type helpers
     def has_failed(self,t1,t2=[],t3=[]):
@@ -3254,89 +3285,111 @@ class TypeInferrer (AstFullTraverser):
             t = [Unknown_Type(node)]
         # ti.check_attr(node) # Does nothing
         return t
-    #@+node:ekr.20130315094857.9494: *6* ti.check_attr
-    def check_attr(self,node):
-        
-        ti = self
-        trace = False and not g.app.runningAllUnitTests
-        
-        return ### Now done in ti.Attribute
 
-        # assert ti.kind(node) == 'Attribute'
-        # value = node.value
-        # # node.attr is always a string.
-        
-        # if ti.kind(value) == 'Name':
-            # # The ssa pass has computed the ivars dict.
-            # # There is no need to examine value.ctx.
-            # name = value.id
-            # name_e = value.e
-            # name_cx = name_e.cx
-            # name_class_cx = name_cx.class_context
-            # if name == 'self':
-                # if name_class_cx:
-                    # if node.attr in name_class_cx.ivars_dict:
-                        # if trace: g.trace('OK: %s.%s' % (
-                            # name_class_cx.name,node.attr))
-                    # else:
-                        # ti.error('%s has no %s member' % (
-                            # name_class_cx.name,node.attr))
-                # else:
-                    # ti.error('%s is not a method of any class' % (
-                        # name)) ####
-            # else:
-                # ### To do: handle any id whose inferred type is a class or instance.
-                # if trace:
-                    # g.trace('** not checked: %s' % (name))
-                    # g.trace(ti.u.dump_ast(value))
-    #@+node:ekr.20130315094857.9513: *5* ti.BinOp & helper
-    def do_BinOp (self,node):
-
-        ti = self
-        trace = True and not g.app.runningAllUnitTests
-        trace_infer = False ; trace_fail = False
-        lt = ti.visit(node.left) or []
-        rt = ti.visit(node.right) or []
-        lt = ti.clean(lt)
-        rt = ti.clean(rt)
-        op_kind = ti.kind(node.op)
-        num_types = ([ti.float_type],[ti.int_type])
-        list_type = [List_Type(None)]
-        if rt in num_types and lt in num_types:
-            if rt == [ti.float_type] or lt == [ti.float_type]:
-                t = [ti.float_type]
-            else:
-                t = [ti.int_type]
-        elif rt == list_type and lt == list_type and op_kind == 'Add':
-            t = list_type
-        elif op_kind == 'Add' and rt == [ti.string_type] and lt == [ti.string_type]:
-            t = [ti.string_type]
-        elif op_kind == 'Mult' and rt == [ti.string_type] and lt == [ti.string_type]:
-            g.trace('*** User error: string mult')
-            t = [Unknown_Type(node)]
-        elif op_kind == 'Mult' and (
-            (lt==[ti.string_type] and rt==[ti.int_type]) or
-            (lt==[ti.int_type] and rt==[ti.string_type])
-        ):
-            t = [ti.string_type]
-        elif op_kind == 'Mod' and lt == [ti.string_type]:
-            t = [ti.string_type] # (string % anything) is a string.
+    def do_Name(self,node):
+        if self.currently_assigning:
+            return [node.id]
+        # Stupidly True and False are Names. Return bool type
+        if (node.id == "True" or node.id == "False"):
+            return [self.bool_type]
+        if node.id in self.variableTypes:
+            name_type = self.variableTypes[node.id]
         else:
-            ti.stats.n_binop_fail += 1
-            if trace and trace_fail:
-                if 1:
-                    s = '%r %s %r' % (lt,op_kind,rt)
-                    g.trace('  fail: %30s %s' % (s,ti.format(node)))
-                else:
-                    g.trace('  fail:',lt,op_kind,rt,ti.format(node))
-            t = [Inference_Error(node)] ### Should merge types!
-        if trace and trace_infer: g.trace(ti.format(node),'->',t)
-        return t
-    #@+node:ekr.20130315094857.9514: *5* ti.BoolOp
-    def do_BoolOp(self,node):
+            name_type = None
+        return [name_type]
+    
+    def do_Assign(self,node):
+        ''' Set all target variables to have the type of the value of the
+            assignment. '''
+        valueTypes = self.visit(node.value)
+        
+        self.currently_assigning = True
+        targets = []
+        for z in node.targets:
+            targets.extend(self.visit(z))
+        self.currently_assigning = False
+        assert(len(valueTypes) == len(targets))
+        for i in range(len(targets)):
+            self.variableTypes[targets[i]] = valueTypes[i]
+        pprint(self.variableTypes)
 
-        ti = self    
-        return [ti.bool_type]
+    # TODO x = ... or []
+    def do_BinOp (self,node):
+        left_type = self.visit(node.left)
+        right_type = self.visit(node.right)
+        op_kind = self.kind(node.op)
+        num_types = ([self.float_type],[self.int_type])
+        list_type = [List_Type(None)]
+        if right_type in num_types and left_type in num_types:
+            if right_type == [self.float_type] or left_type == [self.float_type]:
+                result_type = [self.float_type]
+            else:
+                result_type = [self.int_type]
+        elif right_type == list_type and left_type == list_type and op_kind == 'Add':
+            result_type = list_type
+        elif right_type == [self.string_type] and left_type == [self.string_type] and op_kind == 'Add':
+            result_type = [self.string_type]
+        #      elif op_kind == 'Mult' and rt == [ti.string_type] and lt == [ti.string_type]:
+        #          g.trace('*** User error: string mult')
+        #           t = [Unknown_Type(node)]
+        elif op_kind == 'Mult' and (
+            (left_type == [self.string_type] and right_type == [self.int_type]) or
+            (left_type == [self.int_type] and right_type == [self.string_type])
+        ):
+            result_type = [self.string_type]
+        elif op_kind == 'Mod' and left_type == [self.string_type]:
+            result_type = [self.string_type] # (string % anything) is a string.
+        else:
+            self.stats.n_binop_fail += 1
+        return result_type
+    
+    def do_UnaryOp(self,node):
+        op_type = self.visit(node.operand)
+        op_kind = self.kind(node.op)
+        if op_kind == 'Not':
+            assert(op_type == [self.bool_type])
+            return op_type
+        elif op_type == [self.int_type] or op_type == [self.float_type]:
+            pass # All operators are valid.
+        else:
+            self.stats.n_unop_fail += 1
+            op_type = [Unknown_Type(node)]
+        return op_type
+    
+    def do_List(self,node):
+        ''' No need to worry about currently_assigning. '''
+        names = []
+        for z in node.elts:
+            names.extend(self.visit(z))
+        return names
+    #    return [List_Type(node)]
+
+    def do_Num(self,node):
+        t_num = Num_Type(node.n.__class__)
+        return [t_num]
+
+    def do_Str(self,node):
+        '''This represents a string constant.'''
+        return [self.string_type]
+
+    def do_Tuple(self,node):
+        ''' No need to worry about currently_assigning. '''
+        names = []
+        for z in node.elts:
+            names.extend(self.visit(z))
+        return names
+
+    def do_Dict(self,node):   
+        for z in node.keys:
+            self.visit(z)
+        for z in node.values:
+            self.visit(z)
+        return [Dict_Type(node)]
+
+    def do_BoolOp(self,node):
+        for z in node.values:
+            self.visit(z)
+        return [self.bool_type]
     #@+node:ekr.20130315094857.9496: *5* ti.Call & helpers
     # Call(expr func, expr* args, keyword* keywords, expr? starargs, expr? kwargs)
     #   Note: node.starargs and node.kwargs are given only if assigned explicitly.
@@ -3425,23 +3478,6 @@ class TypeInferrer (AstFullTraverser):
         d = cx.st.d
         ctor = d.get('__init__')
 
-        # node2 = node.value
-        # name = node2.id
-        # attr = node.attr
-        # e = getattr(node2,'e',None)
-        # if trace: g.trace(kind,v_kind,name,attr)
-        # # g.trace('e',e)
-        # t = ti.get_cache(e)
-        # # g.trace('cache',t)
-        # if len(t) == 1:
-            # t = t[0]
-            # e_value = t.node.e
-            # # g.trace('* e_value',e_value)
-            # # g.trace('e_value.self_context',e_value.self_context)
-            # e = e_value.self_context.st.d.get(node.attr)
-            # if trace: g.trace('** e_value.self_context.st.d.get(%s)' % (attr),e)
-            # # g.trace('e_value.self_context.st.d', e_value.self_context.st.d)
-            # # g.trace('e.node',e.node)
             
         args = [] ### To do
         t = [Class_Type(cx)]
@@ -3484,63 +3520,7 @@ class TypeInferrer (AstFullTraverser):
                 if trace and trace_fuzzy: g.trace('fuzzy',t,ti.format(node))
                 ti.stats.n_fuzzy += 1
                 e = None
-            
-        # elif kind == 'Attribute':
-            # v_kind = ti.kind(node.value)
-            # if v_kind == 'Name':
-                # node2 = node.value
-                # name = node2.id
-                # attr = node.attr
-                # e = getattr(node2,'e',None)
-                # # if trace: g.trace(kind,v_kind,name,attr)
-                # t = ti.get_cache(e)
-                # if len(t) == 1:
-                    # t = t[0]
-                    # if ti.kind(t) == 'Class_Type':
-                        # d = t.cx.st.d
-                        # e = d.get(node.attr)
-                    # else:
-                        # pass ### To do
-                # elif t:
-                    # pass
-                # else:
-                    # t = [Unknown_Type(node)]
-            # elif v_kind == 'Attribute':
-                # node2 = node.value
-                # g.trace('*****',kind,v_kind,ti.format(node.value))
-                # e = ti.find_call_e(node2)
-            # else:
-                # g.trace('not ready yet',kind,v_kind)
-                # e = None
-        # elif kind in ('Call','Subscript'):
-            # g.trace(kind)
-            # e = None
-        # else:
-            # g.trace('===== oops:',kind)
-            # e = None
-            
-        # if e:
-            # assert isinstance(e,SymbolTableEntry),ti.kind(e)
-            # ti.stats.n_find_call_e_success += 1
-        # else:
-            # # Can happen with methods,Lambda.
-            # ti.stats.n_find_call_e_fail += 1
-            # if trace and trace_errors: g.trace('**** no e!',kind,ti.format(node),
-                # before='\n')
 
-        # if e and not e.node:
-            # if trace and trace_errors: g.trace(
-                # 'undefined e: %s' % (e),before='\n')
-
-        # if trace and trace_return: g.trace(
-            # kind,'e:',e,ti.format(node))
-        # return e
-    #@+node:ekr.20130315094857.9499: *6* ti.infer_actual_args
-    # Call(expr func, expr* args, keyword* keywords, expr? starargs, expr? kwargs)
-    #   keyword = (identifier arg, expr value) # keyword arguments supplied to call
-
-    # FunctionDef(identifier name, arguments args, stmt* body, expr* decorator_list)
-    #   arguments = (expr* args, identifier? vararg, identifier? kwarg, expr* defaults)
 
     def infer_actual_args (self,e,node):
         
@@ -3773,34 +3753,26 @@ class TypeInferrer (AstFullTraverser):
         else:
             t = ti.clean(t)
         return t
-    #@+node:ekr.20130315094857.9515: *5* ti.Compare
-    # Compare(expr left, cmpop* ops, expr* comparators)
 
     def do_Compare(self,node):
-        
         ti = self
         ti.visit(node.left)
         for z in node.comparators:
             ti.visit(z)
         return [ti.bool_type]
-    #@+node:ekr.20130315094857.9516: *5* ti.comprehension
-    def do_comprehension(self,node):
 
+    def do_comprehension(self,node):
         ti = self
         ti.visit(node.target) # A name.
         ti.visit(node.iter) # An attribute.
         return [List_Type(node)]
-    #@+node:ekr.20130315094857.9506: *5* ti.Expr
-    # Expr(expr value)
 
     def do_Expr(self,node):
-        
         ti = self
         t = ti.visit(node.value)
         return t
-    #@+node:ekr.20130315094857.9518: *5* ti.GeneratorExp
-    def do_GeneratorExp (self,node):
 
+    def do_GeneratorExp (self,node):
         ti = self
         trace = False and not g.app.runningAllUnitTests
         junk = ti.visit(node.elt)
@@ -3814,12 +3786,8 @@ class TypeInferrer (AstFullTraverser):
         else:
             t = ti.clean(t)
         return t
-    #@+node:ekr.20130315094857.9519: *5* ti.IfExp
-    # The ternary operator
-    # IfExp(expr test, expr body, expr orelse)
 
     def do_IfExp(self,node):
-        
         ti = self    
         junk = ti.visit(node.test)
         t = ti.visit(node.body)
@@ -3829,21 +3797,17 @@ class TypeInferrer (AstFullTraverser):
         else:
             t = ti.clean(t)
         return t
-    #@+node:ekr.20130315094857.9520: *5* ti.Index
-    def do_Index(self,node):
 
+    def do_Index(self,node):
         ti = self    
         return ti.visit(node.value)
-    #@+node:ekr.20130315094857.9511: *5* ti.Lambda
+
     def do_Lambda (self,node):
-        
         ti = self
         return ti.visit(node.body)
-    #@+node:ekr.20130315094857.9521: *5* ti.ListComp
+
     def do_ListComp(self,node):
-        
         ti = self
-        # g.trace(node.elt,node.generators)
         junk = ti.visit(node.elt)
         t = []
         for node2 in node.generators:
@@ -3853,60 +3817,8 @@ class TypeInferrer (AstFullTraverser):
         else:
             t = ti.clean(t)
         return t
-    #@+node:ekr.20130315094857.9540: *5* ti.Name (**rewrite)
-    def do_Name(self,node):
-        
-        ti = self ; u = ti.u
-        trace = True #and not g.app.runningAllUnitTests
-        trace_infer = False ; trace_fail = False
-        trace_self = False
-        ctx_kind = ti.kind(node.ctx)
-        name = node.id
-        trace = trace and name == 'i'
-        
-        # # Reaching sets are useful only for Load attributes.
-        # if ctx_kind not in ('Load','Param'):
-            # # if trace: g.trace('skipping %s' % ctx_kind)
-            # return []
+    
 
-        # ### ast.Name nodes for class base names have no 'e' attr.
-        # if not hasattr(node,'e'):
-            # if trace: g.trace('no e',node)
-            # return []
-
-        if name == 'self':
-            # reach = getattr(node,'reach',[])
-            # if reach: g.trace('**** assignment to self')
-            cx = node.stc_context ### should be class context.
-            if cx:
-                if trace and trace_self: g.trace('found self',cx)
-                t = [Class_Type(cx)]
-            else:
-                g.trace('**** oops: no class context for self',ti.format(node))
-                t = [Unknown_Type(node)]
-        else:
-            reach = getattr(node,'reach',[])
-            t = []
-            for node2 in reach:
-                # The reaching sets are the RHS of assignments.
-                t = [Unknown_Type(node)]
-                t2 = ti.visit(node2)
-                if isinstance(t2,(list,tuple)):
-                    t.extend(t2)
-                else:
-                    g.trace('**oops:',t2,ti.format(node2))
-            if ti.has_failed(t):
-                t = ti.merge_failures(t)
-            else:
-                t = ti.clean(t)
-
-        if trace and trace_infer and t:
-            g.trace('infer',t,u.format(node))
-        if trace and trace_fail and not t:
-            g.trace('fail ',name,ctx_kind,'reach:',
-                ['%s:%s' % (id(z),u.format(z)) for z in reach])
-        return t
-    #@+node:ekr.20130315094857.9522: *5* ti.Slice
     def do_Slice(self,node):
         
         ti = self
@@ -3914,7 +3826,7 @@ class TypeInferrer (AstFullTraverser):
         if node.lower: junk = ti.visit(node.lower)
         if node.step:  junk = ti.visit(node.step)
         return [ti.int_type] ### ???
-    #@+node:ekr.20130315094857.9523: *5* ti.Subscript (to do)
+
     def do_Subscript(self,node):
 
         ti = self
@@ -3923,143 +3835,23 @@ class TypeInferrer (AstFullTraverser):
         t2 = ti.visit(node.slice)
         if t1 and trace: g.trace(t1,t2,ti.format(node))
         return t1 ### ?
-    #@+node:ekr.20130315094857.9524: *5* ti.UnaryOp
-    def do_UnaryOp(self,node):
-        
-        ti = self
-        trace = True and not g.app.runningAllUnitTests
-        t = ti.visit(node.operand) or []
-        t = ti.clean(t)
-        op_kind = ti.kind(node.op)
-        if op_kind == 'Not':
-            t = [self.bool_type]
-        elif t == [self.int_type] or t == [self.float_type]:
-            pass # All operators are valid.
-        else:
-            ti.stats.n_unop_fail += 1
-            if trace: g.trace(' fail:',op_kind,t,ti.format(node))
-            t = [Unknown_Type(node)]
-        return t
-    #@+node:ekr.20130315094857.9525: *4* ti.primitive Types
-    #@+node:ekr.20130315094857.9526: *5* ti.Builtin
-    def do_Builtin(self,node):
 
+    def do_Builtin(self,node):
         ti = self
         return [ti.builtin_type]
-    #@+node:ekr.20130315094857.9527: *5* ti.Bytes
+
     def do_Bytes(self,node):
-
-        ti = self
-        return [ti.bytes_type]
-    #@+node:ekr.20130315094857.9528: *5* ti.Dict
-    # Dict(expr* keys, expr* values)
-
-    def do_Dict(self,node):
-        
-        ti = self
-        for z in node.keys:
-            ti.visit(z)
-        for z in node.values:
-            ti.visit(z)
-        return [Dict_Type(node)]
-            ### More specific type.
-    #@+node:ekr.20130315094857.9529: *5* ti.List
-    # List(expr* elts, expr_context ctx) 
-
-    def do_List(self,node):
-        
-        ti = self
-        for z in node.elts:
-            ti.visit(z)
-        # ti.visit(node.ctx)
-        return [List_Type(node)]
-    #@+node:ekr.20130315094857.9530: *5* ti.Num
-    def do_Num(self,node):
-        
-        ti = self
-        t_num = Num_Type(node.n.__class__)
-        # g.trace(ti.format(node),'->',t_num)
-        return [t_num]
-    #@+node:ekr.20130315094857.9531: *5* ti.Str
-    def do_Str(self,node):
-        
-        '''This represents a string constant.'''
-
-        ti = self
-        return [ti.string_type]
-    #@+node:ekr.20130315094857.9532: *5* ti.Tuple
-    # Tuple(expr* elts, expr_context ctx)
-
-    def do_Tuple(self,node):
-        
-        ti = self
-        for z in node.elts:
-            ti.visit(z)
-        # ti.visit(node.ctx)
-        return [Tuple_Type(node)]
-    #@+node:ekr.20130315094857.9533: *4* ti.statements
-    #@+node:ekr.20130315094857.9491: *5* ti.arguments
-    # arguments = (expr* args, identifier? vararg, identifier? kwarg, expr* defaults)
+        return [self.bytes_type]
 
     def do_arguments (self,node):
-        
         '''Bind formal arguments to actual arguments.'''
-        
         assert False # All the work is done in ti.Call and its helpers.
-    #@+node:ekr.20130315094857.9492: *5* ti.Assign (**rewrite)
-    def do_Assign(self,node):
-
-        ti = self
-        trace = False and not g.app.runningAllUnitTests
-        t_val = ti.visit(node.value)
-        t = []
-        for z in node.targets:
-            t.append(ti.visit(z))
-        t = ti.clean(t)
-        return t
-
-        # if data in ti.assign_stack:
-            # t = [Circular_Assignment(node)]
-            # ti.stats.n_circular_assignments += 1
-        # else:
-            # ti.assign_stack.append(data)
-            # try:
-                # t = ti.visit(node.value)
-                # if trace: g.trace(t)
-            # finally:
-                # data2 = ti.assign_stack.pop()
-                # assert data == data2
-            
-        # for target in node.targets:
-            # kind = ti.kind(target)
-            # if kind == 'Name':
-                # t0 = ti.get_cache(target.e) or []
-                # t.extend(t0)
-                # ti.set_cache(target.e,t,tag='Name:target.e')
-                # if trace: g.trace('infer: %10s -> %s' % (
-                    # ti.format(target),t),before='\n')
-            # else:
-                # ### What to do about this?
-                # if trace: g.trace('(ti) not a Name: %s' % (
-                    # ti.format(target)),before='\n')
-                    
-        # # Update the cache immediately.
-        # t0 = ti.get_cache(node) or []
-        # t.extend(t0)
-        # t = ti.clean(t)
-        # ti.set_cache(node,t,tag='ti.Assign')
-        # return t
-    #@+node:ekr.20130315094857.9505: *5* ti.ClassDef (could be default)
+     
     def do_ClassDef(self,node):
-        
-        ti = self
         for z in node.body:
             self.visit(z)
-    #@+node:ekr.20130315094857.9534: *5* ti.For
-    # For(expr target, expr iter, stmt* body, stmt* orelse)
 
     def do_For (self,tree):
-
         ti = self
         ### what if target conflicts with an assignment??
         ti.visit(tree.target)
@@ -4656,7 +4448,7 @@ class Utils:
             print('  tot: %s' % tot_t)
 
     #@+node:ekr.20130320065023.9560: *4* u.p0s
-    def p01s(self,s,report=True):
+    def p0s(self,s,report=True):
         
         '''Parse an input string.'''
         u = self
