@@ -3293,72 +3293,84 @@ class TypeInferrer (AstFullTraverser):
             return [node.id]
         # Stupidly True and False are Names. Return bool type
         if (node.id == "True" or node.id == "False"):
-            return [self.bool_type]
+            return [set([self.bool_type])]
         if node.id in self.variableTypes:
-            name_type = self.variableTypes[node.id]
+            return [self.variableTypes[node.id]]
         else:
-            name_type = None
-        return [name_type]
+            return [set([self.none_type])]
     
     def do_Assign(self,node):
         ''' Set all target variables to have the type of the value of the
             assignment. '''
-        valueTypes = self.visit(node.value)
+        value_types = self.visit(node.value)
         
         self.currently_assigning = True
         targets = []
         for z in node.targets:
             targets.extend(self.visit(z))
         self.currently_assigning = False
-        assert(len(valueTypes) == len(targets))
+        assert(len(value_types) == len(targets))
         for i in range(len(targets)):
-            self.variableTypes[targets[i]] = set()
-            self.variableTypes[targets[i]].add(valueTypes[i])
-        pprint(self.variableTypes)
+            self.variableTypes[targets[i]] = value_types[i]
+        pprint(self.variableTypes),
 
     # TODO x = ... or []
     def do_BinOp (self,node):
-        ''' Correct this. '''
-        left_type = self.visit(node.left)
-        right_type = self.visit(node.right)
+        ''' Try all combinations of types
+            TODO: Correct this to cover all possibilities.
+            TODO: Classes/functions... etc'''
+        left_types = self.visit(node.left)[0] # Will return a list of 1 element
+        right_types = self.visit(node.right)[0] # ''
         op_kind = self.kind(node.op)
-        num_types = ([self.float_type],[self.int_type])
-        list_type = [List_Type(None)]
-        if right_type in num_types and left_type in num_types:
-            if right_type == [self.float_type] or left_type == [self.float_type]:
-                result_type = [self.float_type]
-            else:
-                result_type = [self.int_type]
-        elif right_type == list_type and left_type == list_type and op_kind == 'Add':
-            result_type = list_type
-        elif right_type == [self.string_type] and left_type == [self.string_type] and op_kind == 'Add':
-            result_type = [self.string_type]
-        #      elif op_kind == 'Mult' and rt == [ti.string_type] and lt == [ti.string_type]:
-        #          g.trace('*** User error: string mult')
-        #           t = [Unknown_Type(node)]
-        elif op_kind == 'Mult' and (
-            (left_type == [self.string_type] and right_type == [self.int_type]) or
-            (left_type == [self.int_type] and right_type == [self.string_type])
-        ):
-            result_type = [self.string_type]
-        elif op_kind == 'Mod' and left_type == [self.string_type]:
-            result_type = [self.string_type] # (string % anything) is a string.
-        else:
+        
+        num_types = [self.float_type, self.int_type]
+        list_type = List_Type(None)
+        
+        result_types = set()
+        
+        for left in left_types:
+            for right in right_types:
+                if left in num_types and right in num_types:
+                    if right == self.float_type or left == self.float_type:
+                        result_types.add(self.float_type)
+                        continue
+                    else:
+                        result_types.add(self.int_type)
+                        continue
+                if left == list_type and right == list_type and op_kind == 'Add':
+                    result_types.add(list_type)
+                    continue
+                if left == self.string_type and right == self.string_type and op_kind == 'Add':
+                    result_types.add(self.string_type)
+                    continue
+                if op_kind == 'Mult' and (
+                        (left == self.string_type and right == self.int_type) or
+                        (left == self.int_type and right == self.string_type)):
+                    result_types.add(self.string_type)
+                    continue
             self.stats.n_binop_fail += 1
-        return result_type
+        return [result_types]
     
     def do_UnaryOp(self,node):
-        op_type = self.visit(node.operand)
+        op_types = self.visit(node.operand)[0] # Will only have 1 element
         op_kind = self.kind(node.op)
-        if op_kind == 'Not':
-            assert(op_type == [self.bool_type])
-            return op_type
-        elif op_type == [self.int_type] or op_type == [self.float_type]:
-            pass # All operators are valid.
-        else:
-            self.stats.n_unop_fail += 1
-            op_type = [Unknown_Type(node)]
-        return op_type
+        if op_kind == 'Not':    # All types are valid
+            return [set([self.bool_type])]
+        for a_type in op_types:
+            if a_type == self.int_type or a_type == self.float_type:
+                return [set([type])]
+            else:    # No other possibilities exist.
+                self.stats.n_unop_fail += 1
+                assert(False)
+        a_type = [set([Unknown_Type(node)])]
+        return a_type
+    
+    def do_BoolOp(self,node):
+        ''' For and/or
+            Never fails. '''
+        for z in node.values:
+            self.visit(z)
+        return [self.bool_type]
     
     def do_List(self,node):
         ''' No need to worry about currently_assigning. '''
@@ -3366,22 +3378,26 @@ class TypeInferrer (AstFullTraverser):
         for z in node.elts:
             names.extend(self.visit(z))
         return names
-    #    return [List_Type(node)]
 
     def do_Num(self,node):
+        ''' Returns int or float. '''
         t_num = Num_Type(node.n.__class__)
-        return [t_num]
+        return [set([t_num])]
+    
+    def do_Bytes(self,node):
+        return [set([self.bytes_type])]
 
     def do_Str(self,node):
         '''This represents a string constant.'''
-        return [self.string_type]
+        return [set([self.string_type])]
 
     def do_Tuple(self,node):
-        ''' No need to worry about currently_assigning. '''
-        names = []
+        ''' No need to worry about currently_assigning.
+            Can return types or names. '''
+        result = []
         for z in node.elts:
-            names.extend(self.visit(z))
-        return names
+            result.extend(self.visit(z))
+        return result
 
     def do_Dict(self,node):   
         for z in node.keys:
@@ -3389,14 +3405,6 @@ class TypeInferrer (AstFullTraverser):
         for z in node.values:
             self.visit(z)
         return [Dict_Type(node)]
-
-    def do_BoolOp(self,node):
-        for z in node.values:
-            self.visit(z)
-        return [self.bool_type]
-    #@+node:ekr.20130315094857.9496: *5* ti.Call & helpers
-    # Call(expr func, expr* args, keyword* keywords, expr? starargs, expr? kwargs)
-    #   Note: node.starargs and node.kwargs are given only if assigned explicitly.
     
     def do_If(self,node):
         self.visit(node.test)
@@ -3851,9 +3859,6 @@ class TypeInferrer (AstFullTraverser):
     def do_Builtin(self,node):
         ti = self
         return [ti.builtin_type]
-
-    def do_Bytes(self,node):
-        return [self.bytes_type]
 
     def do_arguments (self,node):
         '''Bind formal arguments to actual arguments.'''
