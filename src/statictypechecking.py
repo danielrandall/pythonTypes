@@ -2632,6 +2632,8 @@ class Phi_Node():
     The only real difference is that its values is a list of variables from
     which it can adopt its type from. '''
     
+    TARGET_NOT_DECLARED = 0
+    
     def __init__(self, var, targets):
         self.var = var
         self.targets = targets
@@ -2784,9 +2786,9 @@ class SSA_Traverser(AstFullTraverser):
                 # Check for if the variables had not been previously
                 #  initialised
                 if name not in nameDict:
-                    targets.append(0)
+                    targets.append(Phi_Node.TARGET_NOT_DECLARED)
                 else:
-                    targets.append(nameDict[name])
+                    targets.append(name + str(nameDict[name]))
             newPhi = Phi_Node(name + str(self.d[name]), targets)
             node.phis.append(newPhi)
         
@@ -3310,11 +3312,13 @@ class TypeInferrer (AstFullTraverser):
         self.currently_assigning = False
         assert(len(valueTypes) == len(targets))
         for i in range(len(targets)):
-            self.variableTypes[targets[i]] = valueTypes[i]
+            self.variableTypes[targets[i]] = set()
+            self.variableTypes[targets[i]].add(valueTypes[i])
         pprint(self.variableTypes)
 
     # TODO x = ... or []
     def do_BinOp (self,node):
+        ''' Correct this. '''
         left_type = self.visit(node.left)
         right_type = self.visit(node.right)
         op_kind = self.kind(node.op)
@@ -3393,6 +3397,25 @@ class TypeInferrer (AstFullTraverser):
     #@+node:ekr.20130315094857.9496: *5* ti.Call & helpers
     # Call(expr func, expr* args, keyword* keywords, expr? starargs, expr? kwargs)
     #   Note: node.starargs and node.kwargs are given only if assigned explicitly.
+    
+    def do_If(self,node):
+        self.visit(node.test)
+        for z in node.body:
+            self.visit(z)
+        for z in node.orelse:
+            self.visit(z)
+        phis = node.phis
+        for phi in phis:
+            self.variableTypes[phi.var] = set()
+            for target in phi.targets:
+                if (target == Phi_Node.TARGET_NOT_DECLARED):
+                    possibleTypes = set()
+                    possibleTypes.add(self.none_type)
+                else:
+                    possibleTypes = self.variableTypes[target]
+                self.variableTypes[phi.var] = (
+                                   self.variableTypes[phi.var] | possibleTypes)
+        pprint(self.variableTypes)
 
     def do_Call (self,node):
         '''
@@ -3783,17 +3806,6 @@ class TypeInferrer (AstFullTraverser):
         if ti.has_failed(t):
             t = ti.merge_failures(t)
             if trace: g.trace('failed inference',ti.format(node),t)
-        else:
-            t = ti.clean(t)
-        return t
-
-    def do_IfExp(self,node):
-        ti = self    
-        junk = ti.visit(node.test)
-        t = ti.visit(node.body)
-        t.extend(ti.visit(node.orelse))
-        if ti.has_failed(t):
-            t = ti.merge_failures(t)
         else:
             t = ti.clean(t)
         return t
