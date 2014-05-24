@@ -2735,17 +2735,55 @@ class SSA_Traverser(AstFullTraverser):
     # For(expr target, expr iter, stmt* body, stmt* orelse)
 
     def do_For(self,node):
-        ### what if target conflicts with an assignment??
-        self.visit(node.iter)
+        ''' The else branch is only executed if the test evaluates to false.
+            Not when you break or an exception is raised.
+            TODO: Before phis
+            TODO: Check this thoroughly. '''
+        self.visit(node.test)
+        beforeD = self.d.copy()
         for z in node.body:
             self.visit(z)
-        # aDict2 = self.visit_list(node.body)
-        # self.merge_dicts(aDict,aDict2)
-        # if node.orelse:
-            # aDict2 = self.visit_list(node.orelse)
-            # self.merge_dicts(aDict,aDict2)
-        # return aDict
-    #@+node:ekr.20121101025702.3999: *5* ssa.If
+        ifD = self.d.copy()
+        ifChanged = self.changed_dicts(ifD, beforeD)
+        if (node.orelse):
+            for z in node.orelse:
+                self.visit(z)
+            elseD = self.d.copy()
+            elseChanged = self.changed_dicts(elseD, ifD)
+            elseIfChanged = set(ifChanged) & set(elseChanged)
+            self.editPhiList(elseIfChanged, [elseD, ifD], node)
+            changedOnceElse = set(elseChanged) - elseIfChanged
+            self.editPhiList(changedOnceElse, [elseD, beforeD], node)
+            ifChangedOnly = set(ifChanged) - elseIfChanged
+        else:
+            ifChangedOnly = ifChanged
+        self.editPhiList(ifChangedOnly, [ifD, beforeD], node)
+
+    def do_While (self,node):
+        ''' The else branch is only executed if the test evaluates to false.
+            Not when you break or an exception is raised.
+            TODO: Before phis
+            TODO: Check this thoroughly. '''
+        self.visit(node.test)
+        beforeD = self.d.copy()
+        for z in node.body:
+            self.visit(z)
+        ifD = self.d.copy()
+        ifChanged = self.changed_dicts(ifD, beforeD)
+        if (node.orelse):
+            for z in node.orelse:
+                self.visit(z)
+            elseD = self.d.copy()
+            elseChanged = self.changed_dicts(elseD, ifD)
+            elseIfChanged = set(ifChanged) & set(elseChanged)
+            self.editPhiList(elseIfChanged, [elseD, ifD], node)
+            changedOnceElse = set(elseChanged) - elseIfChanged
+            self.editPhiList(changedOnceElse, [elseD, beforeD], node)
+            ifChangedOnly = set(ifChanged) - elseIfChanged
+        else:
+            ifChangedOnly = ifChanged
+        self.editPhiList(ifChangedOnly, [ifD, beforeD], node)
+
     def do_If (self,node):
         ''' Checks whether if and else branches use the same name. If they do
             then we must create a phi node which uses both.
@@ -2829,19 +2867,6 @@ class SSA_Traverser(AstFullTraverser):
             self.visit(z)
         for z in node.finalbody:
             self.visit(z)
-    #@+node:ekr.20121101025702.4007: *5* ssa.While
-    # While(expr test, stmt* body, stmt* orelse)
-
-    def do_While (self,node):
-        
-        self.visit(node.test)
-        for z in node.body:
-            self.visit(z)
-        for z in node.orelse or []:
-            self.visit(z)
-    #@+node:ekr.20130329114558.5697: *4* ssa.contexts
-    #@+node:ekr.20130329114558.5565: *5* ssa.ClassDef
-    # ClassDef(identifier name, expr* bases, stmt* body, expr* decorator_list)
 
     def do_ClassDef (self,node):
         
