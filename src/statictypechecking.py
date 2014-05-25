@@ -2693,9 +2693,7 @@ class SSA_Traverser(AstFullTraverser):
             # return None
 
     def merge_dicts (self,aDict,aDict2):
-        
         '''Merge the lists in aDict2 into aDict.'''
-        
         for key in aDict2.keys():
             aList = aDict.get(key,[])
             aList2 = aDict2.get(key)
@@ -2732,64 +2730,61 @@ class SSA_Traverser(AstFullTraverser):
         for z in node.body:
             self.visit(z)
 
-    # For(expr target, expr iter, stmt* body, stmt* orelse)
-
     def do_For(self,node):
-        ''' The else branch is only executed if the test evaluates to false.
-            Not when you break or an exception is raised.
-            TODO: Before phis
-            TODO: Check this thoroughly. '''
-        self.visit(node.test)
-        beforeD = self.d.copy()
-        for z in node.body:
-            self.visit(z)
-        ifD = self.d.copy()
-        ifChanged = self.changed_dicts(ifD, beforeD)
-        if (node.orelse):
-            for z in node.orelse:
-                self.visit(z)
-            elseD = self.d.copy()
-            elseChanged = self.changed_dicts(elseD, ifD)
-            elseIfChanged = set(ifChanged) & set(elseChanged)
-            self.editPhiList(elseIfChanged, [elseD, ifD], node)
-            changedOnceElse = set(elseChanged) - elseIfChanged
-            self.editPhiList(changedOnceElse, [elseD, beforeD], node)
-            ifChangedOnly = set(ifChanged) - elseIfChanged
-        else:
-            ifChangedOnly = ifChanged
-        self.editPhiList(ifChangedOnly, [ifD, beforeD], node)
+        self.do_While(node)
 
     def do_While (self,node):
         ''' The else branch is only executed if the test evaluates to false.
             Not when you break or an exception is raised.
-            TODO: Before phis
-            TODO: Check this thoroughly. '''
+            TODO: Try to optimise
+            TODO: Add conditions for early breaks and returns. '''
+        node.beforePhis = []
+        node.afterPhis = []
+        
         self.visit(node.test)
         beforeD = self.d.copy()
         for z in node.body:
             self.visit(z)
         ifD = self.d.copy()
         ifChanged = self.changed_dicts(ifD, beforeD)
+        
+        # Create before phis for all variables changed in the loop
+        self.d = beforeD.copy()       # Reset the dict so new var has correct #
+        for key in ifD.keys():
+            ifD[key] += 1             # All of #'s we want will be behind by 1
+        self.editBeforePhiList(ifChanged, [beforeD, ifD], node)
+        for z in node.body:
+            self.visit(z)      # Vist nodes again so future vars have correct #
+        ifD = self.d.copy()
+        
         if (node.orelse):
             for z in node.orelse:
                 self.visit(z)
             elseD = self.d.copy()
             elseChanged = self.changed_dicts(elseD, ifD)
             elseIfChanged = set(ifChanged) & set(elseChanged)
-            self.editPhiList(elseIfChanged, [elseD, ifD], node)
+            self.editAfterPhiList(elseIfChanged, [elseD, ifD], node)
             changedOnceElse = set(elseChanged) - elseIfChanged
-            self.editPhiList(changedOnceElse, [elseD, beforeD], node)
+            self.editAfterPhiList(changedOnceElse, [elseD, beforeD], node)
             ifChangedOnly = set(ifChanged) - elseIfChanged
         else:
             ifChangedOnly = ifChanged
-        self.editPhiList(ifChangedOnly, [ifD, beforeD], node)
+        self.editAfterPhiList(ifChangedOnly, [ifD, beforeD], node)
+        
+        print("Before")
+        for phi in node.beforePhis:
+            pprint(phi.var)
+            pprint(phi.targets)
+        print("After")
+        for phi in node.afterPhis:
+            pprint(phi.var)
+            pprint(phi.targets)
 
     def do_If (self,node):
         ''' Checks whether if and else branches use the same name. If they do
             then we must create a phi node which uses both.
-            TODO: Optimise this function. 
-            TODO: Make it work for vars not previously declared.'''
-        node.phis = [] # All ifs have an empty list.
+            TODO: Optimise this function. '''
+        node.afterPhis = [] # All ifs have an empty list.
         
         self.visit(node.test)
         beforeD = self.d.copy()
@@ -2805,36 +2800,48 @@ class SSA_Traverser(AstFullTraverser):
             elseChanged = self.changed_dicts(elseD, ifD)
             # vars changed in both branches
             elseIfChanged = set(ifChanged) & set(elseChanged)
-            self.editPhiList(elseIfChanged, [elseD, ifD], node)
+            self.editAfterPhiList(elseIfChanged, [elseD, ifD], node)
             changedOnceElse = set(elseChanged) - elseIfChanged
-            self.editPhiList(changedOnceElse, [elseD, beforeD], node)
+            self.editAfterPhiList(changedOnceElse, [elseD, beforeD], node)
             ifChangedOnly = set(ifChanged) - elseIfChanged
         else:
             ifChangedOnly = ifChanged
-        self.editPhiList(ifChangedOnly, [ifD, beforeD], node)
-        for phi in node.phis:
+        self.editAfterPhiList(ifChangedOnly, [ifD, beforeD], node)
+        for phi in node.afterPhis:
             pprint(phi.var)
             pprint(phi.targets)
             
-    def editPhiList(self, nameList, dictList, node):
+    def editAfterPhiList(self, nameList, dictList, node):
+        phiList = self.buildPhiList(nameList, dictList, node, False)
+        node.afterPhis.extend(phiList)
+    
+    def editBeforePhiList(self, nameList, dictList, node):
+        phiList = self.buildPhiList(nameList, dictList, node, True)
+        node.beforePhis.extend(phiList)
+            
+    def buildPhiList(self, nameList, dictList, node, before):
+        phiList = []
         for name in nameList:
-            self.d[name] += 1
+            if name in self.d:  # Needed for before when var may not yet exist
+                self.d[name] += 1
+            else:
+                self.d[name] = 1
             targets = []
             for nameDict in dictList:
-                # Check for if the variables had not been previously
+                # Check if the variables had not been previously
                 #  initialised
                 if name not in nameDict:
                     targets.append(Phi_Node.TARGET_NOT_DECLARED)
                 else:
-                    targets.append(name + str(nameDict[name]))
+                    if (before):
+                        targets.append(name + str(nameDict[name]))
+                    else:
+                        targets.append(name + str(nameDict[name]))
             newPhi = Phi_Node(name + str(self.d[name]), targets)
-            node.phis.append(newPhi)
-        
-    
-    # Python 3 only: Try(stmt* body, excepthandler* handlers, stmt* orelse, stmt* finalbody)
+            phiList.append(newPhi)
+        return phiList
 
     def do_Try(self,node):
-        
         for z in node.body:
             self.visit(z)
         for z in node.handlers:
@@ -2844,10 +2851,7 @@ class SSA_Traverser(AstFullTraverser):
         for z in node.finalbody:
             self.visit(z)
 
-    # TryExcept(stmt* body, excepthandler* handlers, stmt* orelse)
-
     def do_TryExcept(self,node):
-        
         for z in node.body:
             self.visit(z)
             # self.merge_dicts(aDict,aDict2)
@@ -2857,60 +2861,44 @@ class SSA_Traverser(AstFullTraverser):
         for z in node.orelse:
             self.visit(z)
             # self.merge_dicts(aDict,aDict2)
-       
-
-    # TryFinally(stmt* body, stmt* finalbody)
 
     def do_TryFinally(self,node):
-        
         for z in node.body:
             self.visit(z)
         for z in node.finalbody:
             self.visit(z)
 
     def do_ClassDef (self,node):
-        
         old_d = self.d
         self.d = {}
         for z in node.body:
             self.visit(z)
         self.d = old_d
-    #@+node:ekr.20130329114558.5571: *5* ssa.FunctionDef
-    # FunctionDef(identifier name, arguments args, stmt* body, expr* decorator_list)
 
     def do_FunctionDef (self,node):
-        
         old_d = self.d
         self.d = {}
         self.visit(node.args)
         for z in node.body:
             self.visit(z)
         self.d = old_d
-    #@+node:ekr.20130329114558.5575: *5* ssa.Lambda
-    # Lambda(arguments args, expr body)
 
     def do_Lambda(self,node):
-        
         old_d = self.d
         self.d = {}
         self.visit(node.args)
         self.visit(node.body)
         self.d = old_d
-    #@+node:ekr.20130329114558.5576: *5* ssa.Module
+
     def do_Module (self,node):
-        
         old_d = self.d
         self.d = {}
         self.body = node.body
         for z in node.body:
             self.visit(z)
         self.d = old_d
-    #@+node:ekr.20130329114558.5696: *4* ssa.definitions (*revise*)
-    #@+node:ekr.20121101025702.3965: *5* ssa.argument
-    # arguments = (expr* args, identifier? vararg, identifier? kwarg, expr* defaults)
 
     def do_arguments (self,node):
-        
         trace = True and not g.app.runningAllUnitTests
         assert isinstance(node,ast.AST),node
 
@@ -2930,54 +2918,41 @@ class SSA_Traverser(AstFullTraverser):
                 if trace: g.trace('Python 3 arg arguments not ready yet.')
             else:
                 assert False,kind
-    #@+node:ekr.20121101025702.3990: *5* ssa.Assign
-    # Assign(expr* targets, expr value)
 
     def do_Assign(self,node):
         self.visit(node.value)
         for target in node.targets:
             self.visit(target)
 
-    #@+node:ekr.20130329114558.5668: *5* ssa.AugAssign
-    # AugAssign(expr target, operator op, expr value)
-
     def do_AugAssign(self,node):
         
         # g.trace('FT',Utils().format(node),g.callers())
         self.visit(node.target)
         self.visit(node.value)
-    #@+node:ekr.20130329114558.5574: *5* ssa.Import & ImportFrom
-    # Import(alias* names)
 
-    def do_Import(self,node):
-        
+    def do_Import(self,node):        
         for z in node.names:
             self.visit(z)
-
-    # ImportFrom(identifier? module, alias* names, int? level)
 
     def do_ImportFrom(self,node):
-        
         for z in node.names:
             self.visit(z)
-    #@+node:ekr.20121101025702.3980: *5* ssa.Name
     
     def do_Name(self,node):
         ''' If the id is True or false then ignore. WHY ARE TRUE AND FALSE
             IDENTIFIED THE SAME WAY AS VARIABLES. GAH. '''
         if (node.id == "True" or node.id == "False"):
             return
+        if not hasattr(node, 'originalId'):
+            node.originalId = node.id
         # If the variable is being assigned a new value
         if isinstance(node.ctx, ast.Store):
-            if node.id in self.d:
-                self.d[node.id] += 1
+            if node.originalId in self.d:
+                self.d[node.originalId] += 1
             else:
-                self.d[node.id] = 1
-            node.id = node.id + str(self.d[node.id])
-        
-        # If the variable is being used
-        elif isinstance(node.ctx,ast.Load):
-            node.id = node.id + str(self.d[node.id])
+                self.d[node.originalId] = 1
+                
+        node.id = node.originalId + str(self.d[node.originalId])
 
     #@-others
 #@+node:ekr.20130321094706.9517: ** class Stats
