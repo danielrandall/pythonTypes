@@ -57,6 +57,7 @@ isPython3 = sys.version_info >= (3,0,0)
 
 import imp
 from pprint import pprint
+import queue
 
 try:
     if use_leo_globals: # This is better for EKR's debugging.
@@ -3111,7 +3112,12 @@ class SymbolTable:
         return 'Symbol Table for %s\n' % self.cx
     
     __str__ = __repr__
-#@+node:ekr.20130315094857.9469: ** class TypeInferrer
+
+class AwaitingType:
+        def __init__(self, waitee, waiting_for):
+            self.waitee = waitee
+            self.waiting_for = waiting_for
+
 class TypeInferrer (AstFullTraverser):
     
     '''A class to infer the types of objects.'''
@@ -3164,6 +3170,8 @@ class TypeInferrer (AstFullTraverser):
         
         self.variableTypes = {} # Used as string:name -> []:types
         self.currently_assigning = False
+        self.AWAITING_TYPE = 0 # Used as indentifier in variableTypes
+        self.awaiting_Typing = []  # Elements : (node, name)
 
         self.stats = Stats()
         self.u = Utils()
@@ -3308,19 +3316,44 @@ class TypeInferrer (AstFullTraverser):
         targets = []
         for z in node.targets:
             targets.extend(self.visit(z))
-        self.currently_assigning = False
+        self.currently_assigning = False    
         assert(len(value_types) == len(targets))
+        
+        # Make sure the values do not depending a variable awaiting a type
+        for a_type in value_types:
+            if isinstance(a_type, AwaitingType):
+                for i in range(len(targets)):
+                    self.variableTypes[targets[i]] = [AwaitingType(targets[i], a_type.waitee)]
+                self.awaiting_Typing.append((node, a_type.waitee))
+                return
+        
         for i in range(len(targets)):
             self.variableTypes[targets[i]] = value_types[i]
-        pprint(self.variableTypes),
+            # For each new assign, check whether any are waiting on it.
+            self.check_waiting(targets[i])
+        pprint(self.variableTypes)
+        
+    def check_waiting(self, new_var):
+        waiting = [x[0] for x in self.awaiting_Typing if x[1] == new_var]
+        for z in waiting:
+            self.visit(z)
 
-    # TODO x = ... or []
     def do_BinOp (self,node):
         ''' Try all combinations of types
             TODO: Correct this to cover all possibilities.
             TODO: Classes/functions... etc'''
         left_types = self.visit(node.left)[0] # Will return a list of 1 element
         right_types = self.visit(node.right)[0] # ''
+        
+        # Check if this operation depends on variable awaiting the type of
+        # another
+        for a_type in left_types:
+            if (isinstance(a_type, AwaitingType)):
+                return [a_type]
+        for a_type in right_types:
+            if (isinstance(a_type, AwaitingType)):
+                return [a_type]
+        
         op_kind = self.kind(node.op)
         
         num_types = [self.float_type, self.int_type]
@@ -3358,7 +3391,7 @@ class TypeInferrer (AstFullTraverser):
             return [set([self.bool_type])]
         for a_type in op_types:
             if a_type == self.int_type or a_type == self.float_type:
-                return [set([type])]
+                return [set([a_type])]
             else:    # No other possibilities exist.
                 self.stats.n_unop_fail += 1
                 assert(False)
@@ -3367,10 +3400,13 @@ class TypeInferrer (AstFullTraverser):
     
     def do_BoolOp(self,node):
         ''' For and/or
-            Never fails. '''
+            Never fails.
+            Boolean operators can return any types used in its values.
+            ie. len(x) or [] can return Int or List. '''
+        all_types = []
         for z in node.values:
-            self.visit(z)
-        return [self.bool_type]
+            all_types.extend(self.visit(z))
+        return [set(all_types)]
     
     def do_List(self,node):
         ''' No need to worry about currently_assigning. '''
@@ -3412,18 +3448,48 @@ class TypeInferrer (AstFullTraverser):
             self.visit(z)
         for z in node.orelse:
             self.visit(z)
-        phis = node.phis
+        phis = node.afterPhis
         for phi in phis:
-            self.variableTypes[phi.var] = set()
-            for target in phi.targets:
-                if (target == Phi_Node.TARGET_NOT_DECLARED):
-                    possibleTypes = set()
-                    possibleTypes.add(self.none_type)
-                else:
-                    possibleTypes = self.variableTypes[target]
-                self.variableTypes[phi.var] = (
-                                   self.variableTypes[phi.var] | possibleTypes)
+            self.visit(phi)
+            
         pprint(self.variableTypes)
+        
+    def do_Phi_Node(self, node):
+        self.variableTypes[node.var] = set()
+        for target in node.targets:
+            if (target == Phi_Node.TARGET_NOT_DECLARED):
+                possibleTypes = set([self.none_type])
+            elif target in self.variableTypes:
+                possibleTypes = self.variableTypes[target]
+            else:
+                # Variable is used in the future
+                self.awaiting_Typing.append((node, target))
+                self.variableTypes[node.var] = [AwaitingType(node.var, target)]
+                return
+            self.variableTypes[node.var] = (
+                                 self.variableTypes[node.var] | possibleTypes)
+            self.check_waiting(node.var)
+        
+    def do_While (self, node):
+        self.visit(node.test)      
+        # Type the phis before the loop
+        phis = node.beforePhis
+        for phi in phis:
+            self.visit(phi)
+                
+        for z in node.body:
+            self.visit(z)
+        for z in node.orelse:
+            self.visit(z)
+        # Type the phis after the loop
+        phis = node.afterPhis
+        for phi in phis:
+            self.visit(phi)
+        pprint(self.variableTypes)
+                
+    def do_For(self, node):
+        self.do_While(self, node)
+        
 
     def do_Call (self,node):
         '''
@@ -3493,7 +3559,7 @@ class TypeInferrer (AstFullTraverser):
             s = '3:return %s(%s)' % (func_name,args)
             g.trace('%17s -> %s' % (s,t))
         return t
-    #@+node:ekr.20130315094857.9497: *6* ti.class_instance
+
     def class_instance (self,e):
         
         '''
@@ -3867,18 +3933,6 @@ class TypeInferrer (AstFullTraverser):
     def do_ClassDef(self,node):
         for z in node.body:
             self.visit(z)
-
-    def do_For (self,tree):
-        ti = self
-        ### what if target conflicts with an assignment??
-        ti.visit(tree.target)
-        ti.visit(tree.iter)
-        for z in tree.body:
-            ti.visit(z)
-        for z in tree.orelse:
-            ti.visit(z)
-    #@+node:ekr.20130315094857.9507: *5* ti.FunctionDef & helpers (**rewrite)
-    # FunctionDef(identifier name, arguments args, stmt* body, expr* decorator_list)
 
     def do_FunctionDef (self,node):
         
