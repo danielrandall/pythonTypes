@@ -2045,22 +2045,13 @@ class StatementTraverser(AstBaseTraverser):
             self.visit(z)
         for z in node.orelse:
             self.visit(z)
-    #@+node:ekr.20130317115148.9409: *5* stat.With
-    # With(expr context_expr, expr? optional_vars, stmt* body)
 
     def do_With (self,node):
 
         for z in node.body:
             self.visit(z)
-        
-    #@-others
-#@+node:ekr.20120821081615.3619: ** class BaseType & subclasses
-#@+<< define class BaseType >>
-#@+node:ekr.20120821081615.3623: *3* << define class BaseType >>
+
 class BaseType:
-    
-    #@+<< about the type classes >>
-    #@+node:ekr.20121217041832.7814: *4* << about the type classes >>
     '''BaseType is the base class for all type classes.
 
     Subclasses of BaseType represent inferenced types.
@@ -2070,7 +2061,6 @@ class BaseType:
     The asserts in this class illustrate the contraints on self.kind.
 
     '''
-    #@-<< about the type classes >>
     
     def __init__(self,kind):
         self.kind = kind
@@ -2079,38 +2069,33 @@ class BaseType:
         return self.kind
     __str__ = __repr__
     
+    ''' Does not detect subtypes aside from those involving Any.
+        Previously used self.kind <= other.kind e.t.c. Not sure why... '''
     def is_type(self,other): return issubclass(other.__class__,BaseType)
     def __eq__(self, other): return self.is_type(other) and self.kind == other.kind
-    def __ge__(self, other): return self.is_type(other) and self.kind >= other.kind
-    def __gt__(self, other): return self.is_type(other) and self.kind > other.kind
+    def __ge__(self, other): return self.is_type(other) and (self.kind == 'Any' or other.kind == 'Any')
+    def __gt__(self, other): return self.is_type(other) and (self.kind == 'Any' or other.kind == 'Any')
     def __hash__(self):      return 0 # Use rich comparisons.
-    def __le__(self, other): return self.is_type(other) and self.kind <= other.kind 
-    def __lt__(self, other): return self.is_type(other) and self.kind < other.kind
+    def __le__(self, other): return self.is_type(other) and (self.kind == 'Any' or other.kind == 'Any') 
+    def __lt__(self, other): return self.is_type(other) and (self.kind == 'Any' or other.kind == 'Any')
     def __ne__(self, other): return self.is_type(other) and self.kind != other.kind
-#@-<< define class BaseType >>
 
-#@+others
-#@+node:ekr.20121228050044.5180: *3* class Any_Type
-class Any_Type(BaseType):
-    
+class Any_Type(BaseType):    
     def __init__(self):
         BaseType.__init__(self,'Any')
-#@+node:ekr.20121209053123.7881: *3* class Bool_Type
-class Bool_Type(BaseType):
-    
+
+class Bool_Type(BaseType):    
     def __init__(self):
         BaseType.__init__(self,'Bool')
-#@+node:ekr.20121209053123.7889: *3* class Builtin_Type
-class Builtin_Type(BaseType):
-    
+
+class Builtin_Type(BaseType):    
     def __init__(self):
         BaseType.__init__(self,'Builtin')
-#@+node:ekr.20121209053123.7885: *3* class Bytes_Type
-class Bytes_Type(BaseType):
-    
+
+class Bytes_Type(BaseType):    
     def __init__(self):
         BaseType.__init__(self,'Bytes')
-#@+node:ekr.20120821113451.3625: *3* class Class_Type
+
 # Note: ClassType is a Python builtin.
 class Class_Type(BaseType):
     
@@ -2123,9 +2108,8 @@ class Class_Type(BaseType):
         return 'Class: %s' % (self.cx.name)
 
     __str__ = __repr__
-#@+node:ekr.20120821113451.3626: *3* class Def_Type
-class Def_Type(BaseType):
-    
+
+class Def_Type(BaseType):    
     def __init__(self,cx,node):
         kind = 'Def(%s)@%s' % (cx,id(node))
         # kind = 'Def(%s)' % (cx)
@@ -2195,7 +2179,7 @@ class Unknown_Arg_Type(Inference_Failure):
     def __init__(self,node):
         kind = 'U_Arg_T'
         Inference_Failure.__init__(self,kind,node)
-#@+node:ekr.20121209053123.7896: *3* class List_Type
+
 class List_Type(BaseType):
     
     def __init__(self,node):
@@ -2206,14 +2190,14 @@ class List_Type(BaseType):
             # All lists have the same type.
             kind = 'List()'
         BaseType.__init__(self,kind)
-#@+node:ekr.20120827072532.3626: *3* class Module_Type
+
 class Module_Type(BaseType):
     
     def __init__(self,cx,node):
         kind = 'Module(%s)@%s' % (cx,id(node))
         BaseType.__init__(self,kind)
         self.cx = cx # The context of the module.
-#@+node:ekr.20121209190759.7886: *3* class None_Type
+
 class None_Type(BaseType):
     
     def __init__(self):
@@ -2730,6 +2714,17 @@ class SSA_Traverser(AstFullTraverser):
     def do_ExceptHandler(self,node):
         for z in node.body:
             self.visit(z)
+            
+    def do_Call(self,node):
+        #  self.visit(node.func)
+        for z in node.args:
+            self.visit(z)
+        for z in node.keywords:
+            self.visit(z)
+        if getattr(node,'starargs',None):
+            self.visit(node.starargs)
+        if getattr(node,'kwargs',None):
+            self.visit(node.kwargs)
 
     def do_For(self,node):
         self.do_While(node)
@@ -3129,12 +3124,8 @@ class TypeInferrer (AstFullTraverser):
         self.init()
         return self.run(node)
     
-    #@+others
-    #@+node:ekr.20130315094857.9481: *3* ti.clean (*revise*)
-    def clean (self,aList):
-        
+    def clean (self,aList):    
         '''Return sorted(aList) with all duplicates removed.'''
-        
         return aList or []
         
         ti = self
@@ -3158,16 +3149,14 @@ class TypeInferrer (AstFullTraverser):
         else:
             ti.stats.n_clean_fail += 1
             return sorted(result)
-    #@+node:ekr.20130319161205.9486: *3* ti.format
+    
     def format(self,node):
-        
         u = self.u
         return '%s%s' % (
             ' '*u.compute_node_level(node),
             u.first_line(u.format(node)))
-    #@+node:ekr.20130320080025.9500: *3* ti.init
-    def init(self):
-        
+    
+    def init(self):   
         self.variableTypes = {} # Used as string:name -> []:types
         self.currently_assigning = False
         self.AWAITING_TYPE = 0 # Used as indentifier in variableTypes
@@ -3191,65 +3180,58 @@ class TypeInferrer (AstFullTraverser):
         self.int_type = Int_Type()
         self.none_type = None_Type()
         self.string_type = String_Type()
+        self.any_type = Any_Type()
 
         # Create the builtin type dict.
         self.builtin_type_dict = {
-            'eval': [self.none_type],
-            'id':   [self.int_type],
-            'len':  [self.int_type],
-            'ord':  [self.int_type],
+            'eval': {'parameter_types': [set([self.string_type])],
+                     'return_types': [set([self.any_type])]},
+            'id':   {'parameter_types': [set([self.any_type])],
+                     'return_types': [set([self.int_type])]},
+            'str':  {'parameter_types': [set([self.any_type])],
+                     'return_types': [set([self.string_type])]},
+            'len':  {'parameter_types': [set([self.any_type])],
+                     'return_types': [set([self.int_type])]},
+            'ord':  {'parameter_types': [set([self.string_type])],
+                     'return_types': [set([self.int_type])]},
+            'chr':  {'parameter_types': [set([self.int_type])],
+                     'return_types': [set([self.string_type])]},
             # list,tuple...
             # close,open,sort,sorted,super...
         }
-    #@+node:ekr.20130315094857.9471: *3* ti.run (entry point)
-    def run (self,root):
-        
+ 
+    def run (self,root):        
         self.visit(root)
-    #@+node:ekr.20130315094857.9484: *3* ti.type helpers
+
     def has_failed(self,t1,t2=[],t3=[]):
-        
         return any([isinstance(z,Inference_Failure) for z in t1+t2+t3])
         
     def is_circular(self,t1,t2=[],t3=[]):
-        
         return any([isinstance(z,Circular_Assignment) for z in t1+t2+t3])
         
     def is_recursive(self,t1,t2=[],t3=[]):
-        
         return any([isinstance(z,Recursive_Inference) for z in t1+t2+t3])
         
     def ignore_failures(self,t1,t2=[],t3=[]):
-        
         return [z for z in t1+t2+t3 if not isinstance(z,Inference_Failure)]
         
     def ignore_unknowns(self,t1,t2=[],t3=[]):
-        
         return [z for z in t1+t2+t3 if not isinstance(z,(Unknown_Type,Unknown_Arg_Type))]
         
     def merge_failures(self,t1,t2=[],t3=[]):
-
         aList = [z for z in t1+t2+t3 if isinstance(z,Inference_Failure)]
         if len(aList) > 1:
             # Prefer the most specific reason for failure.
             aList = [z for z in aList if not isinstance(z,Unknown_Type)]
         return aList
-    #@+node:ekr.20130315094857.9487: *3* ti.visit
+    
     def visit(self,node):
-
         '''Visit a single node.  Callers are responsible for visiting children.'''
-
-        # This assert is redundant.
-        # assert isinstance(node,ast.AST),node.__class__.__name__
         method = getattr(self,'do_' + node.__class__.__name__)
         self.n_nodes += 1
         return method(node)
-    #@+node:ekr.20130315094857.9490: *3* ti.visitors
-    #@+node:ekr.20130315094857.9512: *4* ti.expressions
-    #@+node:ekr.20130315094857.9493: *5* ti.Attribute & check_attr (check super classes for attributes)
-    # Attribute(expr value, identifier attr, expr_context ctx)
 
     def do_Attribute (self,node):
-
         ti = self
         trace = False and not g.app.runningAllUnitTests
         
@@ -3337,6 +3319,13 @@ class TypeInferrer (AstFullTraverser):
         waiting = [x[0] for x in self.awaiting_Typing if x[1] == new_var]
         for z in waiting:
             self.visit(z)
+            
+    def do_List(self,node):
+        ''' No need to worry about currently_assigning. '''
+        names = []
+        for z in node.elts:
+            names.extend(self.visit(z))
+        return names
 
     def do_BinOp (self,node):
         ''' Try all combinations of types
@@ -3407,13 +3396,6 @@ class TypeInferrer (AstFullTraverser):
         for z in node.values:
             all_types.extend(self.visit(z))
         return [set(all_types)]
-    
-    def do_List(self,node):
-        ''' No need to worry about currently_assigning. '''
-        names = []
-        for z in node.elts:
-            names.extend(self.visit(z))
-        return names
 
     def do_Num(self,node):
         ''' Returns int or float. '''
@@ -3492,73 +3474,33 @@ class TypeInferrer (AstFullTraverser):
         
 
     def do_Call (self,node):
-        '''
-        Infer the value of a function called with a particular set of arguments.
-        '''
-        ti = self
-        trace = False and not g.app.runningAllUnitTests
-        trace_builtins = True
-        trace_errors = True ; trace_returns = False
-
-        kind = ti.kind(node)
-        func_name = ti.find_function_call(node)
-        
-        if trace: g.trace('1:entry:',func_name) # ,before='\n',
-        
+        ''' Infer the value of a function called with a particular set of 
+            arguments.'''
         # Special case builtins.
-        t = ti.builtin_type_dict.get(func_name,[])
-        if t:
-            if trace and trace_builtins: g.trace(func_name,t)
-            return t
+        return_types = []
+        given_arg_types = []
+        for z in node.args:
+            given_arg_types.extend(self.visit(z))
+        func_name = self.find_function_call(node)
+        print(func_name)
+        func = self.builtin_type_dict.get(func_name,[])
+        if func:
+            return_types = func['return_types']
+            accepted_types = func['parameter_types']
+            # At least for now, assume the parameters are the same length
+            assert(len(given_arg_types) == len(accepted_types))
+            for i in range(len(given_arg_types)):
+                pprint(given_arg_types[i])
+                pprint(accepted_types[i])
+                for t1 in given_arg_types[i]:
+                    type_allowed = False
+                    for t2 in accepted_types[i]:
+                        if (t1 <= t2):
+                            type_allowed = True
+                    assert(type_allowed)
+            return return_types
             
-        # Find the def or ctor to be evaluated.
-        e = ti.find_call_e(node.func)
-        if not (e and e.node):
-            # find_call_e has given the warning.
-            t = [Unknown_Type(node)]
-            s = '%s(**no e**)' % (func_name)
-            if trace and trace_errors: g.trace('%17s -> %s' % (s,t))
-            return t
-
-        # Special case classes.  More work is needed.
-        if ti.kind(e.node) == 'ClassDef':
-            # Return a type representing an instance of the class
-            # whose ctor is evaluated in the present context.
-            args,t = ti.class_instance(e)
-            if trace and trace_returns:
-                s = '%s(%s)' % (func_name,args)
-                g.trace('%17s -> %s' % (s,t))
-            return t
-
-        # Infer the specific arguments and gather them in args list.
-        # Each element of the args list may have multiple types.
-        assert ti.kind(e.node) == 'FunctionDef'
-        args = ti.infer_actual_args(e,node)
-            
-        # Infer the function for the cross-product the args list.
-        # In the cross product, each argument has exactly one type.
-        ti.stats.n_ti_calls += 1
-        recursive_args,t = [],[]
-        t2 = ti.infer_def(node,rescan_flag=False) ### specific_args,e,node,)
-        if ti.is_recursive(t2):
-            recursive_args.append(t2)
-        t.extend(t2)
-
-        if True and recursive_args:
-            if trace: g.trace('===== rerunning inference =====',t)
-            for t2 in recursive_args:
-                t3 = ti.infer_def(node,rescan_flag=True) ### specific_args,e,node,rescan_flag=True)
-                t.extend(t3)
-            
-        if ti.has_failed(t):
-            t = ti.merge_failures(t)
-            # t = ti.ignore_failures(t)
-        else:
-            t = ti.clean(t)
-        if trace and trace_returns:
-            s = '3:return %s(%s)' % (func_name,args)
-            g.trace('%17s -> %s' % (s,t))
-        return t
+        
 
     def class_instance (self,e):
         
@@ -3859,9 +3801,8 @@ class TypeInferrer (AstFullTraverser):
         return [ti.bool_type]
 
     def do_comprehension(self,node):
-        ti = self
-        ti.visit(node.target) # A name.
-        ti.visit(node.iter) # An attribute.
+        self.visit(node.target) # A name.
+        self.visit(node.iter) # An attribute.
         return [List_Type(node)]
 
     def do_Expr(self,node):
@@ -3884,9 +3825,8 @@ class TypeInferrer (AstFullTraverser):
             t = ti.clean(t)
         return t
 
-    def do_Index(self,node):
-        ti = self    
-        return ti.visit(node.value)
+    def do_Index(self,node):    
+        return self.visit(node.value)
 
     def do_Lambda (self,node):
         ti = self
