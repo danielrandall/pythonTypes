@@ -2182,14 +2182,24 @@ class Unknown_Arg_Type(Inference_Failure):
 
 class List_Type(BaseType):
     
-    def __init__(self,node):
-        
-        if 0: # All lists are separate types.
-            kind = 'List(%s)@%s' % (Utils().format(node),id(node))
-        else:
-            # All lists have the same type.
-            kind = 'List()'
+    def __init__(self,node, contents):
+        ''' contents is used to for assignment and anything which may find
+            knowing the elements of the list helpful. '''
+        self.contents = contents 
+        kind = 'List()'
         BaseType.__init__(self,kind)
+        
+    def infer_list_types(self):
+        ''' Calculate the types contained in the list.
+            Check if any element is a list and calculate their types. '''
+        self.content_types = set()
+        for element in self.contents:
+            if isinstance(element, List_Type):
+                element.infer_list_types()
+                self.content_types |= set([element])
+            else:
+                self.content_types |= element
+        self.kind = 'List(%s)' % repr(self.content_types)
 
 class Module_Type(BaseType):
     
@@ -2716,7 +2726,7 @@ class SSA_Traverser(AstFullTraverser):
             self.visit(z)
             
     def do_Call(self,node):
-        #  self.visit(node.func)
+        #  self.visit(node.func)    Not necessary to look here...
         for z in node.args:
             self.visit(z)
         for z in node.keywords:
@@ -2730,10 +2740,13 @@ class SSA_Traverser(AstFullTraverser):
         self.do_While(node)
 
     def do_While (self,node):
-        ''' The else branch is only executed if the test evaluates to false.
-            Not when you break or an exception is raised.
+        ''' - The else branch is only executed if the test evaluates to false,
+              not when you break or an exception is raised.
+            - Should not have to care about returns as the values of variables
+              will be lost
+            
             TODO: Try to optimise
-            TODO: Add conditions for early breaks and returns. '''
+            TODO: Add conditions for breaks. '''
         node.beforePhis = []
         node.afterPhis = []
         
@@ -3298,7 +3311,15 @@ class TypeInferrer (AstFullTraverser):
         targets = []
         for z in node.targets:
             targets.extend(self.visit(z))
-        self.currently_assigning = False    
+        self.currently_assigning = False
+        
+        self.conduct_assignment(targets, value_types, node)
+        
+        pprint(self.variableTypes)
+        
+    def conduct_assignment(self, targets, value_types, node):
+        ''' Currently breaks if we have:
+            x = List(AwaitingType) '''
         assert(len(value_types) == len(targets))
         
         # Make sure the values do not depending a variable awaiting a type
@@ -3310,10 +3331,24 @@ class TypeInferrer (AstFullTraverser):
                 return
         
         for i in range(len(targets)):
+            if isinstance(targets[i], List_Type):
+                assert isinstance(value_types[i], List_Type)
+                # Unpack the lists
+                self.list_assignment(targets[i], value_types[i], node)
+                continue
+            
+            if isinstance(value_types[i], List_Type):
+                value_types[i].infer_list_types()
+                value_types[i] = set([value_types[i]])
+                
             self.variableTypes[targets[i]] = value_types[i]
             # For each new assign, check whether any are waiting on it.
             self.check_waiting(targets[i])
-        pprint(self.variableTypes)
+        
+    def list_assignment(self, target_list, value_list, node):
+        targets = target_list.contents
+        values = value_list.contents
+        self.conduct_assignment(targets, values, node)
         
     def check_waiting(self, new_var):
         waiting = [x[0] for x in self.awaiting_Typing if x[1] == new_var]
@@ -3321,11 +3356,11 @@ class TypeInferrer (AstFullTraverser):
             self.visit(z)
             
     def do_List(self,node):
-        ''' No need to worry about currently_assigning. '''
         names = []
         for z in node.elts:
             names.extend(self.visit(z))
-        return names
+        new_list = List_Type(node, names)
+        return [new_list]
 
     def do_BinOp (self,node):
         ''' Try all combinations of types
