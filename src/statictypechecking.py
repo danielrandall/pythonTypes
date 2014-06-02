@@ -2704,7 +2704,7 @@ class SSA_Traverser(AstFullTraverser):
             # g.trace(node,key)
             # return None
 
-    def merge_dicts (self,aDict,aDict2):
+    def merge_dicts(self,aDict,aDict2):
         '''Merge the lists in aDict2 into aDict.'''
         for key in aDict2.keys():
             aList = aDict.get(key,[])
@@ -2724,11 +2724,13 @@ class SSA_Traverser(AstFullTraverser):
         added = newKeys - oldKeys
         return set(o for o in intersection if oldDict[o] != newDict[o]) | added
 
-    def run (self,root):
+    def run(self,root):
         self.u = Utils()
         self.d = {}
             # Keys are names, values are lists of a.values
             # where a is an assignment.
+        self.breaks = []
+        self.continues = []
         assert isinstance(root,ast.Module)
         self.visit(root)
 
@@ -2753,6 +2755,7 @@ class SSA_Traverser(AstFullTraverser):
             self.visit(node.kwargs)
 
     def do_For(self,node):
+        ''' if loop, for now, is the same as the while loop. '''
         self.do_While(node)
 
     def do_While (self,node):
@@ -2760,24 +2763,34 @@ class SSA_Traverser(AstFullTraverser):
               not when you break or an exception is raised.
             - Should not have to care about returns as the values of variables
               will be lost
-            
-            TODO: Try to optimise
-            TODO: Add conditions for breaks. '''
+            TODO: Try to optimise. '''
         node.beforePhis = []
         node.afterPhis = []
         
         self.visit(node.test)
         beforeD = self.d.copy()
+        # Keep track of breaks and continues
+        old_breaks = self.breaks.copy
+        old_continues = self.continues.copy()
+        
         for z in node.body:
             self.visit(z)
+        pprint(self.breaks)
+        # Check for variable values after loop
         ifD = self.d.copy()
         ifChanged = self.changed_dicts(ifD, beforeD)
-        
         # Create before phis for all variables changed in the loop
         self.d = beforeD.copy()       # Reset the dict so new var has correct #
+         # All of #'s we want will be behind by 1
         for key in ifD.keys():
-            ifD[key] += 1             # All of #'s we want will be behind by 1
-        self.editBeforePhiList(ifChanged, [beforeD, ifD], node)
+            ifD[key] += 1    
+        for cont in self.continues:
+            for key in cont.keys():
+                cont[key] += 1          
+        self.editBeforePhiList(ifChanged, [beforeD, ifD] + self.continues, node)
+       
+        self.breaks = []
+        self.continues = []
         for z in node.body:
             self.visit(z)      # Vist nodes again so future vars have correct #
         ifD = self.d.copy()
@@ -2788,13 +2801,17 @@ class SSA_Traverser(AstFullTraverser):
             elseD = self.d.copy()
             elseChanged = self.changed_dicts(elseD, ifD)
             elseIfChanged = set(ifChanged) & set(elseChanged)
-            self.editAfterPhiList(elseIfChanged, [elseD, ifD], node)
+            self.editAfterPhiList(elseIfChanged, [elseD, ifD] + self.breaks, node)
             changedOnceElse = set(elseChanged) - elseIfChanged
             self.editAfterPhiList(changedOnceElse, [elseD, beforeD], node)
             ifChangedOnly = set(ifChanged) - elseIfChanged
         else:
             ifChangedOnly = ifChanged
-        self.editAfterPhiList(ifChangedOnly, [ifD, beforeD], node)
+        self.editAfterPhiList(ifChangedOnly, [ifD, beforeD] + self.breaks, node)
+        
+        # Restore the breaks and continues for outer loops
+        self.breaks = old_breaks
+        self.continues = old_continues
         
         print("Before")
         for phi in node.beforePhis:
@@ -2804,6 +2821,20 @@ class SSA_Traverser(AstFullTraverser):
         for phi in node.afterPhis:
             pprint(phi.var)
             pprint(phi.targets)
+    
+    def increment_dict(self, dict):
+        for key in dict.keys():
+            dict[key] += 1   
+            
+    def do_Break(self, node):
+        ''' Values present at a break can be present after a loop.
+            Needs to be included in after-phis. '''
+        self.breaks.append(self.d.copy())
+    
+    def do_Continue(self, node):
+        ''' Values present at a break can be present at the beggining of loop
+            iterations. Needs to be included in before-phis. '''
+        self.continues.append(self.d.copy())
 
     def do_If (self,node):
         ''' Checks whether if and else branches use the same name. If they do
@@ -2845,6 +2876,9 @@ class SSA_Traverser(AstFullTraverser):
         node.beforePhis.extend(phiList)
             
     def buildPhiList(self, nameList, dictList, node, before):
+        ''' name_list is the list of names to add phi nodes for.
+            dict_list is the list of dicts to extract the instance the variable
+        '''
         phiList = []
         for name in nameList:
             if name in self.d:  # Needed for before when var may not yet exist
@@ -2923,7 +2957,7 @@ class SSA_Traverser(AstFullTraverser):
             self.visit(z)
         self.d = old_d
 
-    def do_arguments (self,node):
+    def do_arguments(self,node):
         trace = True and not g.app.runningAllUnitTests
         assert isinstance(node,ast.AST),node
 
@@ -2950,7 +2984,6 @@ class SSA_Traverser(AstFullTraverser):
             self.visit(target)
 
     def do_AugAssign(self,node):
-        
         # g.trace('FT',Utils().format(node),g.callers())
         self.visit(node.target)
         self.visit(node.value)
