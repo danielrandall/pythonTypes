@@ -2079,6 +2079,11 @@ class BaseType:
     def __le__(self, other): return self.is_type(other) and (self.kind == 'Any' or other.kind == 'Any') 
     def __lt__(self, other): return self.is_type(other) and (self.kind == 'Any' or other.kind == 'Any')
     def __ne__(self, other): return self.is_type(other) and self.kind != other.kind
+    
+    def contains_waiting_type(self):
+        ''' Should be overriden for a type which may contain an Awaiting_Type.
+        '''
+        return False
 
 class Any_Type(BaseType):    
     def __init__(self):
@@ -2116,7 +2121,7 @@ class Def_Type(BaseType):
         BaseType.__init__(self,kind)
         self.cx = cx # The context of the def.
         self.node = node
-#@+node:ekr.20121209053123.7887: *3* class Dict_Type
+
 class Dict_Type(BaseType):
     
     def __init__(self,node):
@@ -2125,7 +2130,7 @@ class Dict_Type(BaseType):
         # kind = 'Dict(%s)' % (Utils().format(node))
         kind = 'Dict(@%s)' % id(node)
         BaseType.__init__(self,kind)
-#@+node:ekr.20130203132957.8901: *3* class Inference_Failure & subclasses
+
 class Inference_Failure(BaseType):
     def __init__(self,kind,node):
         BaseType.__init__(self,kind)
@@ -2186,7 +2191,7 @@ class List_Type(BaseType):
         ''' contents is used to for assignment and anything which may find
             knowing the elements of the list helpful. '''
         self.contents = contents 
-        kind = 'List()'
+        kind = 'List({})'
         BaseType.__init__(self,kind)
         
     def infer_list_types(self):
@@ -2198,8 +2203,17 @@ class List_Type(BaseType):
                 element.infer_list_types()
                 self.content_types |= set([element])
             else:
+                pprint(element)
                 self.content_types |= element
         self.kind = 'List(%s)' % repr(self.content_types)
+        
+    def contains_waiting_type(self):
+        self.infer_list_types()
+        for e in self.content_types:
+            result = e.contains_waiting_type()
+            if result:
+                return result
+        return False
 
 class Module_Type(BaseType):
     
@@ -2212,7 +2226,7 @@ class None_Type(BaseType):
     
     def __init__(self):
         BaseType.__init__(self,'None')
-#@+node:ekr.20120821113451.3627: *3* class Num_Type, Int_Type, Float_Type
+
 class Num_Type(BaseType):
     
     def __init__(self,type_class):
@@ -2245,13 +2259,22 @@ class Tuple_Type(BaseType):
         # kind = 'Tuple(%s)' % (Utils().format(node))
         kind = 'Tuple(@%s)' % id(node)
         BaseType.__init__(self,kind)
+        
+class Awaiting_Type(BaseType):
+        def __init__(self, waitee, waiting_for):
+            self.waitee = waitee
+            self.waiting_for = waiting_for
+            
+            kind = 'Awaiting_Type'
+            BaseType.__init__(self, kind)
+            
+        def contains_waiting_type(self):
+            return self
 
 class BuildTables:
     
     '''create global attribute tables.'''
     
-    #@+others
-    #@+node:ekr.20130331062640.5476: *3* run
     def run(self,files,root_d):
         
         self.attrs_d = {}
@@ -2269,7 +2292,7 @@ class BuildTables:
             self.fn = fn
             for cx in self.u.contexts(root_d.get(fn)):
                 self.do_context(cx)
-    #@+node:ekr.20130331062640.5478: *3* do_context
+
     def do_context(self,cx):
         
         if 0:
@@ -2288,8 +2311,7 @@ class BuildTables:
                 self.attrs_d[key] = d.get(key)
         # Is this useful?
         self.defined_attrs |= st.defined_attrs
-    #@-others
-#@+node:ekr.20130319203546.9526: ** class P1
+
 class P1(AstFullTraverser):
     '''
     Unified pre-pass does two things simultaneously:
@@ -2636,7 +2658,6 @@ class Phi_Node():
 
 
 class SSA_Traverser(AstFullTraverser):
-    
     ''' The SSA_Traverser class traverses the AST tree,
     computing reaching sets for ast.Name and other nodes.
     
@@ -2646,23 +2667,19 @@ class SSA_Traverser(AstFullTraverser):
     Phi nodes are implemented by adding a list to the if and case nodes. This
     was seen as simpler than modifying the AST. 
     '''
-    
     def __init__(self):
         AstFullTraverser.__init__(self)
         
     def __call__(self,node):
         return self.run(node)
 
-
     def dump_dict (self,aDict,tag=''):
-        
         g.trace(tag)
         for key in sorted(aDict.keys()):
             print('  %s = [%s]' % (key,self.u.format(aDict.get(key,[]))))
 
     # Similar to p1.lookup, but node can be any node.
     def lookup(self,node,key):
-        
         '''Return the symbol table for key, starting the search at node cx.'''
         trace = False and not g.app.runningAllUnitTests
         if isinstance(node,(ast.Module,ast.ClassDef,ast.FunctionDef)):
@@ -2708,7 +2725,6 @@ class SSA_Traverser(AstFullTraverser):
         return set(o for o in intersection if oldDict[o] != newDict[o]) | added
 
     def run (self,root):
-
         self.u = Utils()
         self.d = {}
             # Keys are names, values are lists of a.values
@@ -2963,15 +2979,11 @@ class SSA_Traverser(AstFullTraverser):
                 
         node.id = node.originalId + str(self.d[node.originalId])
 
-    #@-others
-#@+node:ekr.20130321094706.9517: ** class Stats
 class Stats(BaseStats):
     
     # def __init__(self):
         # BaseStats.__init__(self):
             
-    #@+others
-    #@+node:ekr.20130321094706.9520: *3* stats.init_ivars
     def init_ivars (self,n_files=0):
         
         self.n_files = n_files
@@ -3052,7 +3064,7 @@ class Stats(BaseStats):
         self.pass1_time = 0.0
         self.pass2_time = 0.0
         self.total_time = 0.0
-    #@+node:ekr.20130321094706.9521: *3* stats.init_tables
+
     def init_tables(self):
 
         self.table = (
@@ -3101,12 +3113,10 @@ class Stats(BaseStats):
             (self.actual_args_dict,'actual args'),
             (self.formal_args_dict,'formal args'),
         )
-    #@-others
-#@+node:ekr.20130328212812.9557: ** class SymbolTable
+        
 class SymbolTable:
     
     def __init__ (self,cx):
-
         self.cx = cx
         self.attrs_d = {}
             # Keys are attribute names.
@@ -3121,10 +3131,6 @@ class SymbolTable:
     
     __str__ = __repr__
 
-class AwaitingType:
-        def __init__(self, waitee, waiting_for):
-            self.waitee = waitee
-            self.waiting_for = waiting_for
 
 class TypeInferrer (AstFullTraverser):
     
@@ -3319,17 +3325,22 @@ class TypeInferrer (AstFullTraverser):
         
     def conduct_assignment(self, targets, value_types, node):
         ''' Currently breaks if we have:
-            x = List(AwaitingType) '''
+            x = List(Awaiting_Type) '''
         assert(len(value_types) == len(targets))
+            
+        for i in range(len(targets)):
+            # Make sure the values do not depending a variable awaiting a type
+            for e in value_types[i]:
+                result = e.contains_waiting_type()
+                if result:
+                    self.variableTypes[targets[i]] = [Awaiting_Type(targets[i], result.waitee)]
+                    self.awaiting_Typing.append((node, result.waitee))
+                    # Remove the culprits from the list so we can continue processing
+                    del value_types[i]
+                    del targets[i]
+                    break
         
-        # Make sure the values do not depending a variable awaiting a type
-        for a_type in value_types:
-            if isinstance(a_type, AwaitingType):
-                for i in range(len(targets)):
-                    self.variableTypes[targets[i]] = [AwaitingType(targets[i], a_type.waitee)]
-                self.awaiting_Typing.append((node, a_type.waitee))
-                return
-        
+        # Must start a new loop as we delete elements in the previous loop
         for i in range(len(targets)):
             if isinstance(targets[i], List_Type):
                 assert isinstance(value_types[i], List_Type)
@@ -3360,7 +3371,7 @@ class TypeInferrer (AstFullTraverser):
         for z in node.elts:
             names.extend(self.visit(z))
         new_list = List_Type(node, names)
-        return [new_list]
+        return [set([new_list])]
 
     def do_BinOp (self,node):
         ''' Try all combinations of types
@@ -3372,10 +3383,10 @@ class TypeInferrer (AstFullTraverser):
         # Check if this operation depends on variable awaiting the type of
         # another
         for a_type in left_types:
-            if (isinstance(a_type, AwaitingType)):
+            if (isinstance(a_type, Awaiting_Type)):
                 return [a_type]
         for a_type in right_types:
-            if (isinstance(a_type, AwaitingType)):
+            if (isinstance(a_type, Awaiting_Type)):
                 return [a_type]
         
         op_kind = self.kind(node.op)
@@ -3481,7 +3492,7 @@ class TypeInferrer (AstFullTraverser):
             else:
                 # Variable is used in the future
                 self.awaiting_Typing.append((node, target))
-                self.variableTypes[node.var] = [AwaitingType(node.var, target)]
+                self.variableTypes[node.var] = set([Awaiting_Type(node.var, target)])
                 return
             self.variableTypes[node.var] = (
                                  self.variableTypes[node.var] | possibleTypes)
