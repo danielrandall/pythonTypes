@@ -2770,7 +2770,7 @@ class SSA_Traverser(AstFullTraverser):
         self.visit(node.test)
         beforeD = self.d.copy()
         # Keep track of breaks and continues
-        old_breaks = self.breaks.copy
+        old_breaks = self.breaks.copy()
         old_continues = self.continues.copy()
         
         for z in node.body:
