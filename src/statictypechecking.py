@@ -2180,12 +2180,12 @@ class Recursive_Inference(Inference_Failure):
         
 class Unknown_Type(Inference_Failure):
     def __init__(self,node):
-        kind = 'U_T' # Short, for traces.
+        kind = 'Uknown_Type' # Short, for traces.
         Inference_Failure.__init__(self,kind,node)
         
 class Unknown_Arg_Type(Inference_Failure):
     def __init__(self,node):
-        kind = 'U_Arg_T'
+        kind = 'Unkown_Arg_Type'
         Inference_Failure.__init__(self,kind,node)
         
 class Container_Type(BaseType):
@@ -2222,7 +2222,7 @@ class Container_Type(BaseType):
     
     def define_kind(self):
         ''' Override this. '''
-        pass
+        raise NotImplementedError
     
 
 class List_Type(Container_Type):
@@ -2273,7 +2273,6 @@ class Int_Type(Num_Type):
     
     def __init__(self):
         Num_Type.__init__(self,int)
-
         
 class String_Type(BaseType):
     
@@ -2281,15 +2280,15 @@ class String_Type(BaseType):
         BaseType.__init__(self,'String')
         
 class Awaiting_Type(BaseType):
-        def __init__(self, waitee, waiting_for):
-            self.waitee = waitee
-            self.waiting_for = waiting_for
+    def __init__(self, waitee, waiting_for):
+        self.waitee = waitee
+        self.waiting_for = waiting_for
             
-            kind = 'Awaiting_Type'
-            BaseType.__init__(self, kind)
+        kind = 'Awaiting_Type'
+        BaseType.__init__(self, kind)
             
-        def contains_waiting_type(self):
-            return self
+    def contains_waiting_type(self):
+        return self
 
 class BuildTables:
     
@@ -2749,15 +2748,21 @@ class SSA_Traverser(AstFullTraverser):
         self.d = {}
             # Keys are names, values are lists of a.values
             # where a is an assignment. 
-        self.built_in_classes = ["list", "set", "tuple"]  
+        self.built_in_classes = ["list", "set", "tuple", "float", "int"]  
         self.breaks = []
         self.continues = []
         assert isinstance(root,ast.Module)
         self.visit(root)
         
-    def add_intial_names(self):
+    def add_intial_module_names(self):
         ''' Add names which exist from the start '''
-        self.d["__name__"] = 1    
+        self.d["__name__"] = 1
+        self.d["__file__"] = 1
+        
+    def add_intial_class_names(self):
+        ''' Add names which exist from the start '''
+        self.d["__str__"] = 1
+        self.d["__repr__"] = 1    
 
     def visit(self,node):
         '''Compute the dictionary of assignments live at any point.'''
@@ -2939,7 +2944,11 @@ class SSA_Traverser(AstFullTraverser):
     def do_comprehension(self, node):
         ''' We want to ssa any named lists. '''
         self.visit(node.iter)
-
+        
+    def do_GeneratorExp(self,node):
+        ''' We need not be interest in anything here. '''
+        pass
+    
     def do_Try(self,node):
         for z in node.body:
             self.visit(z)
@@ -2951,6 +2960,7 @@ class SSA_Traverser(AstFullTraverser):
             self.visit(z)
 
     def do_TryExcept(self,node):
+        ''' TODO: Treat this as an if. '''
         for z in node.body:
             self.visit(z)
             # self.merge_dicts(aDict,aDict2)
@@ -2968,17 +2978,29 @@ class SSA_Traverser(AstFullTraverser):
             self.visit(z)
 
     def do_ClassDef (self,node):
+        ''' We need the global variables. Do not start with an empty d
+            TODO: Check for classes defined after. '''
+        # Class becomes a sort variable when defined
+        if node.name in self.d:
+            self.d[node.name] += 1
+        else:
+            self.d[node.name] = 1
         old_d = self.d
-        self.d = {}
+        self.add_intial_class_names()
         for z in node.body:
             self.visit(z)
         self.d = old_d
 
     def do_FunctionDef (self,node):
         ''' Variables defined in function should not exist outside. '''
+        # Function becomes a sort variable when defined
+        if node.name in self.d:
+            self.d[node.name] += 1
+        else:
+            self.d[node.name] = 1
+        # Store d so we can eradicate local variables
         old_d = self.d
         print(node.name)
-     #   self.d = {}
         self.visit(node.args)
         for z in node.body:
             self.visit(z)
@@ -2994,7 +3016,7 @@ class SSA_Traverser(AstFullTraverser):
     def do_Module (self,node):
         old_d = self.d
         self.d = {}
-        self.add_intial_names()
+        self.add_intial_module_names()
         self.body = node.body
         for z in node.body:
             self.visit(z)
@@ -3059,7 +3081,7 @@ class SSA_Traverser(AstFullTraverser):
             else:
                 self.d[node.originalId] = 1
                 
-      #  pprint(self.d)
+       # pprint(self.d)
         node.id = node.originalId + str(self.d[node.originalId])
 
 class Stats(BaseStats):
@@ -3335,6 +3357,7 @@ class TypeInferrer (AstFullTraverser):
         self.n_nodes += 1
         return method(node)
 
+    
     def do_Attribute (self,node):
         ti = self
         trace = False and not g.app.runningAllUnitTests
@@ -3358,29 +3381,21 @@ class TypeInferrer (AstFullTraverser):
                         t = ti.clean(t)
                         ti.set_cache(node,t,tag='ti.Attribute')
                         ti.stats.n_attr_success += 1
-                        if trace and trace_found:
-                            g.trace('ivar found: %s -> %s' % (tag,t))
                     elif t1.cx.bases:
-                        if trace_errors: g.trace('bases',
-                            ti.format(node),ti.format(t1.cx.bases))
                         pass ### Must check super classes.
-                        t = [Unknown_Type(node)]
+                        t = set([Unknown_Type(node)])
                     else:
-                        u.error('%20s has no %s member' % (ti.format(node),t1.cx.name))
-                        t = [Unknown_Type(node)]
+                        t = set([Unknown_Type(node)])
                 else:
                     ti.stats.n_attr_fail += 1
-                    if trace and trace_errors:
-                        g.trace('fail',t,ti.format(node))
-                    t = [Unknown_Type(node)]
+                    t = set([Unknown_Type(node)])
             else:
                 ti.stats.n_fuzzy += 1
-                if trace and trace_fuzzy: g.trace('fuzzy',t,ti.format(node))
         else:
-            if trace and trace_errors: g.trace('fail',t,ti.format(node))
-            t = [Unknown_Type(node)]
+            t = set([Unknown_Type(node)])
         # ti.check_attr(node) # Does nothing
-        return t
+        return [t]
+    
 
     def do_Name(self,node):
         if self.currently_assigning:
@@ -3416,6 +3431,10 @@ class TypeInferrer (AstFullTraverser):
             
         for i in range(len(targets)):
             # Make sure the values do not depending a variable awaiting a type
+            pprint("targets")
+            pprint(targets[i])
+            pprint("values")
+            pprint(value_types[i])
             for e in value_types[i]:
                 result = e.contains_waiting_type()
                 if result:
@@ -4007,11 +4026,12 @@ class TypeInferrer (AstFullTraverser):
         return t
 
     def do_Compare(self,node):
-        ti = self
-        ti.visit(node.left)
+        ''' A comparison will always return a boolean type.
+            TODO: Check if errors can occur as a result of a comparison. '''
+        self.visit(node.left)
         for z in node.comparators:
-            ti.visit(z)
-        return [ti.bool_type]
+            self.visit(z)
+        return [set([self.bool_type])]
 
     def do_Expr(self,node):
         ti = self
@@ -4179,15 +4199,14 @@ class TypeInferrer (AstFullTraverser):
     # def do_ImportFrom(self,node):
         
         # pass
-    #@+node:ekr.20130315094857.9537: *5* ti.Return & ti.Yield & helper
+
     def do_Return(self,node):
         return self.return_helper(node)
         
     def do_Yield(self,node):
         return self.return_helper(node)
-    #@+node:ekr.20130315094857.9538: *6* ti.return_helper
-    def return_helper(self,node):
 
+    def return_helper(self,node):
         ti = self
         trace = False and not g.app.runningAllUnitTests
         e = ti.call_e
@@ -4204,10 +4223,9 @@ class TypeInferrer (AstFullTraverser):
                 t = [] # Do **not** propagate a failure here!
         else:
             t = [ti.none_type]
-        t.extend(t0)
         if trace: g.trace(t,ti.format(node))
         return t
-    #@+node:ekr.20130315094857.9539: *5* ti.With
+
     def do_With (self,node):
 
         ti = self
