@@ -659,6 +659,9 @@ class AstFullTraverser(AstBaseTraverser):
         pass # represents a string constant.
     #@+node:ekr.20130314113424.9490: *5* ft.arguments & arg
     # arguments = (expr* args, identifier? vararg, identifier? kwarg, expr* defaults)
+    
+    def do_Set(self, node):
+        pass
 
     def do_arguments(self,node):
         
@@ -2073,10 +2076,10 @@ class BaseType:
         Previously used self.kind <= other.kind e.t.c. Not sure why... '''
     def is_type(self,other): return issubclass(other.__class__,BaseType)
     def __eq__(self, other): return self.is_type(other) and self.kind == other.kind
-    def __ge__(self, other): return self.is_type(other) and (self.kind == 'Any' or other.kind == 'Any')
+    def __ge__(self, other): return self.is_type(other) and ( (self.kind == 'Any' or other.kind == 'Any') or self.__eq__(other)  )
     def __gt__(self, other): return self.is_type(other) and (self.kind == 'Any' or other.kind == 'Any')
     def __hash__(self):      return 0 # Use rich comparisons.
-    def __le__(self, other): return self.is_type(other) and (self.kind == 'Any' or other.kind == 'Any') 
+    def __le__(self, other): return self.is_type(other) and ( (self.kind == 'Any' or other.kind == 'Any') or self.__eq__(other)  )
     def __lt__(self, other): return self.is_type(other) and (self.kind == 'Any' or other.kind == 'Any')
     def __ne__(self, other): return self.is_type(other) and self.kind != other.kind
     
@@ -2184,36 +2187,63 @@ class Unknown_Arg_Type(Inference_Failure):
     def __init__(self,node):
         kind = 'U_Arg_T'
         Inference_Failure.__init__(self,kind,node)
-
-class List_Type(BaseType):
-    
-    def __init__(self,node, contents):
+        
+class Container_Type(BaseType):
+    def __init__(self, kind, node, contents, c_types):
         ''' contents is used to for assignment and anything which may find
             knowing the elements of the list helpful. '''
         self.contents = contents 
-        kind = 'List({})'
+        self.content_types = c_types
         BaseType.__init__(self,kind)
         
-    def infer_list_types(self):
+    def infer_types(self):
         ''' Calculate the types contained in the list.
             Check if any element is a list and calculate their types. '''
-        self.content_types = set()
-        for element in self.contents:
-            if isinstance(element, List_Type):
-                element.infer_list_types()
-                self.content_types |= set([element])
-            else:
-                pprint(element)
-                self.content_types |= element
-        self.kind = 'List(%s)' % repr(self.content_types)
+        # Don't infer it's already been done
+        if not self.content_types:
+            # All elements are sets.
+            for element in self.contents:
+                for t in element:
+                    if isinstance(t, Container_Type):
+                        t.infer_types()
+                        self.content_types.add(t)
+                    else:
+           #             pprint(element)
+                        self.content_types |= element
+        self.define_kind()
         
     def contains_waiting_type(self):
-        self.infer_list_types()
+        self.infer_types()
         for e in self.content_types:
             result = e.contains_waiting_type()
             if result:
                 return result
         return False
+    
+    def define_kind(self):
+        ''' Override this. '''
+        pass
+    
+
+class List_Type(Container_Type):
+    
+    def __init__(self,node, contents, c_types):
+        kind = 'List({})'
+        Container_Type.__init__(self, kind, node, contents, c_types)
+        
+    def define_kind(self):
+        self.kind = 'List(%s)' % repr(self.content_types)
+    
+class Tuple_Type(Container_Type):
+    
+    def __init__(self,node, contents, c_types):
+        self.contents = contents 
+        self.content_types = c_types
+        kind = 'Tuple({})'
+        Container_Type.__init__(self, kind, node, contents, c_types)
+        
+    def define_kind(self):
+        self.kind = 'Tuple(%s)' % repr(self.content_types)
 
 class Module_Type(BaseType):
     
@@ -2249,16 +2279,6 @@ class String_Type(BaseType):
     
     def __init__(self):
         BaseType.__init__(self,'String')
-
-class Tuple_Type(BaseType):
-    
-    def __init__(self,node):
-        
-        # For now, all tuples are separate types.
-        # kind = 'Tuple(%s)@%s' % (Utils().format(node),id(node))
-        # kind = 'Tuple(%s)' % (Utils().format(node))
-        kind = 'Tuple(@%s)' % id(node)
-        BaseType.__init__(self,kind)
         
 class Awaiting_Type(BaseType):
         def __init__(self, waitee, waiting_for):
@@ -2459,12 +2479,12 @@ class P1(AstFullTraverser):
         val = node.value
         # The following lines are expensive!
         # For Leo P1: 2.0 sec -> 2.5 sec.
-        if d.has_key(key):
-            d.get(key).add(val)
-        else:
-            aSet = set()
-            aSet.add(val)
-            d[key] = aSet
+    #    if d.has_key(key):
+    #        d.get(key).add(val)
+    #    else:
+    #        aSet = set()
+    #        aSet.add(val)
+    #        d[key] = aSet
         # self.visit(node.ctx)
         if isinstance(node.ctx,(ast.Param,ast.Store)):
             st.defined_attrs.add(key)
@@ -2728,11 +2748,16 @@ class SSA_Traverser(AstFullTraverser):
         self.u = Utils()
         self.d = {}
             # Keys are names, values are lists of a.values
-            # where a is an assignment.
+            # where a is an assignment. 
+        self.built_in_classes = ["list", "set", "tuple"]  
         self.breaks = []
         self.continues = []
         assert isinstance(root,ast.Module)
         self.visit(root)
+        
+    def add_intial_names(self):
+        ''' Add names which exist from the start '''
+        self.d["__name__"] = 1    
 
     def visit(self,node):
         '''Compute the dictionary of assignments live at any point.'''
@@ -2756,7 +2781,9 @@ class SSA_Traverser(AstFullTraverser):
 
     def do_For(self,node):
         ''' if loop, for now, is the same as the while loop. '''
-        self.do_While(node)
+        self.visit(node.target)
+        self.visit(node.iter)
+        self.loop_helper(node)
 
     def do_While (self,node):
         ''' - The else branch is only executed if the test evaluates to false,
@@ -2764,10 +2791,13 @@ class SSA_Traverser(AstFullTraverser):
             - Should not have to care about returns as the values of variables
               will be lost
             TODO: Try to optimise. '''
+        self.visit(node.test)
+        self.loop_helper(node)
+        
+    def loop_helper(self, node):
         node.beforePhis = []
         node.afterPhis = []
         
-        self.visit(node.test)
         beforeD = self.d.copy()
         # Keep track of breaks and continues
         old_breaks = self.breaks.copy()
@@ -2899,6 +2929,16 @@ class SSA_Traverser(AstFullTraverser):
             newPhi = Phi_Node(name + str(self.d[name]), targets)
             phiList.append(newPhi)
         return phiList
+    
+    def do_ListComp(self, node):
+        ''' The inside of a comprehension can not assign anything. Ignore
+            it for now. '''
+        for z in node.generators:
+            self.visit(z)
+            
+    def do_comprehension(self, node):
+        ''' We want to ssa any named lists. '''
+        self.visit(node.iter)
 
     def do_Try(self,node):
         for z in node.body:
@@ -2935,8 +2975,10 @@ class SSA_Traverser(AstFullTraverser):
         self.d = old_d
 
     def do_FunctionDef (self,node):
+        ''' Variables defined in function should not exist outside. '''
         old_d = self.d
-        self.d = {}
+        print(node.name)
+     #   self.d = {}
         self.visit(node.args)
         for z in node.body:
             self.visit(z)
@@ -2952,31 +2994,21 @@ class SSA_Traverser(AstFullTraverser):
     def do_Module (self,node):
         old_d = self.d
         self.d = {}
+        self.add_intial_names()
         self.body = node.body
         for z in node.body:
             self.visit(z)
         self.d = old_d
 
     def do_arguments(self,node):
-        trace = True and not g.app.runningAllUnitTests
+        print("HERE")
+    #    trace = True and not g.app.runningAllUnitTests
         assert isinstance(node,ast.AST),node
-
+        
         for arg in node.args:
-            kind = self.kind(arg)
-            if kind == 'Name':
-                ctx_kind = self.kind(arg.ctx)
-                assert ctx_kind == 'Param',ctx_kind
-                # Similar to an assignment.
-                name = arg.id
-                ### aDict[name] = [arg]
-                ### node.reach = [arg]
-                # g.trace(self.u.dump_ast(arg),repr(arg))
-            elif kind == 'Tuple':
-                if trace: g.trace('Tuple args not ready yet')
-            elif kind == 'arg':
-                if trace: g.trace('Python 3 arg arguments not ready yet.')
-            else:
-                assert False,kind
+            print("arg!")
+            print(arg.arg)
+            self.d[arg.arg] = 1
 
     def do_Assign(self,node):
         self.visit(node.value)
@@ -2995,11 +3027,28 @@ class SSA_Traverser(AstFullTraverser):
     def do_ImportFrom(self,node):
         for z in node.names:
             self.visit(z)
+            
+    def do_alias (self,node):
+        ''' Entered after imports.
+            Store the module name. Add name to the variable list. Imports are
+            essentially assigned to variables. '''
+        node.module_name = node.name  
+        if getattr(node,'asname'):
+            self.d[node.asname] = 1
+            node.id = node.asname + str(self.d[node.asname])
+        else:
+            self.d[node.name] = 1
+            node.id = node.name + str(self.d[node.name])
     
     def do_Name(self,node):
         ''' If the id is True or false then ignore. WHY ARE TRUE AND FALSE
             IDENTIFIED THE SAME WAY AS VARIABLES. GAH. '''
-        if (node.id == "True" or node.id == "False"):
+       # print(node.id)
+        if node.id == "True" or node.id == "False":
+            return
+        if node.id == "None":
+            return
+        if node.id in self.built_in_classes:
             return
         if not hasattr(node, 'originalId'):
             node.originalId = node.id
@@ -3010,6 +3059,7 @@ class SSA_Traverser(AstFullTraverser):
             else:
                 self.d[node.originalId] = 1
                 
+      #  pprint(self.d)
         node.id = node.originalId + str(self.d[node.originalId])
 
 class Stats(BaseStats):
@@ -3209,7 +3259,7 @@ class TypeInferrer (AstFullTraverser):
             u.first_line(u.format(node)))
     
     def init(self):   
-        self.variableTypes = {} # Used as string:name -> []:types
+        self.variableTypes = {} # Used as string:name -> set():types
         self.currently_assigning = False
         self.AWAITING_TYPE = 0 # Used as indentifier in variableTypes
         self.awaiting_Typing = []  # Elements : (node, name)
@@ -3244,6 +3294,8 @@ class TypeInferrer (AstFullTraverser):
                      'return_types': [set([self.string_type])]},
             'len':  {'parameter_types': [set([self.any_type])],
                      'return_types': [set([self.int_type])]},
+            'range':  {'parameter_types': [set([self.int_type])],   # Needs one than one parameter
+                     'return_types': [set([ List_Type(None, [], set([self.int_type]) ) ])] },
             'ord':  {'parameter_types': [set([self.string_type])],
                      'return_types': [set([self.int_type])]},
             'chr':  {'parameter_types': [set([self.int_type])],
@@ -3357,8 +3409,9 @@ class TypeInferrer (AstFullTraverser):
         pprint(self.variableTypes)
         
     def conduct_assignment(self, targets, value_types, node):
-        ''' Currently breaks if we have:
-            x = List(Awaiting_Type) '''
+        '''  '''
+        pprint(value_types)
+        pprint(targets)
         assert(len(value_types) == len(targets))
             
         for i in range(len(targets)):
@@ -3366,6 +3419,15 @@ class TypeInferrer (AstFullTraverser):
             for e in value_types[i]:
                 result = e.contains_waiting_type()
                 if result:
+                    if result.waiting_for == targets[i]:
+                        # We have a circular assignment, ladies and gentlemen.
+                        # Just give up and assign both Any.
+                        # TODO: Improve this
+                        self.variableTypes[targets[i]] = set([self.any_type])
+                        self.variableTypes[result.waitee] = set([self.any_type])
+                        del value_types[i]
+                        del targets[i]
+                        break
                     self.variableTypes[targets[i]] = [Awaiting_Type(targets[i], result.waitee)]
                     self.awaiting_Typing.append((node, result.waitee))
                     # Remove the culprits from the list so we can continue processing
@@ -3375,23 +3437,25 @@ class TypeInferrer (AstFullTraverser):
         
         # Must start a new loop as we delete elements in the previous loop
         for i in range(len(targets)):
-            if isinstance(targets[i], List_Type):
-                assert isinstance(value_types[i], List_Type)
+            if isinstance(targets[i], Container_Type):
+                assert len(value_types[i]) == 1
+                (value,) = value_types[i]
+                assert isinstance(value, Container_Type), "Error: Assigning non container type to a container"
                 # Unpack the lists
-                self.list_assignment(targets[i], value_types[i], node)
+                self.container_assignment(targets[i], value, node)
                 continue
             
-            if isinstance(value_types[i], List_Type):
-                value_types[i].infer_list_types()
+            if isinstance(value_types[i], Container_Type):
+                value_types[i].infer_types()
                 value_types[i] = set([value_types[i]])
                 
             self.variableTypes[targets[i]] = value_types[i]
             # For each new assign, check whether any are waiting on it.
             self.check_waiting(targets[i])
         
-    def list_assignment(self, target_list, value_list, node):
-        targets = target_list.contents
-        values = value_list.contents
+    def container_assignment(self, target_container, value_container, node):
+        targets = target_container.contents
+        values = value_container.contents
         self.conduct_assignment(targets, values, node)
         
     def check_waiting(self, new_var):
@@ -3403,8 +3467,23 @@ class TypeInferrer (AstFullTraverser):
         names = []
         for z in node.elts:
             names.extend(self.visit(z))
-        new_list = List_Type(node, names)
-        return [set([new_list])]
+        new_list = List_Type(node, names, set())
+        if self.currently_assigning:
+            return [new_list]
+        else:
+            return [set([new_list])]
+        
+    def do_Tuple(self,node):
+        ''' No need to worry about currently_assigning.
+            Can return types or names. '''
+        names = []
+        for z in node.elts:
+            names.extend(self.visit(z))
+        new_tuple = Tuple_Type(node, names, set())
+        if self.currently_assigning:
+            return [new_tuple]
+        else:
+            return [set([new_tuple])]
 
     def do_BinOp (self,node):
         ''' Try all combinations of types
@@ -3488,14 +3567,6 @@ class TypeInferrer (AstFullTraverser):
         '''This represents a string constant.'''
         return [set([self.string_type])]
 
-    def do_Tuple(self,node):
-        ''' No need to worry about currently_assigning.
-            Can return types or names. '''
-        result = []
-        for z in node.elts:
-            result.extend(self.visit(z))
-        return result
-
     def do_Dict(self,node):   
         for z in node.keys:
             self.visit(z)
@@ -3532,7 +3603,10 @@ class TypeInferrer (AstFullTraverser):
             self.check_waiting(node.var)
         
     def do_While (self, node):
-        self.visit(node.test)      
+        self.visit(node.test) 
+        self.loop_helper(node)
+    
+    def loop_helper(self, node):
         # Type the phis before the loop
         phis = node.beforePhis
         for phi in phis:
@@ -3549,8 +3623,28 @@ class TypeInferrer (AstFullTraverser):
         pprint(self.variableTypes)
                 
     def do_For(self, node):
-        self.do_While(self, node)
+        ''' TODO: Assign type to target. '''
+        # This is a glorified assignment so set to true
+        self.currently_assigning = True
+        targets = self.visit(node.target)
+        self.currently_assigning = False
+        print("targets")
+        pprint(targets)
+        print("types")
+        value_types = self.visit(node.iter)
+        pprint(value_types)
+        self.conduct_assignment(targets, value_types, node)
+        self.loop_helper(node)
         
+    def do_Import(self, node):
+        for z in node.names:
+            self.visit(z)
+            
+    def do_alias (self,node):
+        ''' Add the name as a Module type.
+            TODO: Link the module to the name.
+            TODO: Sort out cx '''
+        self.variableTypes[node.id] = set({Module_Type(node.module_name, node)})        
 
     def do_Call (self,node):
         ''' Infer the value of a function called with a particular set of 
@@ -3574,12 +3668,52 @@ class TypeInferrer (AstFullTraverser):
                 for t1 in given_arg_types[i]:
                     type_allowed = False
                     for t2 in accepted_types[i]:
+                        print("t1")
+                        pprint(t1)
+                        print("t2")
+                        pprint(t2)
                         if (t1 <= t2):
                             type_allowed = True
                     assert(type_allowed)
             return return_types
+        # Cannot find the function. Return any
+        return [set([self.any_type])]
             
+    def do_ListComp(self,node):
+        ''' A list comp can edit values inside of comp. Therefore must reset the
+            variable types.
+            TODO: Tuple in node.elt should result in List(Tuple(type)). '''
+        old_type_list = self.variableTypes.copy()
         
+        for node2 in node.generators:
+            self.visit(node2)
+        t = self.visit(node.elt)
+        print("t")
+        pprint(t)
+        # Reset types
+        self.variableTypes = old_type_list
+        return [set([List_Type(node, list(t))])]
+
+    def do_comprehension(self,node):
+        ''' Assign types in the list to the variable name. '''
+        self.currently_assigning = True
+        targets = self.visit(node.target) # A name.
+        self.currently_assigning = False
+        value_types = self.visit(node.iter) # An attribute.
+        value_types = self.extract_list_types(value_types)
+        self.conduct_assignment(targets, value_types, node)
+        #return [List_Type(node)]
+        
+    def extract_list_types(self, list_of_lists):
+        ''' Should be given a list of sets which contains only List_Type. '''
+        extracted_types = []
+        assert isinstance(list_of_lists, list)
+        for possible_types in list_of_lists:
+            for list_type in possible_types:
+                assert isinstance(list_type, List_Type), list_type
+                list_type.infer_types()     # Just to make sure
+                extracted_types.append(list_type.content_types)
+        return extracted_types
 
     def class_instance (self,e):
         
@@ -3879,11 +4013,6 @@ class TypeInferrer (AstFullTraverser):
             ti.visit(z)
         return [ti.bool_type]
 
-    def do_comprehension(self,node):
-        self.visit(node.target) # A name.
-        self.visit(node.iter) # An attribute.
-        return [List_Type(node)]
-
     def do_Expr(self,node):
         ti = self
         t = ti.visit(node.value)
@@ -3910,19 +4039,6 @@ class TypeInferrer (AstFullTraverser):
     def do_Lambda (self,node):
         ti = self
         return ti.visit(node.body)
-
-    def do_ListComp(self,node):
-        ti = self
-        junk = ti.visit(node.elt)
-        t = []
-        for node2 in node.generators:
-            t.extend(ti.visit(node2))
-        if ti.has_failed(t):
-            t = ti.merge_failures(t)
-        else:
-            t = ti.clean(t)
-        return t
-    
 
     def do_Slice(self,node):
         
@@ -5557,7 +5673,6 @@ class NodeGenerator:
                 yield z2
     #@+node:ekr.20130318065046.9312: *5* fg.Module
     def do_Module(self,node):
-
         for z in node.body:
             for z2 in self.visit(z):
                 yield z2
