@@ -636,16 +636,11 @@ class AstFullTraverser(AstBaseTraverser):
     # def __init__(self):
         # AstBaseTraverser.__init__(self)
 
-    #@+others
-    #@+node:ekr.20130315140102.9542: *4*  ft.run (entry point)
-    def run (self,root):
-        
+    def run (self,root):    
         # py==lint: disable=W0221
             # Arguments number differs from overridden method.
-
         self.visit(root)
-    #@+node:ekr.20130314113424.9460: *4* ft.operators
-    #@+node:ekr.20130314113424.9523: *5* ft do-nothings
+
     def do_Bytes(self,node): 
         pass # Python 3.x only.
         
@@ -657,14 +652,11 @@ class AstFullTraverser(AstBaseTraverser):
         
     def do_Str (self,node):
         pass # represents a string constant.
-    #@+node:ekr.20130314113424.9490: *5* ft.arguments & arg
-    # arguments = (expr* args, identifier? vararg, identifier? kwarg, expr* defaults)
     
     def do_Set(self, node):
         pass
 
     def do_arguments(self,node):
-        
         for z in node.args:
             self.visit(z)
         for z in node.defaults:
@@ -676,30 +668,21 @@ class AstFullTraverser(AstBaseTraverser):
     def do_arg(self,node):
         if node.annotation:
             self.visit(node.annotation)
-    #@+node:ekr.20130314113424.9491: *5* ft.Attribute
-    # Attribute(expr value, identifier attr, expr_context ctx)
+
 
     def do_Attribute(self,node):
-        
         self.visit(node.value)
         # self.visit(node.ctx)
-    #@+node:ekr.20130314113424.9516: *5* ft.BinOp
-    # BinOp(expr left, operator op, expr right)
+
 
     def do_BinOp (self,node):
-
         self.visit(node.left)
         # self.op_name(node.op)
         self.visit(node.right)
-    #@+node:ekr.20130314113424.9517: *5* ft.BoolOp
-    # BoolOp(boolop op, expr* values)
 
-    def do_BoolOp (self,node):
-        
+    def do_BoolOp (self,node): 
         for z in node.values:
             self.visit(z)
-    #@+node:ekr.20130314113424.9493: *5* ft.Call
-    # Call(expr func, expr* args, keyword* keywords, expr? starargs, expr? kwargs)
 
     def do_Call(self,node):
         
@@ -712,197 +695,129 @@ class AstFullTraverser(AstBaseTraverser):
             self.visit(node.starargs)
         if getattr(node,'kwargs',None):
             self.visit(node.kwargs)
-    #@+node:ekr.20130314113424.9518: *5* ft.Compare
-    # Compare(expr left, cmpop* ops, expr* comparators)
 
     def do_Compare(self,node):
-        
         self.visit(node.left)
         for z in node.comparators:
             self.visit(z)
-    #@+node:ekr.20130314113424.9495: *5* ft.comprehension
-    # comprehension (expr target, expr iter, expr* ifs)
 
     def do_comprehension(self,node):
-
         self.visit(node.target) # A name.
         self.visit(node.iter) # An attribute.
         for z in node.ifs: ### Bug fix.
             self.visit(z)
-    #@+node:ekr.20130314113424.9496: *5* ft.Dict
-    # Dict(expr* keys, expr* values)
 
     def do_Dict(self,node):
-        
         for z in node.keys:
             self.visit(z)
         for z in node.values:
             self.visit(z)
-    #@+node:ekr.20130315140102.9510: *5* ft.Expr
-    # Expr(expr value)
 
-    def do_Expr(self,node):
-        
+    def do_Expr(self,node):   
         self.visit(node.value)
-    #@+node:ekr.20130314113424.9467: *5* ft.Expression
-    def do_Expression(self,node):
-        
-        '''An inner expression'''
 
+    def do_Expression(self,node):
+        '''An inner expression'''
         self.visit(node.body)
-    #@+node:ekr.20130314113424.9498: *5* ft.ExtSlice
+
     def do_ExtSlice (self,node):
-        
         for z in node.dims:
             self.visit(z)
-    #@+node:ekr.20130314113424.9468: *5* ft.GeneratorExp
-    # GeneratorExp(expr elt, comprehension* generators)
 
     def do_GeneratorExp(self,node):
-        
         self.visit(node.elt)
         for z in node.generators:
             self.visit(z)
-    #@+node:ekr.20130314113424.9520: *5* ft.ifExp (ternary operator)
-    # IfExp(expr test, expr body, expr orelse)
 
     def do_IfExp (self,node):
-
         self.visit(node.body)
         self.visit(node.test)
         self.visit(node.orelse)
-    #@+node:ekr.20130314113424.9499: *5* ft.Index
-    def do_Index (self,node):
-        
+
+    def do_Index (self,node):  
         self.visit(node.value)
-    #@+node:ekr.20130314113424.9494: *5* ft.keyword
-    # keyword = (identifier arg, expr value)
 
     def do_keyword(self,node):
-
-        # node.arg is a string.
         self.visit(node.value)
-    #@+node:ekr.20130314113424.9500: *5* ft.List & ListComp
-    # List(expr* elts, expr_context ctx) 
+
 
     def do_List(self,node):
-        
         for z in node.elts:
             self.visit(z)
         # self.visit(node.ctx)
 
-    # ListComp(expr elt, comprehension* generators)
-
     def do_ListComp(self,node):
-
         elt = self.visit(node.elt)
         for z in node.generators:
             self.visit(z)
-    #@+node:ekr.20130314113424.9502: *5* ft.Name (revise)
-    # Name(identifier id, expr_context ctx)
 
     def do_Name(self,node):
-
         # self.visit(node.ctx)
         pass
 
-    #@+node:ekr.20130314113424.9504: *5* ft.Repr
     # Python 2.x only
     # Repr(expr value)
-
     def do_Repr(self,node):
-
         self.visit(node.value)
-    #@+node:ekr.20130314113424.9505: *5* ft.Slice
-    def do_Slice (self,node):
 
+    def do_Slice (self,node):
         if getattr(node,'lower',None):
             self.visit(node.lower)
         if getattr(node,'upper',None):
             self.visit(node.upper)
         if getattr(node,'step',None):
             self.visit(node.step)
-    #@+node:ekr.20130314113424.9507: *5* ft.Subscript
-    # Subscript(expr value, slice slice, expr_context ctx)
 
     def do_Subscript(self,node):
-        
         self.visit(node.value)
         self.visit(node.slice)
         # self.visit(node.ctx)
-    #@+node:ekr.20130314113424.9508: *5* ft.Tuple
-    # Tuple(expr* elts, expr_context ctx)
 
     def do_Tuple(self,node):
-        
         for z in node.elts:
             self.visit(z)
         # self.visit(node.ctx)
-    #@+node:ekr.20130314113424.9519: *5* ft.UnaryOp
-    # UnaryOp(unaryop op, expr operand)
 
     def do_UnaryOp (self,node):
-        
         # self.op_name(node.op)
         self.visit(node.operand)
-    #@+node:ekr.20130314113424.9444: *4* ft.statements
-    #@+node:ekr.20130314200806.9389: *5* ft.alias
-    # identifier name, identifier? asname)
 
     def do_alias (self,node):
-        
         # self.visit(node.name)
         # if getattr(node,'asname')
             # self.visit(node.asname)
         pass
-    #@+node:ekr.20130314113424.9445: *5* ft.Assert
-    # Assert(expr test, expr? msg)
 
     def do_Assert(self,node):
-
         self.visit(node.test)
         if node.msg:
             self.visit(node.msg)
-    #@+node:ekr.20130314113424.9446: *5* ft.Assign
-    # Assign(expr* targets, expr value)
 
     def do_Assign(self,node):
-
         for z in node.targets:
             self.visit(z)
         self.visit(node.value)
-    #@+node:ekr.20130314113424.9447: *5* ft.AugAssign
-    # AugAssign(expr target, operator op, expr value)
 
     def do_AugAssign(self,node):
-        
         # g.trace('FT',Utils().format(node),g.callers())
         self.visit(node.target)
         self.visit(node.value)
-    #@+node:ekr.20120701070309.3393: *5* ft.Break
+
     def do_Break(self,tree):
         pass
 
-    #@+node:ekr.20130314113424.9526: *5* ft.ClassDef
-    # ClassDef(identifier name, expr* bases, stmt* body, expr* decorator_list)
-
     def do_ClassDef (self,node):
-
         for z in node.bases:
             self.visit(z)
         for z in node.body:
             self.visit(z)
         for z in node.decorator_list:
             self.visit(z)
-    #@+node:ekr.20120701070309.3394: *5* ft.Continue
     def do_Continue(self,tree):
         pass
 
-    #@+node:ekr.20130314113424.9450: *5* ft.Delete
-    # Delete(expr* targets)
 
     def do_Delete(self,node):
-
         for z in node.targets:
             self.visit(z)
     #@+node:ekr.20130314200806.9384: *5* ft.ExceptHandler
@@ -910,29 +825,21 @@ class AstFullTraverser(AstBaseTraverser):
     # Python 3: ExceptHandler(expr? type, identifier? name, stmt* body)
 
     def do_ExceptHandler(self,node):
-        
         if node.type:
             self.visit(node.type)
         if node.name and isinstance(node.name,ast.Name):
             self.visit(node.name)
         for z in node.body:
             self.visit(z)
-    #@+node:ekr.20130314113424.9451: *5* ft.Exec
-    # Python 2.x only
-    # Exec(expr body, expr? globals, expr? locals)
 
     def do_Exec(self,node):
-
         self.visit(node.body)
         if getattr(node,'globals',None):
             self.visit(node.globals)
         if getattr(node,'locals',None):
             self.visit(node.locals)
-    #@+node:ekr.20130314200806.9387: *5* ft.For
-    # For(expr target, expr iter, stmt* body, stmt* orelse)
 
     def do_For (self,node):
-
         self.visit(node.target)
         self.visit(node.iter)
         for z in node.body:
@@ -940,95 +847,63 @@ class AstFullTraverser(AstBaseTraverser):
         for z in node.orelse:
             self.visit(z)
 
-    #@+node:ekr.20130315140102.9536: *5* ft.FunctionDef
-    # FunctionDef(identifier name, arguments args, stmt* body, expr* decorator_list)
-
     def do_FunctionDef (self,node):
-        
         self.visit(node.args)
         for z in node.body:
             self.visit(z)
         for z in node.decorator_list:
             self.visit(z)
 
-       
-    #@+node:ekr.20130314113424.9453: *5* ft.Global
-    # Global(identifier* names)
-
     def do_Global(self,node):
         pass
-    #@+node:ekr.20130314200806.9383: *5* ft.If
-    # If(expr test, stmt* body, stmt* orelse)
 
     def do_If(self,node):
-        
         self.visit(node.test)
         for z in node.body:
             self.visit(z)
         for z in node.orelse:
             self.visit(z)
-    #@+node:ekr.20130314113424.9454: *5* ft.Import & ImportFrom
-    # Import(alias* names)
 
     def do_Import(self,node):
         pass
 
-    # ImportFrom(identifier? module, alias* names, int? level)
 
     def do_ImportFrom(self,node):
-        
         # for z in node.names:
             # self.visit(z)
         pass
-    #@+node:ekr.20130314113424.9535: *5* ft.Lambda
-    # Lambda(arguments args, expr body)
 
     def do_Lambda(self,node):
         
         self.visit(node.args)
         self.visit(node.body)
-    #@+node:ekr.20130314113424.9419: *5* ft.Module
+
     def do_Module (self,node):
-        
         for z in node.body:
             self.visit(z)
-    #@+node:ekr.20120701070309.3402: *5* ft.Pass
-    def do_Pass(self,node):
 
+    def do_Pass(self,node):
         pass
 
-    #@+node:ekr.20130314113424.9456: *5* ft.Print
-    # Python 2.x only
-    # Print(expr? dest, expr* values, bool nl)
     def do_Print(self,node):
-
         if getattr(node,'dest',None):
             self.visit(node.dest)
         for expr in node.values:
             self.visit(expr)
-    #@+node:ekr.20130314113424.9457: *5* ft.Raise
-    # Raise(expr? type, expr? inst, expr? tback)
 
     def do_Raise(self,node):
-        
         if getattr(node,'type',None):
             self.visit(node.type)
         if getattr(node,'inst',None):
             self.visit(node.inst)
         if getattr(node,'tback',None):
             self.visit(node.tback)
-    #@+node:ekr.20130314113424.9458: *5* ft.Return
-    # Return(expr? value)
 
     def do_Return(self,node):
-        
         if node.value:
             self.visit(node.value)
-    #@+node:ekr.20130320154915.9469: *5* ft.Try (Python 3 only)
-    # Python 3 only: Try(stmt* body, excepthandler* handlers, stmt* orelse, stmt* finalbody)
 
     def do_Try(self,node):
-        
         for z in node.body:
             self.visit(z)
         for z in node.handlers:
@@ -1037,57 +912,40 @@ class AstFullTraverser(AstBaseTraverser):
             self.visit(z)
         for z in node.finalbody:
             self.visit(z)
-    #@+node:ekr.20130314113424.9426: *5* ft.TryExcept
-    # TryExcept(stmt* body, excepthandler* handlers, stmt* orelse)
 
     def do_TryExcept(self,node):
-        
         for z in node.body:
             self.visit(z)
         for z in node.handlers:
             self.visit(z)
         for z in node.orelse:
             self.visit(z)
-    #@+node:ekr.20130314113424.9427: *5* ft.TryFinally
-    # TryFinally(stmt* body, stmt* finalbody)
 
     def do_TryFinally(self,node):
-
         for z in node.body:
             self.visit(z)
         for z in node.finalbody:
             self.visit(z)
-    #@+node:ekr.20130314113424.9405: *5* ft.While
-    # While(expr test, stmt* body, stmt* orelse)
 
     def do_While (self,node):
-
         self.visit(node.test) # Bug fix: 2013/03/23.
         for z in node.body:
             self.visit(z)
         for z in node.orelse:
             self.visit(z)
-    #@+node:ekr.20130314113424.9406: *5* ft.With
-    # With(expr context_expr, expr? optional_vars, stmt* body)
-
+            
     def do_With (self,node):
-        
         self.visit(node.context_expr)
         if node.optional_vars:
             self.visit(node.optional_vars)
         for z in node.body:
             self.visit(z)
-        
-    #@+node:ekr.20130314113424.9459: *5* ft.Yield
-    #  Yield(expr? value)
 
     def do_Yield(self,node):
-
         if node.value:
             self.visit(node.value)
-    #@+node:ekr.20130314113424.9528: *4* ft.visit
-    def visit(self,node):
 
+    def visit(self,node):
         '''Visit a *single* ast node.  Visitors are responsible for visiting children!'''
         assert isinstance(node,ast.AST),node.__class__.__name__
         method_name = 'do_' + node.__class__.__name__
@@ -1096,8 +954,8 @@ class AstFullTraverser(AstBaseTraverser):
 
     def visit_children(self,node):
         assert False,'must visit children explicitly'
-    #@-others
-#@+node:ekr.20120626085227.11488: *3* class AstFormatter
+
+\
 class AstFormatter(AstFullTraverser):
     
     '''A class to recreate source code from an AST.
@@ -2361,8 +2219,7 @@ class P1(AstFullTraverser):
         self.u = Utils()
     def __call__(self,fn,node):
         self.run(fn,node)
-    #@+others
-    #@+node:ekr.20130319203546.9527: *3* class Dummy_Node
+
     class Dummy_Node:
         
         def __init__(self):
@@ -2371,7 +2228,7 @@ class P1(AstFullTraverser):
             self.stc_parent = None
             self.stc_context = None
             self.stc_child_nodes = [] # Testing only.
-    #@+node:ekr.20130319203546.9528: *3*  p1.run (entry point)
+
     def run (self,fn,root):
         '''Run the prepass: init, then visit the root.'''
         # Init all ivars.
@@ -2387,7 +2244,6 @@ class P1(AstFullTraverser):
         root.stc_parent = None
         root.stc_context = None
         
-    #@+node:ekr.20130319203546.9529: *3*  p1.visit (big gc anomaly)
     def visit(self,node):
         '''Inject node references in all nodes.'''
         assert isinstance(node,ast.AST),node.__class__.__name__
@@ -2450,7 +2306,6 @@ class P1(AstFullTraverser):
         self.context = node.stc_context
         self.parent = node.stc_parent
         
-    #@+node:ekr.20130319203546.9556: *3* p1.define_name
     def define_name(self,cx,name,defined=True):
         '''
         Fix the scope of the given name to cx.
@@ -2463,9 +2318,6 @@ class P1(AstFullTraverser):
             d[name] = [] # The type list.
         if defined:
             st.defined.add(name)
-    #@+node:ekr.20130319203546.9530: *3* p1.visitors
-    #@+node:ekr.20130331062640.5489: *4* p1.Attribute
-    # Attribute(expr value, identifier attr, expr_context ctx)
 
     def do_Attribute(self,node):
         
@@ -2487,11 +2339,8 @@ class P1(AstFullTraverser):
         # self.visit(node.ctx)
         if isinstance(node.ctx,(ast.Param,ast.Store)):
             st.defined_attrs.add(key)
-    #@+node:ekr.20130327183713.9654: *4* p1.AugAssign (sets in_aug_assign)
-    # AugAssign(expr target, operator op, expr value)
 
     def do_AugAssign(self,node):
-        
         # g.trace('FT',self.u.format(node),g.callers())
         assert not self.in_aug_assign
         try:
@@ -2500,11 +2349,8 @@ class P1(AstFullTraverser):
         finally:
             self.in_aug_assign = False
         self.visit(node.value)
-    #@+node:ekr.20130319203546.9531: *4* p1.ClassDef
-    # ClassDef(identifier name, expr* bases, stmt* body, expr* decorator_list)
 
     def do_ClassDef (self,node):
-
         self.n_contexts += 1
         parent_cx = self.context
         assert parent_cx == node.stc_context
@@ -2521,47 +2367,48 @@ class P1(AstFullTraverser):
         for z in node.decorator_list:
             self.visit(z)
         self.context = parent_cx
-    #@+node:ekr.20130319203546.9532: *4* p1.FunctionDef
-    # FunctionDef(identifier name, arguments args, stmt* body, expr* decorator_list)
 
     def do_FunctionDef (self,node):
-        
         self.n_contexts += 1
         parent_cx = self.context
         assert parent_cx == node.stc_context
         # Inject the symbol table for this node.
         node.stc_symbol_table = SymbolTable(parent_cx)
+        # Add a list of all returns
+        
+        node.stc_symbol_table.returns = []
+        
         # Define the function name itself in the enclosing context.
         self.define_name(parent_cx,node.name)
         # Visit the children in a new context.
         self.context = node
+        pprint(self.context.stc_symbol_table.returns)
         self.visit(node.args)
         for z in node.body:
             self.visit(z)
         for z in node.decorator_list:
             self.visit(z)
         self.context = parent_cx
-
-    #@+node:ekr.20130327183713.9656: *4* p1.Global
-    # Global(identifier* names)
+        
+    def do_Return(self,node):
+        assert hasattr(self.context.stc_symbol_table, 'returns'), "Return outside of function"
+        self.context.stc_symbol_table.returns.append(node)
+        if node.value:
+            self.visit(node.value)
 
     def do_Global(self,node):
-        
         cx = self.u.compute_module_cx(node)
         assert hasattr(cx,'stc_symbol_table'),cx
         node.stc_scope = cx
         for name in node.names:
             self.define_name(cx,name)
-    #@+node:ekr.20130319203546.9545: *4* p1.Import & ImportFrom
-    # Import(alias* names)
+            
     def do_Import(self,node):
         self.alias_helper(node)
                 
-    # ImportFrom(identifier? module, alias* names, int? level)
     def do_ImportFrom(self,node):
         self.alias_helper(node)
 
-    # alias (identifier name, identifier? asname)
     def alias_helper(self,node):
         cx = node.stc_context
         assert cx
@@ -2569,11 +2416,8 @@ class P1(AstFullTraverser):
             name = alias.asname if alias.asname else alias.name.split('.')[0]
             # if alias.asname: g.trace('%s as %s' % (alias.name,alias.asname))
             self.define_name(cx,name)
-    #@+node:ekr.20130319203546.9533: *4* p1.Lambda
-    # Lambda(arguments args, expr body)
 
     def do_Lambda(self,node):
-        
         self.n_contexts += 1
         parent_cx = self.context
         assert parent_cx == node.stc_context
@@ -2598,9 +2442,8 @@ class P1(AstFullTraverser):
         # self.visit(node.args)
         self.visit(node.body)
         self.context = parent_cx
-    #@+node:ekr.20130319203546.9534: *4* p1.Module
-    def do_Module (self,node):
 
+    def do_Module (self,node):
         self.n_contexts += 1
         assert self.context is None
         assert node.stc_context is None
@@ -2612,11 +2455,8 @@ class P1(AstFullTraverser):
             self.visit(z)
         self.context = None
        # print(node.stc_symbol_table)
-    #@+node:ekr.20130319203546.9550: *4* p1.Name
-    # Name(identifier id, expr_context ctx)
 
     def do_Name(self,node):
-
         # g.trace('P1',node.id)
         
         # self.visit(node.ctx)
@@ -2633,8 +2473,7 @@ class P1(AstFullTraverser):
             # For example, a += 1 generates a Store, but does not defined the symbol.
             # Instead, only ast.Assign nodes really define a symbol.
             node.stc_scope = None
-    #@-others
-#@+node:ekr.20120627133626.4177: ** class PatternFormatter
+
 class PatternFormatter (AstFormatter):
     
     # def __init__ (self):
@@ -2660,7 +2499,7 @@ class PatternFormatter (AstFormatter):
         '''This represents a string constant.'''
         return 'Str' # return repr(node.s)
  
-# currently not used...
+
 class Phi_Node():
     ''' Class used to represent a phi node in the SSA. Allows us to represent
     a variable which is assigned to in more than one branch.
@@ -2874,7 +2713,8 @@ class SSA_Traverser(AstFullTraverser):
     def do_If (self,node):
         ''' Checks whether if and else branches use the same name. If they do
             then we must create a phi node which uses both.
-            TODO: Optimise this function. '''
+            TODO: Optimise this function. 
+            TODO: Functions defined inside of an if '''
         node.afterPhis = [] # All ifs have an empty list.
         
         self.visit(node.test)
@@ -3028,9 +2868,14 @@ class SSA_Traverser(AstFullTraverser):
         assert isinstance(node,ast.AST),node
         
         for arg in node.args:
+            self.visit(arg)
+            
+    def do_arg(self, node):
             print("arg!")
-            print(arg.arg)
-            self.d[arg.arg] = 1
+            print(node.arg)
+            node.originalId = node.arg
+            self.d[node.arg] = 1
+            node.id = node.originalId + str(self.d[node.originalId])
 
     def do_Assign(self,node):
         self.visit(node.value)
@@ -3038,7 +2883,18 @@ class SSA_Traverser(AstFullTraverser):
             self.visit(target)
 
     def do_AugAssign(self,node):
-        # g.trace('FT',Utils().format(node),g.callers())
+        ''' TODO: Assign prev_name a bit more elegently. '''
+        # We need to store the previous iteration of the target variable name
+        # so we know what to load in the type inference.
+        assert hasattr(node.target, 'id'), "Error: Target is not a variable. "
+        
+        prev_name = ast.Name()
+        prev_name.ctx = ast.Load()
+        prev_name.id = node.target.id
+        node.prev_name = node.target.id
+        self.visit(prev_name)
+        node.prev_name = prev_name
+        
         self.visit(node.target)
         self.visit(node.value)
 
@@ -3283,8 +3139,8 @@ class TypeInferrer (AstFullTraverser):
     def init(self):   
         self.variableTypes = {} # Used as string:name -> set():types
         self.currently_assigning = False
-        self.AWAITING_TYPE = 0 # Used as indentifier in variableTypes
         self.awaiting_Typing = []  # Elements : (node, name)
+        self.functions = {}
 
         self.stats = Stats()
         self.u = Utils()
@@ -3357,7 +3213,6 @@ class TypeInferrer (AstFullTraverser):
         self.n_nodes += 1
         return method(node)
 
-    
     def do_Attribute (self,node):
         ti = self
         trace = False and not g.app.runningAllUnitTests
@@ -3395,7 +3250,6 @@ class TypeInferrer (AstFullTraverser):
             t = set([Unknown_Type(node)])
         # ti.check_attr(node) # Does nothing
         return [t]
-    
 
     def do_Name(self,node):
         if self.currently_assigning:
@@ -3477,6 +3331,20 @@ class TypeInferrer (AstFullTraverser):
         values = value_container.contents
         self.conduct_assignment(targets, values, node)
         
+    def do_AugAssign(self,node):
+        ''' This covers things like x += ... x -=...
+            This is pretty much just a BinOp so modify the node so node.value is a binop
+            work out the type and then assign the result. '''
+        binOp_node = ast.BinOp()
+        binOp_node.left = node.prev_name
+        binOp_node.right = node.value
+        binOp_node.op = node.op
+        # Assign expects targets
+        node.targets = [node.target]
+        
+        node.value = binOp_node
+        self.do_Assign(node)
+        
     def check_waiting(self, new_var):
         waiting = [x[0] for x in self.awaiting_Typing if x[1] == new_var]
         for z in waiting:
@@ -3523,7 +3391,6 @@ class TypeInferrer (AstFullTraverser):
         op_kind = self.kind(node.op)
         
         num_types = [self.float_type, self.int_type]
-        list_type = List_Type(None)
         
         result_types = set()
         
@@ -3536,8 +3403,11 @@ class TypeInferrer (AstFullTraverser):
                     else:
                         result_types.add(self.int_type)
                         continue
-                if left == list_type and right == list_type and op_kind == 'Add':
-                    result_types.add(list_type)
+                if isinstance(left, List_Type) and isinstance(right, List_Type) and op_kind == 'Add':
+                    left.infer_types()
+                    right.infer_types()
+                    new_list = List_Type(node, [], left.content_types | right.content_types)
+                    result_types.add(new_list)
                     continue
                 if left == self.string_type and right == self.string_type and op_kind == 'Add':
                     result_types.add(self.string_type)
@@ -3548,6 +3418,7 @@ class TypeInferrer (AstFullTraverser):
                     result_types.add(self.string_type)
                     continue
             self.stats.n_binop_fail += 1
+        assert result_types, "No acceptable BinOp operation. "
         return [result_types]
     
     def do_UnaryOp(self,node):
@@ -3642,20 +3513,40 @@ class TypeInferrer (AstFullTraverser):
         pprint(self.variableTypes)
                 
     def do_For(self, node):
-        ''' TODO: Assign type to target. '''
+        ''' TODO: Allow for any Iterable object in node.iter instead of just List_Type. '''
         # This is a glorified assignment so set to true
         self.currently_assigning = True
         targets = self.visit(node.target)
         self.currently_assigning = False
         print("targets")
-        pprint(targets)
+      #  pprint(targets)
         print("types")
         value_types = self.visit(node.iter)
         pprint(value_types)
-        self.conduct_assignment(targets, value_types, node)
+        # value_types should be a list.
+      #  assert isinstance(value_types, List_Type)
+        self.conduct_assignment(targets, self.extract_list_types(value_types), node)
         self.loop_helper(node)
         
+    def extract_list_types(self, list_of_lists):
+        ''' Should be given a list of sets which contains only List_Type.
+            This function returns a list containing a single set which contains
+            all types find in each list. '''
+        extracted_types = set()
+        assert isinstance(list_of_lists, list)
+        for possible_types in list_of_lists:
+            for list_type in possible_types:
+                assert isinstance(list_type, List_Type), "Should be a list but found a " + str(list_type)
+                list_type.infer_types()     # Just to make sure
+                extracted_types |= list_type.content_types
+        return [extracted_types]
+        
     def do_Import(self, node):
+        for z in node.names:
+            self.visit(z)
+            
+    def do_ImportFrom(self, node):
+        ''' TODO: Give the names the type module. '''
         for z in node.names:
             self.visit(z)
             
@@ -3667,7 +3558,8 @@ class TypeInferrer (AstFullTraverser):
 
     def do_Call (self,node):
         ''' Infer the value of a function called with a particular set of 
-            arguments.'''
+            arguments.
+            TODO: Change so builtins can have more than 1 set of parameters. '''
         # Special case builtins.
         return_types = []
         given_arg_types = []
@@ -3723,19 +3615,44 @@ class TypeInferrer (AstFullTraverser):
         self.conduct_assignment(targets, value_types, node)
         #return [List_Type(node)]
         
-    def extract_list_types(self, list_of_lists):
-        ''' Should be given a list of sets which contains only List_Type. '''
-        extracted_types = []
-        assert isinstance(list_of_lists, list)
-        for possible_types in list_of_lists:
-            for list_type in possible_types:
-                assert isinstance(list_type, List_Type), list_type
-                list_type.infer_types()     # Just to make sure
-                extracted_types.append(list_type.content_types)
-        return extracted_types
+    def do_FunctionDef (self,node):
+        ''' Find all args and return values. '''
+        pprint(node.stc_symbol_table.returns)
+        self.visit(node.args)
+        for z in node.body:
+            self.visit(z)
+        for z in node.decorator_list:
+            self.visit(z)
+            
+    def extract_return_names(self, returns):
+        ''' Returns can be '''
+        for return_node in returns:
+            pass
+            
+    def do_arguments(self,node):
+        ''' We need to begin checking what types the args can take. Defaults
+            already give us a nice possible value.
+            The defaults list contains the value for the last len(defaults)
+            arguments. '''
+        args = []
+        for z in node.args:
+            args.extend(self.visit(z))
+        defaults = []
+        for z in node.defaults:
+            defaults.extend(self.visit(z))
+        # Assign defaults in reverse order until there are none left then
+        # assign Any_Type
+        for i in range(len(args) - 1, -1, -1):
+            if defaults:
+                self.variableTypes[args[i]] = defaults.pop()
+            else:
+                self.variableTypes[args[i]] = set([self.any_type])
+        pprint(self.variableTypes)
+            
+    def do_arg(self, node):
+        return [node.id]
 
-    def class_instance (self,e):
-        
+    def class_instance (self,e):      
         '''
         Return a type representing an instance of the class
         whose ctor is evaluated in the present context.
@@ -3754,11 +3671,9 @@ class TypeInferrer (AstFullTraverser):
         t = [Class_Type(cx)]
         # ti.set_cache(e,t,tag='class name')
         return args,t
-    #@+node:ekr.20130315094857.9498: *6* ti.find_call_e
+
     def find_call_e (self,node):
-        
         '''Find the symbol table entry for node, an ast.Call node.'''
-        
         ti = self
         trace = False and not g.app.runningAllUnitTests
         trace_errors = False; trace_fuzzy = True ; trace_return = False
@@ -3791,7 +3706,6 @@ class TypeInferrer (AstFullTraverser):
                 if trace and trace_fuzzy: g.trace('fuzzy',t,ti.format(node))
                 ti.stats.n_fuzzy += 1
                 e = None
-
 
     def infer_actual_args (self,e,node):
         
@@ -3890,7 +3804,7 @@ class TypeInferrer (AstFullTraverser):
             
         if trace: g.trace('result',args)
         return args
-    #@+node:ekr.20130315094857.9500: *6* ti.infer_def & helpers (sets call cache)
+
     def infer_def(self,node,rescan_flag):
         
         '''Infer everything possible from a def D called with specific args:
@@ -3966,10 +3880,8 @@ class TypeInferrer (AstFullTraverser):
             # else:
                 # g.trace('**** oops: no e2',name,d)
     #@+node:ekr.20130315094857.9502: *7* ti.infer_assignments
-    def infer_assignments(self,cx,e):
-        
+    def infer_assignments(self,cx,e):       
         '''Infer all the assignments in the function context.'''
-
         ti = self
         trace = False and not g.app.runningAllUnitTests
         for a in cx.assignments_list:
@@ -3990,15 +3902,11 @@ class TypeInferrer (AstFullTraverser):
                         # if trace: g.trace('miss',t2)
                     # else:
                         # ti.stats.n_assign_fails += 1
-                        # if trace: g.trace('fail',t2)
-                   
-                       
+                        # if trace: g.trace('      
         return None # This value is never used.
-    #@+node:ekr.20130315094857.9503: *7* ti.infer_outer_expressions
+    
     def infer_outer_expressions(self,cx,node):
-        
         '''Infer all outer expressions in the function context.'''
-
         ti = self
         trace = False and not g.app.runningAllUnitTests
         for exp in cx.expressions_list:
@@ -4007,11 +3915,9 @@ class TypeInferrer (AstFullTraverser):
             t = ti.visit(exp)
 
         return None # This value is never used.
-    #@+node:ekr.20130315094857.9504: *7* ti.infer_return_statements
+
     def infer_return_statements(self,cx,e):
-        
         '''Infer all return_statements in the function context.'''
-        
         ti = self
         trace = False and not g.app.runningAllUnitTests
         t = []
@@ -4061,7 +3967,6 @@ class TypeInferrer (AstFullTraverser):
         return ti.visit(node.body)
 
     def do_Slice(self,node):
-        
         ti = self
         if node.upper: junk = ti.visit(node.upper)
         if node.lower: junk = ti.visit(node.lower)
@@ -4069,7 +3974,6 @@ class TypeInferrer (AstFullTraverser):
         return [ti.int_type] ### ???
 
     def do_Subscript(self,node):
-
         ti = self
         trace = False and not g.app.runningAllUnitTests
         t1 = ti.visit(node.value)
@@ -4081,44 +3985,13 @@ class TypeInferrer (AstFullTraverser):
         ti = self
         return [ti.builtin_type]
 
-    def do_arguments (self,node):
-        '''Bind formal arguments to actual arguments.'''
-        assert False # All the work is done in ti.Call and its helpers.
-     
     def do_ClassDef(self,node):
         for z in node.body:
             self.visit(z)
 
-    def do_FunctionDef (self,node):
-        
-        '''Infer this function or method with 'unknown' as the value of all args.
-        This gets inference going.
-        '''
-        
-        ti = self
-        trace = False and not g.app.runningAllUnitTests
-        ti.infer_outer_def(node)
-        
-        # # Set up function call, with 'unknown' for all args.
-        # e = node.e
-        # specific_args = [Unknown_Arg_Type(node)] * ti.count_full_args(node)
-        # hash_ = ti.cache_hash(specific_args,e)
-        # t = ti.get_call_cache(e,hash_)
-        # if trace:
-            # g.trace('%s %12s -> %s' % ('miss' if t is None else 'hit!',
-                # node.name,specific_args))
-        # if t is None:
-            # t = ti.infer_outer_def(specific_args,hash_,node)
-        # return t
-    #@+node:ekr.20130315094857.9508: *6* ti.count_full_args
-    # FunctionDef(identifier name, arguments args, stmt* body, expr* decorator_list)
-    #   arguments = (expr* args, identifier? vararg, identifier? kwarg, expr* defaults)
-
     def count_full_args (self,node):
-        
         '''Return the number of arguments in a call to the function/def defined
         by node, an ast.FunctionDef node.'''
-        
         ti = self
         trace = False and not g.app.runningAllUnitTests
         assert ti.kind(node)=='FunctionDef'    
@@ -4129,40 +4002,9 @@ class TypeInferrer (AstFullTraverser):
         if args.vararg: n += 1
         if args.kwarg:  n += 1
         return n
-    #@+node:ekr.20130315094857.9509: *6* ti.infer_outer_def & helper
-    def infer_outer_def(self,node):
-        
-        '''Infer everything possible from a def D called with specific args:
-        
-        1. Bind the args to the formal parameters in D.
-        2. Infer all assignments in D.
-        3. Infer all outer expression in D.
-        4. Infer all return statements in D.
-        '''
-        
-        return []
-
-        # ti = self
-        # # trace = True and not g.app.runningAllUnitTests
-        # assert ti.kind(node)=='FunctionDef',node
-        # e = node.e
-        # assert hasattr(e,'call_cache')
-        # cx = e.self_context
-        # ### data = ti.switch_context(e,hash_,node)
-        # ti.bind_outer_args(node)
-        # ti.infer_assignments(cx,e)
-        # ti.infer_outer_expressions(cx,node)
-        # t = ti.infer_return_statements(cx,e)
-        # ### ti.set_call_cache(e,hash_,t,tag='infer_def')
-        # ### ti.restore_context(data)
-        # return t
-    #@+node:ekr.20130315094857.9510: *7* ti_bind_outer_args (ti.infer_outer_def helper)
-    # FunctionDef(identifier name, arguments args, stmt* body, expr* decorator_list)
-    #   arguments = (expr* args, identifier? vararg, identifier? kwarg, expr* defaults)
+    
     def bind_outer_args (self,node):
-        
         '''Bind all all actual arguments except 'self' to "Unknown_Arg_Type".'''
-        
         ti = self
         trace = False and not g.app.runningAllUnitTests
         assert ti.kind(node)=='FunctionDef'
@@ -4201,6 +4043,7 @@ class TypeInferrer (AstFullTraverser):
         # pass
 
     def do_Return(self,node):
+        return
         return self.return_helper(node)
         
     def do_Yield(self,node):
@@ -4227,15 +4070,13 @@ class TypeInferrer (AstFullTraverser):
         return t
 
     def do_With (self,node):
-
         ti = self
         t = []
         for z in node.body:
             t.append(ti.visit(z))
         t = ti.clean(t)
         return t
-    #@-others
-#@+node:ekr.20121114043443.4005: ** class Utils
+
 class Utils:
     
     '''A class containing utility methods and pre-defined objects.
