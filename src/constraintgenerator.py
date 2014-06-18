@@ -52,9 +52,14 @@ class ConstraintGenerator:
         self.update_types(biggest_sols)
         
     def update_types(self, param_types):
+        ''' Set the type to any_type if it returns all types or the constraints
+            solving failed (returned empty set). '''
         for var, types in param_types.items():
             assert isinstance(types, set)
-            self.variable_types[var] = types
+            if len(types) == len(self.ALL_TYPES) or types == set():
+                self.variable_types[var] = set([any_type])
+            else:
+                self.variable_types[var] = types
     
     def clear_list(self):
         self.parameters = []    
@@ -108,7 +113,7 @@ class ConstraintGenerator:
             return [node.id]
     
     def do_BinOp(self, left_types, right_types, op_kind):
-        ''' Function must still return types due to nested binops
+        ''' Function must still return types.
             TODO: sub / mult '''
         global BASE_ADD_TYPES
               
@@ -123,13 +128,11 @@ class ConstraintGenerator:
         if left_types in self.parameters and right_types in self.parameters:
             # We only need to worry about what types are limited by the operator
             limiting_types = self.op_types[op_kind]
+            # Limit the types of both variables
             self.csp_problem.addConstraint(self.limit_to_set(set(limiting_types)), [left_types])
             self.csp_problem.addConstraint(self.limit_to_set(set(limiting_types)), [right_types])
-            
-            for t in limiting_types:
-                if isinstance(t, String_Type):
-                    print("t is string")
-            
+            # Force the parameters to share at least one type.
+            self.csp_problem.addConstraint(self.matching_element, [left_types, right_types])
             return [set(limiting_types)]
         
         if left_types in self.parameters:
@@ -149,12 +152,11 @@ class ConstraintGenerator:
         return [set(limiting_types)]
             
         
-        '''
-        if isinstance(left, Any_Type) and isinstance(right, Any_Type):
-                    return [set([any_type])]
-        if isinstance(left, Any_Type):
-            set(self.bin_op_constraints[op_kind][right.kind])
-            continue
-        if isinstance(right, Any_Type):
-            result_types |= set(self.bin_op_constraints[op_kind][left])
-            '''
+    def do_Call(self, accepted_types, param_to_constrain):
+        ''' We're given all of the accept types and a parameter. The allowed
+            types for this parameter must be within the allowed types. '''
+        # No information can be extracted here.
+        if any_type in accepted_types:
+            return
+        self.csp_problem.addConstraint(self.limit_to_set(accepted_types), [param_to_constrain])
+        

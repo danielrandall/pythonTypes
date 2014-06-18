@@ -1187,6 +1187,12 @@ class TypeInferrer(AstFullTraverser):
             for i in range(len(given_arg_types)):
                 pprint(given_arg_types[i])
                 pprint(accepted_types[i])
+                # If the arg is a function parameter then we can not type check
+                # generate a constraint and then move on.
+                if given_arg_types[i] in self.fun_params:
+                    self.constraint_gen.do_Call(accepted_types[i], given_arg_types[i])
+                    continue
+                # ... otherwise type check. At least one type must match up.
                 for t1 in given_arg_types[i]:
                     type_allowed = False
                     for t2 in accepted_types[i]:
@@ -1196,7 +1202,7 @@ class TypeInferrer(AstFullTraverser):
                         pprint(t2)
                         if (t1 <= t2):
                             type_allowed = True
-                    assert(type_allowed)
+                    assert type_allowed, "Incorrect type given to function"
             return return_types
         # Cannot find the function. Return any
         return [set([any_type])]
@@ -1264,7 +1270,8 @@ class TypeInferrer(AstFullTraverser):
         # assign Any_Type
         for i in range(len(args) - 1, -1, -1):
             if defaults:
-                self.variableTypes[args[i]] = defaults.pop()
+     #           self.variableTypes[args[i]] = defaults.pop()
+                self.variableTypes[args[i]] = set([any_type])
             else:
                 self.variableTypes[args[i]] = set([any_type])
         pprint(self.variableTypes)
