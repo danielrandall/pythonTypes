@@ -726,6 +726,10 @@ class TypeInferrer(AstFullTraverser):
         self.awaiting_Typing = []  # Elements : (node, name)
         self.functions = {}
         self.fun_params = []
+        
+        self.RETURN_TYPES_NAME = "return_types"
+        self.PARAMETER_TYPES_NAME = "parameter_types"
+        self.DEFAULTS_LEN_NAME = "defaults_length"
 
         self.stats = Stats()
         self.u = Utils()
@@ -741,35 +745,23 @@ class TypeInferrer(AstFullTraverser):
         ''' TODO: Differing number of parameters. '''
         self.builtin_type_dict = {
             'eval': {'parameter_types': [set([string_type])],
-                     'return_types': [set([any_type])]},
+                     'return_types': [set([any_type])],
+                     'defaults_length': 0},
             'id':   {'parameter_types': [set([any_type])],
                      'return_types': [set([int_type])]},
             'str':  {'parameter_types': [set([any_type])],
                      'return_types': [set([string_type])]},
             'len':  {'parameter_types': [set([any_type])],
                      'return_types': [set([int_type])]},
-            'range':  {'parameter_types': [set([int_type])],   # Needs one than one parameter
-                     'return_types': [set([ List_Type(None, [], set([int_type]) ) ])] },
+            'range':  {'parameter_types': [set([int_type]), set([int_type]), set([int_type])],
+                     'return_types': [set([ List_Type(None, [], set([int_type]) ) ])] ,
+                     'defaults_length': 2} ,
             'ord':  {'parameter_types': [set([string_type])],
                      'return_types': [set([int_type])]},
             'chr':  {'parameter_types': [set([int_type])],
                      'return_types': [set([string_type])]},
             # list,tuple...
             # close,open,sort,sorted,super...
-        }
-        
-        self.bin_op_constraints = {
-            'Add' : { float_type.kind : [float_type, int_type],
-                       int_type.kind  : [float_type, int_type],
-                    #   List_Type().kind : [List_Type()],
-                       string_type : [string_type] }, 
-            'Mult' : { float_type : [float_type, int_type],
-                       int_type : [float_type, int_type, List_Type, string_type],
-                       List_Type: [List_Type, int_type],
-                       string_type.kind: [string_type, int_type] },
-            'Sub' : { float_type : [float_type, int_type],
-                       int_type : [float_type, int_type],
-                       List_Type: [List_Type] }                                
         }
         
        
@@ -1033,6 +1025,7 @@ class TypeInferrer(AstFullTraverser):
         return [result_types]
     
     def do_UnaryOp(self,node):
+        ''' TODO: Check this. Should be able to return more than one type. '''
         op_types = self.visit(node.operand)[0] # Will only have 1 element
         op_kind = self.kind(node.op)
         if op_kind == 'Not':    # All types are valid
@@ -1180,10 +1173,18 @@ class TypeInferrer(AstFullTraverser):
         print(func_name)
         func = self.builtin_type_dict.get(func_name,[])
         if func:
-            return_types = func['return_types']
-            accepted_types = func['parameter_types']
-            # At least for now, assume the parameters are the same length
-            assert(len(given_arg_types) == len(accepted_types))
+            return_types = func[self.RETURN_TYPES_NAME]
+            accepted_types = func[self.PARAMETER_TYPES_NAME]
+
+            # Check that the correct number of types has been given.
+            # If the number is less than the maximum then ensure it falls
+            # within the default range and adjust accordingly
+            assert len(given_arg_types) <= len(accepted_types)
+            if len(given_arg_types) < len(accepted_types):
+                missing_num = len(accepted_types) - len(given_arg_types)
+                assert missing_num <= func[self.DEFAULTS_LEN_NAME], "Too few args given"
+                accepted_types = [accepted_types[x] for x in range(len(accepted_types) - missing_num)]
+                
             for i in range(len(given_arg_types)):
                 pprint(given_arg_types[i])
                 pprint(accepted_types[i])
@@ -1205,6 +1206,7 @@ class TypeInferrer(AstFullTraverser):
                     assert type_allowed, "Incorrect type given to function"
             return return_types
         # Cannot find the function. Return any
+        print("Function " + func_name + " not found")
         return [set([any_type])]
             
     def do_ListComp(self,node):
@@ -1220,7 +1222,7 @@ class TypeInferrer(AstFullTraverser):
         pprint(t)
         # Reset types
         self.variableTypes = old_type_list
-        return [set([List_Type(node, list(t))])]
+        return [set([List_Type(node, list(t), set())])]
 
     def do_comprehension(self,node):
         ''' Assign types in the list to the variable name. '''
@@ -1239,21 +1241,34 @@ class TypeInferrer(AstFullTraverser):
         self.fun_params = self.visit(node.args)
         self.constraint_gen = ConstraintGenerator()
         self.constraint_gen(node, self.variableTypes, self.fun_params)
+        self.fun_return_types = set() 
         
         for z in node.body:
             self.visit(z)
         for z in node.decorator_list:
             self.visit(z)
+            
+        # If nothing was added then this function does not return anythin
+        if self.fun_return_types == set():
+            self.fun_return_types = set([none_type])
         
         self.constraint_gen.extract_results()
         self.constraint_gen.clear_list()
-        # Constraint updates types for the params
+        
+        parameter_types = []
+        for arg in self.fun_params:
+            parameter_types.append(self.variableTypes[arg])
+        
+        # Add the function to the list to be used later
+        self.functions[node.name] = {}
+        self.functions[node.name][self.RETURN_TYPES_NAME] = self.fun_return_types 
+        self.functions[node.name][self.PARAMETER_TYPES_NAME] = parameter_types
+        self.functions[node.name][self.DEFAULTS_LEN_NAME] = node.args.default_length
+        
+        pprint(self.functions[node.name])
+        
+        self.fun_params = []
         pprint(self.variableTypes)
-            
-    def extract_return_names(self, returns):
-        ''' Returns can be '''
-        for return_node in returns:
-            pass
             
     def do_arguments(self,node):
         ''' We need to begin checking what types the args can take. Defaults
@@ -1266,6 +1281,7 @@ class TypeInferrer(AstFullTraverser):
         defaults = []
         for z in node.defaults:
             defaults.extend(self.visit(z))
+        node.default_length = len(defaults)
         # Assign defaults in reverse order until there are none left then
         # assign Any_Type
         for i in range(len(args) - 1, -1, -1):
@@ -1279,285 +1295,6 @@ class TypeInferrer(AstFullTraverser):
             
     def do_arg(self, node):
         return [node.id]
-
-    def class_instance (self,e):      
-        '''
-        Return a type representing an instance of the class
-        whose ctor is evaluated in the present context.
-        '''
-        
-        ti = self
-        trace = True and not g.app.runningAllUnitTests
-        cx = e.self_context
-        
-        # Step 1: find the ctor if it exists.
-        d = cx.st.d
-        ctor = d.get('__init__')
-
-            
-        args = [] ### To do
-        t = [Class_Type(cx)]
-        # ti.set_cache(e,t,tag='class name')
-        return args,t
-
-    def find_call_e (self,node):
-        '''Find the symbol table entry for node, an ast.Call node.'''
-        ti = self
-        trace = False and not g.app.runningAllUnitTests
-        trace_errors = False; trace_fuzzy = True ; trace_return = False
-        kind = ti.kind(node)
-        e = None # Default.
-        if kind == 'Name':
-            # if trace: g.trace(kind,node.id)
-            e = getattr(node,'e',None)
-        else:
-            t = ti.visit(node) or []
-            if len(t) == 1:
-                ti.stats.n_not_fuzzy += 1
-                t = t[0]
-                if ti.kind(t) == 'Class_Type':
-                    d = t.cx.st.d
-                    if ti.kind(node) == 'Attribute':
-                        name = node.attr
-                    elif ti.kind(node) == 'Call':
-                        name = node.func
-                    else:
-                        name = None
-                    if name:
-                        e = d.get(name)
-                    else:
-                        e = None
-                else:
-                    if trace and trace_errors:
-                        g.trace('not a class type: %s %s' % (ti.kind(t),ti.format(node)))
-            elif len(t) > 1:
-                if trace and trace_fuzzy: g.trace('fuzzy',t,ti.format(node))
-                ti.stats.n_fuzzy += 1
-                e = None
-
-    def infer_actual_args (self,e,node):
-        
-        '''Return a list of types for all actual args, in the order defined in
-        by the entire formal argument list.'''
-        
-        ti = self
-        trace = False and not g.app.runningAllUnitTests
-        trace_args = False
-        assert ti.kind(node)=='Call'
-        cx = e.self_context
-        # Formals...
-        formals  = cx.node.args or []
-        defaults = cx.node.args.defaults or [] # A list of expressions
-        vararg   = cx.node.args.vararg
-        kwarg    = cx.node.args.kwarg
-        # Actuals...
-        actuals  = node.args or [] # A list of expressions.
-        keywords = node.keywords or [] # A list of (identifier,expression) pairs.
-        starargs = node.starargs
-        kwargs   = node.kwargs
-        assert ti.kind(formals)=='arguments'
-        assert ti.kind(formals.args)=='list'
-        
-        formal_names = [z.id for z in formals.args]
-            # The names of *all* the formal arguments, include those with defauls.
-            # Doesw not include vararg and kwarg.
-           
-        # Append unnamed actual args.
-        # These could be either non-keyword arguments or keyword arguments.
-        args = [ti.visit(z) for z in actuals]
-        bound_names = formal_names[:len(actuals)]
-        
-        if trace and trace_args:
-            g.trace('formal names',formal_names)
-            g.trace('   arg names',bound_names)
-            g.trace('    starargs',starargs and ti.format(starargs))
-            g.trace('    keywargs',kwargs   and ti.format(kwargs))
-            # formal_defaults = [ti.visit(z) for z in defaults]
-                # # The types of each default.
-            # g.trace('formal default types',formal_defaults)
-            # g.trace('unnamed actuals',ti.format(actuals))
-        
-        # Add keyword args in the call, in the order they appear in the formal list.
-        # These could be either non-keyword arguments or keyword arguments.
-        keywargs_d = {}
-        keywords_d = {}
-        for keyword in keywords:
-            name = keyword.arg
-            t = ti.visit(keyword.value)
-            value = ti.format(keyword.value)
-            keywords_d[name] = (value,t)
-
-        for name in formal_names[len(actuals):]:
-            data = keywords_d.get(name)
-            if data:
-                value,t = data
-                if trace and trace_args: g.trace('set keyword',name,value,t)
-                args.append(t)
-                bound_names.append(name)
-            # else: keywargs_d[name] = None ### ???
-
-        # Finally, add any defaults from the formal args.
-        n_plain = len(formal_names) - len(defaults)
-        defaults_dict = {}
-        for i,expr in enumerate(defaults):
-            name = formal_names[n_plain+i]
-            value = ti.format(expr)
-            t = ti.visit(expr)
-            defaults_dict[name] = (value,t)
-
-        for name in formal_names:
-            if name not in bound_names:
-                data = defaults_dict.get(name)
-                t = None # default
-                if data:
-                    value,t = data
-                    if trace and trace_args: g.trace('set default',name,value,t)
-                elif name == 'self':
-                    def_cx = e.self_context
-                    class_cx = def_cx and def_cx.class_context
-                    if class_cx:
-                        t = [Class_Type(class_cx)]
-                if t is None:
-                    t = [Unknown_Arg_Type(node)]
-                    ti.error('Unbound actual argument: %s' % (name))
-                args.append(t)
-                bound_names.append(name)
-                
-        ### Why should this be true???
-        # assert sorted(formal_names) == sorted(bound_names)
-
-        if None in args:
-            g.trace('***** opps node.args: %s, args: %s' % (node.args,args))
-            args = [z for z in args if z is not None]
-            
-        if trace: g.trace('result',args)
-        return args
-
-    def infer_def(self,node,rescan_flag):
-        
-        '''Infer everything possible from a def D called with specific args:
-        
-        1. Bind the specific args to the formal parameters in D.
-        2. Infer all assignments in D.
-        3. Infer all outer expression in D.
-        4. Infer all return statements in D.
-        '''
-        
-        ti = self
-        trace = False and not g.app.runningAllUnitTests
-        return ###
-
-        # t0 = ti.get_call_cache(e,hash_) or []
-        # if hash_ in ti.call_stack and not rescan_flag:
-            # # A recursive call: always add an Recursive_Instance marker.
-            # if trace:g.trace('A recursive','rescan',rescan_flag,hash_,'->',t0)
-            # ti.stats.n_recursive_calls += 1
-            # t = [Recursive_Inference(node)]
-        # else:
-            # if trace: g.trace('A',hash_,'->',t0)
-            # ti.call_stack.append(hash_)
-            # try:
-                # cx = e.self_context
-                # # data = ti.switch_context(e,hash_,node)
-                # ti.bind_args(specific_args,cx,e,node)
-                # ti.infer_assignments(cx,e)
-                # ti.infer_outer_expressions(cx,node)
-                # t = ti.infer_return_statements(cx,e)
-                # ti.restore_context(data)
-            # finally:
-                # hash2 = ti.call_stack.pop()
-                # assert hash2 == hash_
-        # # Merge the result and reset the cache.
-        # t.extend(t0)
-        # t = ti.clean(t)
-        # if trace: g.trace('B',hash_,'->',t)
-        # return t
-    #@+node:ekr.20130315094857.9501: *7* ti.bind_args (ti.infer_def helper) (To do: handle self)
-    # Call(expr func, expr* args, keyword* keywords, expr? starargs, expr? kwargs)
-    #   keyword = (identifier arg, expr value) # keyword arguments supplied to call
-
-    # FunctionDef(identifier name, arguments args, stmt* body, expr* decorator_list)
-    #   arguments = (expr* args, identifier? vararg, identifier? kwarg, expr* defaults)
-
-    def bind_args (self,types,cx,e,node):
-        
-        ti = self
-        trace = False and not g.app.runningAllUnitTests
-        assert ti.kind(node)=='Call'
-        assert isinstance(node.args,list),node
-        formals = cx.node.args or []
-        assert ti.kind(formals)=='arguments'
-        assert ti.kind(formals.args)=='list'
-        formal_names = [z.id for z in formals.args]
-            # The names of *all* the formal arguments, include those with defauls.
-            
-        if len(formal_names) != len(types):
-            # g.trace('**** oops: formal_names: %s types: %s' % (formal_names,types))
-            return
-
-        def_cx = e.self_context
-        d = def_cx.st.d
-        for i,name in enumerate(formal_names):
-            pass ### 
-            ### Handle self here.
-            # t = types[i]
-            # e2 = d.get(name)
-            # if e2:
-                # if trace: g.trace(e2,t) # g.trace(e2.name,t)
-                # ti.set_cache(e2,[t],tag='bindargs:%s'%(name))
-            # else:
-                # g.trace('**** oops: no e2',name,d)
-    #@+node:ekr.20130315094857.9502: *7* ti.infer_assignments
-    def infer_assignments(self,cx,e):       
-        '''Infer all the assignments in the function context.'''
-        ti = self
-        trace = False and not g.app.runningAllUnitTests
-        for a in cx.assignments_list:
-            if ti.kind(a) == 'Assign': # ignore AugAssign.
-                pass ####
-
-                # t2 = ti.get_cache(a)
-                # if t2:
-                    # ti.stats.n_assign_hits += 1
-                    # if trace: g.trace('hit!',t2)
-                # else:
-                    # t2 = ti.visit(a)
-                    # t3 = ti.ignore_failures(t2)
-                    # if t3:
-                        # ti.stats.n_assign_misses += 1
-                        # # g.trace('***** set cache',t2)
-                        # ti.set_cache(a,t2,tag='infer_assns')
-                        # if trace: g.trace('miss',t2)
-                    # else:
-                        # ti.stats.n_assign_fails += 1
-                        # if trace: g.trace('      
-        return None # This value is never used.
-    
-    def infer_outer_expressions(self,cx,node):
-        '''Infer all outer expressions in the function context.'''
-        ti = self
-        trace = False and not g.app.runningAllUnitTests
-        for exp in cx.expressions_list:
-            if trace: g.trace(ti.format(exp))
-            ti.stats.n_outer_expr_misses += 1
-            t = ti.visit(exp)
-
-        return None # This value is never used.
-
-    def infer_return_statements(self,cx,e):
-        '''Infer all return_statements in the function context.'''
-        ti = self
-        trace = False and not g.app.runningAllUnitTests
-        t = []
-        for r in cx.returns_list:
-            t2 = ti.visit(r)
-            if trace: g.trace('miss',t2)
-            t.extend(t2)
-        if ti.has_failed(t):
-            t = ti.merge_failures(t)
-        else:
-            t = ti.clean(t)
-        return t
 
     def do_Compare(self,node):
         ''' A comparison will always return a boolean type.
@@ -1617,73 +1354,17 @@ class TypeInferrer(AstFullTraverser):
         for z in node.body:
             self.visit(z)
 
-    def count_full_args (self,node):
-        '''Return the number of arguments in a call to the function/def defined
-        by node, an ast.FunctionDef node.'''
-        ti = self
-        trace = False and not g.app.runningAllUnitTests
-        assert ti.kind(node)=='FunctionDef'    
-        args = node.args
-        if trace: g.trace('args: %s vararg: %s kwarg: %s' % (
-            [z.id for z in args.args],args.vararg,args.kwarg))
-        n = len(args.args)
-        if args.vararg: n += 1
-        if args.kwarg:  n += 1
-        return n
-    
-    def bind_outer_args (self,node):
-        '''Bind all all actual arguments except 'self' to "Unknown_Arg_Type".'''
-        ti = self
-        trace = False and not g.app.runningAllUnitTests
-        assert ti.kind(node)=='FunctionDef'
-        e = node.e
-        def_cx = e.self_context
-        args = node.args or []
-        assert ti.kind(args)=='arguments',args
-        assert ti.kind(args.args)=='list',args.args
-        formal_names = [z.id if hasattr(z,'id') else '<tuple arg>' for z in args.args]
-        if args.vararg: formal_names.append(args.vararg)
-        if args.kwarg:  formal_names.append(args.kwarg)
-        # if trace: g.trace(formal_names)
-        d = def_cx.st.d
-        for name in formal_names:
-            if name == 'self':
-                if def_cx:
-                    t = [Class_Type(def_cx)]
-                else:
-                    t = [Unknown_Arg_Type(node)]
-                e2 = e
-            else:
-                t = [Unknown_Arg_Type(node)]
-                e2 = d.get(name)
-
     def do_Return(self,node):
-        self.visit(node.value)
-        return
-        return self.return_helper(node)
+        possible_return_type = self.visit(node.value)[0] # Can only be len 1
+        # If the a parameter is being returned then use the default value set
+        # Its probably any_type.
+        if possible_return_type in self.fun_params:
+            possible_return_type = self.variableTypes[possible_return_type]
+        assert isinstance(possible_return_type, set), "Can be a set of types!"
+        self.fun_return_types |= possible_return_type
         
     def do_Yield(self,node):
         return self.return_helper(node)
-
-    def return_helper(self,node):
-        ti = self
-        trace = False and not g.app.runningAllUnitTests
-        e = ti.call_e
-        assert e
-        if node.value:
-            t = ti.visit(node.value)
-            if ti.has_failed(t):
-                ti.stats.n_return_fail += 1
-                t = ti.ignore_unknowns(t)
-            if t:
-                ti.stats.n_return_success += 1
-            else:
-                ti.stats.n_return_fail += 1
-                t = [] # Do **not** propagate a failure here!
-        else:
-            t = [ti.none_type]
-        if trace: g.trace(t,ti.format(node))
-        return t
 
     def do_With (self,node):
         ti = self
