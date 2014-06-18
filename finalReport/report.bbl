@@ -1,0 +1,137 @@
+\begin{thebibliography}{10}
+
+\bibitem{agesen95}
+Ole Agesen.
+\newblock Concrete type inference: Delivering object-oriented applications.
+\newblock Technical report, Stanford University, 1995.
+
+\bibitem{aggressiveType}
+John Aycock.
+\newblock Aggressive type inference.
+\newblock In {\em Proceedings of the 8th International Python Conference},
+  pages 11--20, 2000.
+
+\bibitem{cardelli87}
+Luca Cardelli.
+\newblock Basic polymorphic typechecking.
+\newblock {\em Science of Computer Programming}, 8:147--172, 1987.
+
+\bibitem{cartwright91}
+Robert Cartwright and Mike Fagan.
+\newblock Soft typing.
+\newblock In {\em PLDI}, pages 278--292, 1991.
+
+\bibitem{shedskin}
+Mark Defour.
+\newblock Shed skin: An optimizing python-to-c++ compiler, 2006.
+
+\bibitem{pRuby}
+Michael Furr, Jong-hoon~(David) An, and Jeffrey~S. Foster.
+\newblock Profile-guided static typing for dynamic scripting languages.
+\newblock {\em SIGPLAN Not.}, 44(10):283--300, October 2009.
+
+\bibitem{furr09}
+Michael Furr, Jong-hoon~(David) An, Jeffrey~S. Foster, and Michael Hicks.
+\newblock Static type inference for ruby.
+\newblock {\em SAC 2009}, pages 1859--1866, 2009.
+
+\bibitem{heeren02}
+Bastiaan Heeren, Bastiaan Heeren, Jurriaan Hage, Jurriaan Hage, Doaitse
+  Swierstra, and Doaitse Swierstra.
+\newblock Generalizing hindley-milner type inference algorithms.
+\newblock Technical report, Institute of Information and Computing Sciences,
+  Utrecht University, 2002.
+
+\bibitem{evaluatingDynamicBehaviour}
+Alex Holkner and James Harland.
+\newblock Evaluating the dynamic behaviour of python applications.
+\newblock In {\em Proceedings of the Thirty-Second Australasian Conference on
+  Computer Science - Volume 91}, ACSC '09, pages 19--28, Darlinghurst,
+  Australia, Australia, 2009. Australian Computer Society, Inc.
+
+\bibitem{jones95}
+Mark~P. Jones.
+\newblock Functional programming with overloading and higher-order
+  polymorphism, 1995.
+
+\bibitem{lindhal06}
+Tobias Lindhal and Konstantinos Sagonas.
+\newblock Pratical type inference based on success typings.
+\newblock {\em Eighth ACM-SIGPLAN International Symposium on Principles and
+  Practice of Declarative Programming (PPDP'06)}, pages 167--178, 2006.
+
+\bibitem{milner84}
+Robin Milner.
+\newblock A proposal for standard ml.
+\newblock In {\em Proceedings of the 1984 ACM Symposium on LISP and Functional
+  Programming}, LFP '84, pages 184--197, New York, NY, USA, 1984. ACM.
+
+\bibitem{nielson99}
+Flemming Nielson, Hanne~R. Nielson, and Chris Hankin.
+\newblock {\em Principles of Program Analysis}.
+\newblock Springer-Verlag New York, Inc., Secaucus, NJ, USA, 1999.
+
+\bibitem{pierce02}
+Benjamin~C. Pierce.
+\newblock {\em Types and Programming Languages}.
+\newblock MIT Press, Cambridge, MA, USA, 2002.
+
+\bibitem{hindley69}
+R.Hindley.
+\newblock The principal type scheme of an object in combinatory logic.
+\newblock {\em Transactions of the American Mathematical Society}, 146:29--60,
+  1969.
+
+\bibitem{pyty}
+Jeff Ruberg.
+\newblock Charming python with static typechecking, April 2012.
+
+\bibitem{ryder03}
+Barbara~G. Ryder.
+\newblock Dimensions of precision in reference analysis of object-oriented
+  programming languages.
+\newblock In {\em Proceedings of the 12th International Conference on Compiler
+  Construction}, CC'03, pages 126--137, Berlin, Heidelberg, 2003.
+  Springer-Verlag.
+
+\bibitem{starkiller}
+Michael Salib.
+\newblock Starkiller: A static type inferencer and compiler for python, 2004.
+
+\bibitem{pyntch}
+Yusuke Shinyama.
+\newblock Pyntch - static code analyzer for python.
+\newblock \url{http://www.unixuser.org/~euske/python/pyntch/index.html}, 2009.
+\newblock Accessed: 29-04-2014.
+
+\bibitem{guido1}
+Guido van~van Rossum.
+\newblock Adding optional static typing to python.
+\newblock \url{https://www.artima.com/weblogs/viewpost.jsp?thread=85551}, 2004.
+\newblock Accessed: 06-05-2014.
+
+\bibitem{guido2}
+Guido van~van Rossum.
+\newblock Adding optional static typing to python -- part ii.
+\newblock \url{https://www.artima.com/weblogs/viewpost.jsp?thread=86641}, 2005.
+\newblock Accessed: 06-05-2014.
+
+\bibitem{guido3}
+Guido van~van Rossum.
+\newblock Adding optional static typing to python -- stop the flames!
+\newblock \url{http://www.artima.com/weblogs/viewpost.jsp?thread=87182}, 2005.
+\newblock Accessed: 06-05-2014.
+
+\bibitem{typeInferenceIcon}
+Kenneth Walker and Ralph~E. Griswold.
+\newblock Type inference in the icon programming language.
+\newblock Tr 93-32a, University of Arizona, Department of Computer Science,
+  1996.
+
+\bibitem{pySonar}
+Yin Wang.
+\newblock Pysonar: a type inferencer and indexer for python.
+\newblock \url{http://yinwang0.wordpress.com/2010/09/12/pysonar/}, 2010.
+\newblock Accessed: 26-04-2014.
+
+\end{thebibliography}

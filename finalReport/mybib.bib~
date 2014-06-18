@@ -1,0 +1,164 @@
+@inproceedings{controlFlowCooperKennedy,
+ author = {Cooper, Keith D. and Kennedy, Ken},
+ title = {Efficient Computation of Flow Insensitive Interprocedural Summary Information},
+ booktitle = {Proceedings of the 1984 SIGPLAN Symposium on Compiler Construction},
+ series = {SIGPLAN '84},
+ year = {1984},
+ isbn = {0-89791-139-3},
+ location = {Montreal, Canada},
+ pages = {247--258},
+ numpages = {12},
+ url = {http://doi.acm.org/10.1145/502874.502898},
+ doi = {10.1145/502874.502898},
+ acmid = {502898},
+ publisher = {ACM},
+ address = {New York, NY, USA},
+}
+@article{hindley69,
+    author    = "R.Hindley",
+    title     = "The principal type scheme of an object in combinatory logic",
+    journal   = "Transactions of the American Mathematical Society",
+    volume    = "146",
+    pages    = "29--60",
+    year      = "1969"
+}
+@article{cardelli87,
+    author = {Luca Cardelli},
+    title = {Basic polymorphic typechecking},
+    journal = {Science of Computer Programming},
+    year = {1987},
+    volume = {8},
+    pages = {147--172}
+}
+@inproceedings{milner84,
+ author = {Milner, Robin},
+ title = {A Proposal for Standard ML},
+ booktitle = {Proceedings of the 1984 ACM Symposium on LISP and Functional Programming},
+ series = {LFP '84},
+ year = {1984},
+ isbn = {0-89791-142-3},
+ location = {Austin, Texas, USA},
+ pages = {184--197},
+ numpages = {14},
+ url = {http://doi.acm.org/10.1145/800055.802035},
+ doi = {10.1145/800055.802035},
+ acmid = {802035},
+ publisher = {ACM},
+ address = {New York, NY, USA},
+} 
+@article{lindhal06,
+    author    = "Tobias Lindhal and Konstantinos Sagonas",
+    title     = "Pratical Type Inference Based on Success Typings",
+    journal   = "Eighth ACM-SIGPLAN International Symposium on Principles and Practice of Declarative Programming (PPDP'06)",
+    pages    = "167--178",
+    year      = "2006"
+}
+@article{jensen09,
+    author   = "Simon Holm Jensen and Anders Møller and Peter Thiemann",
+    title    = "Type Analysis for Javascript",
+    journal  = "SAS 2009",
+    pages    = "238--255",
+    year     = "2009"
+}
+@article{furr09,
+    author   = "Furr, Michael and An, Jong-hoon (David) and Foster, Jeffrey S. and Hicks, Michael",
+    title    = "Static Type Inference for Ruby",
+    journal  = "SAC 2009",
+    pages    = "1859--1866",
+    year     = "2009"
+}
+@article{pRuby,
+ author = {Furr, Michael and An, Jong-hoon (David) and Foster, Jeffrey S.},
+ title = {Profile-guided Static Typing for Dynamic Scripting Languages},
+ journal = {SIGPLAN Not.},
+ issue_date = {October 2009},
+ volume = {44},
+ number = {10},
+ month = oct,
+ year = {2009},
+ issn = {0362-1340},
+ pages = {283--300},
+ numpages = {18},
+ url = {http://doi.acm.org/10.1145/1639949.1640110},
+ doi = {10.1145/1639949.1640110},
+ acmid = {1640110},
+ publisher = {ACM},
+ address = {New York, NY, USA},
+ keywords = {RIL, profile guided anlaysis, ruby, scripting languages},
+} 
+@inproceedings{aggressiveType,
+    author   = "John Aycock",
+    title    = "Aggressive Type Inference",
+    booktitle  = "Proceedings of the 8th International Python Conference",
+    pages    = "11--20",
+    year     = "2000"
+}
+@techreport{typeInferenceIcon,
+	author = "Kenneth Walker and Ralph E. Griswold",
+	title = "Type Inference in the Icon Programming Language",
+	institution = "University of Arizona, Department of Computer Science",
+	type = "TR 93-32a",
+	year = "1996"
+}
+@inproceedings{evaluatingDynamicBehaviour,
+ author = {Holkner, Alex and Harland, James},
+ title = {Evaluating the Dynamic Behaviour of Python Applications},
+ booktitle = {Proceedings of the Thirty-Second Australasian Conference on Computer Science - Volume 91},
+ series = {ACSC '09},
+ year = {2009},
+ isbn = {978-1-920682-72-9},
+ location = {Wellington, New Zealand},
+ pages = {19--28},
+ numpages = {10},
+ url = {http://dl.acm.org/citation.cfm?id=1862659.1862665},
+ acmid = {1862665},
+ publisher = {Australian Computer Society, Inc.},
+ address = {Darlinghurst, Australia, Australia},
+ keywords = {Python and compilers, dynamic languages},
+} 	
+@inproceedings{cartwrightF91,
+  author    = {Robert Cartwright and
+               Mike Fagan},
+  title     = {Soft Typing},
+  booktitle = {PLDI},
+  year      = {1991},
+  pages     = {278-292},
+  ee        = {http://doi.acm.org/10.1145/113445.113469},
+  crossref  = {DBLP:conf/pldi/1991},
+  bibsource = {DBLP, http://dblp.uni-trier.de}
+}
+
+@@mastersthesis{pyty,
+	author = "Jeff Ruberg",
+	title = "Charming Python with Static Typechecking",
+	year = "2012",
+	month = "April",
+	TYPE = "Bachelor's Thesis",
+	school = "Wesleyan University"
+}
+@@mastersthesis{shedskin,
+  author={Mark Defour},
+  title={Shed Skin: An Optimizing Python-to-C++ Compiler},
+  school={Parallel and Distributed Systems Group, Delft University of Technology},
+  year={2006}
+}
+@@mastersthesis{starkiller,
+  author={Salib, Michael},
+  title={Starkiller: A Static Type Inferencer and Compiler for Python},
+  school={Massachusetts Institute of Technology, Department of Electrical Engineering and Computer Science},
+  year={2004}
+}
+@misc{pySonar,
+  title = {PySonar: a type inferencer and indexer for Python},
+  author = {Yin Wang},
+  year = {2010},
+  howpublished = {\url{http://yinwang0.wordpress.com/2010/09/12/pysonar/}},
+  note = {Accessed: 26-04-2014}
+}
+@misc{pyntch,
+  title = {Pyntch - Static code analyzer for Python},
+  author = {Yusuke Shinyama},
+  year = {2009},
+  howpublished = {\url{http://www.unixuser.org/~euske/python/pyntch/index.html}},
+  note = {Accessed: 29-04-2014}
+}
