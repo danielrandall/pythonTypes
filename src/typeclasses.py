@@ -34,6 +34,10 @@ class BaseType:
         ''' Should be overriden for a type which may contain an Awaiting_Type.
         '''
         return False
+    
+    def is_callable(self):
+        ''' Should be overriden for a type which is callable. '''
+        return False
 
 class Any_Type(BaseType):    
     def __init__(self):
@@ -50,30 +54,59 @@ class Builtin_Type(BaseType):
 class Bytes_Type(BaseType):    
     def __init__(self):
         BaseType.__init__(self,'Bytes')
+        
+class Callable_Type(BaseType):
+    
+    def __init__(self, kind):
+        BaseType.__init__(self,kind)
+        self.callable = True
+        # Variables used for analysis of callable types
+        self.parameter_types = []
+        self.return_types = set()
+        self.arg_default_length = 0
+    
+    def is_callable(self):
+        return self.callable
+    
+class Attribute_Type():
+        def __init__(self, class_type, variable_type):
+            self.class_type = class_type
+            self.variable_type = variable_type
 
 # Note: ClassType is a Python builtin.
 class Class_Type(BaseType):
-    def __init__(self,cx):
-        kind = 'Class: %s cx: %s' % (cx.name,cx)
+    ''' Class to define classes.
+    
+        TODO: Bultin functions such as __class__ .'''
+    def __init__(self, global_vars, callable):
+        ''' global_vars are variables accessible outside of the class. ''' 
+        kind = 'Class: %s cx: %s'
         BaseType.__init__(self,kind)
-        self.cx = cx # The context of the class.
+        self.global_vars = global_vars
+        self.callable = callable
         
     def __repr__(self):
-        return 'Class: %s' % (self.cx.name)
+        return 'Class: %s'
+    
+    def add_to_vars(self, name, new_var):
+        if name in self.global_vars:
+            self.global_vars[name] |= new_var
+        else:
+            self.global_vars[name] = new_var
 
     __str__ = __repr__
 
-class Def_Type(BaseType):    
-    def __init__(self,cx,node):
-        kind = 'Def(%s)@%s' % (cx,id(node))
-        # kind = 'Def(%s)' % (cx)
+class Def_Type(Callable_Type):    
+    ''' TODO: deal with kind. '''
+    def __init__(self, parameter_types, return_types, arg_default_length):
+        kind = 'Def(%s)' % id(parameter_types)
         BaseType.__init__(self,kind)
-        self.cx = cx # The context of the def.
-        self.node = node
+        self.parameter_types = parameter_types
+        self.return_types = return_types
+        self.arg_default_length = arg_default_length
 
 class Dict_Type(BaseType):
     def __init__(self,node):
-        
         # For now, all dicts are separate types.
         # kind = 'Dict(%s)' % (Utils().format(node))
         kind = 'Dict(@%s)' % id(node)

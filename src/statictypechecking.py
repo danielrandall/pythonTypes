@@ -54,7 +54,6 @@ use_leo_globals = True # Better for debugging.
 #@+node:ekr.20120626085227.11393: ** .<< imports >>
 import sys
 isPython3 = sys.version_info >= (3,0,0)
-
 import imp
 from pprint import pprint
 import queue
@@ -242,6 +241,8 @@ class P1(AstFullTraverser):
     **Important**: Injecting empty lists, dicts or sets causes gc problems.
     This code now injects empty dicts only in context nodes, which does
     not cause significant problems.
+    
+    TODO: Edit this and make it more useful
     '''
     def __init__(self):
         AstFullTraverser.__init__(self)
@@ -279,52 +280,6 @@ class P1(AstFullTraverser):
         '''Inject node references in all nodes.'''
         assert isinstance(node,ast.AST),node.__class__.__name__
         self.n_nodes += 1
-        if 0:
-            # Injecting empty lists is expensive!
-            #@+<< code that demonstrates the anomaly >>
-            #@+node:ekr.20130321223545.9508: *4* << code that demonstrates the anomaly >>
-            #@+at
-            # Injecting list ivars into nodes is very expensive!
-            # But only for a collection of large files...
-            # As of rev 403: Leo: 37 files.
-            # Python 2, Windows 7, range(200)
-            #     p1: 3.38 sec. nodes: 289950 kind: 1
-            #     p1: 3.38 sec. nodes: 289950 kind: 2
-            #     p1: 0.73 sec. nodes: 289950 kind: 3
-            # Python 3, Windows 7, range(200)
-            #     p1: 1.83 sec. nodes: 290772 kind: 1
-            #     p1: 2.96 sec. nodes: 290772 kind: 2
-            #     p1: 0.73 sec. nodes: 290772 kind: 3
-            # Python 3, Windows 7, range(100)
-            #     p1: 2.14 sec. nodes: 290772 kind: 1
-            #     p1: 1.92 sec. nodes: 290772 kind: 2
-            #     p1: 0.75 sec. nodes: 290772 kind: 3
-            # Mystery solved: kind1 == kind3 if gc is disabled in the unit test.
-            #@@c
-            kind = 1
-            if kind == 1:
-                # if 0:
-                    # node.stc_test_dict = {}
-                # elif 0: # Bad.
-                    # if hasattr(self.parent,'stc_child_nodes'):
-                        # self.parent.stc_child_nodes.append(node)
-                    # else:
-                        # self.parent.stc_child_nodes = [node]
-                # elif 0: # no problem.
-                    # node.stc_child_nodes = None
-                    # node.stc_child_statements = None
-                # elif 0: # worst.
-                    # node.stc_child_nodes = {}
-                    # node.stc_child_statements = {} 
-                # else: # worst.
-                # self.parent.stc_child_nodes.append(node)
-                node.stc_child_nodes = [] # 0.58 -> 1.70.
-                    # node.stc_child_statements = [] # 1.70 -> 2.81.
-                # for z in node._fields: assert not z.startswith('stc_')
-            elif kind == 2:
-                for i in range(100):
-                    x = []
-            #@-<< code that demonstrates the anomaly >>
         # Save the previous context & parent & inject references.
         # Injecting these two references is cheap.
         node.stc_context = self.context
@@ -332,10 +287,11 @@ class P1(AstFullTraverser):
         # Visit the children with the new parent.
         self.parent = node
         method = getattr(self,'do_' + node.__class__.__name__)
-        method(node)
+        result = method(node)
         # Restore the context & parent.
         self.context = node.stc_context
         self.parent = node.stc_parent
+        return result
         
     def define_name(self,cx,name,defined=True):
         '''
@@ -351,14 +307,20 @@ class P1(AstFullTraverser):
             st.defined.add(name)
 
     def do_Attribute(self,node):
-        
         self.n_attributes += 1
-        self.visit(node.value)
+        name = self.visit(node.value)
         cx = node.stc_context
         st = cx.stc_symbol_table
         d = st.attrs_d
         key = node.attr
         val = node.value
+        # Check if leftside is self
+        if name == "self":
+            parent_class = self.find_parent_class_def(node)
+            if parent_class:
+                parent_class.self_variables.add(node.attr)
+            else:
+                print("Error: self outside of class. ")
         # The following lines are expensive!
         # For Leo P1: 2.0 sec -> 2.5 sec.
     #    if d.has_key(key):
@@ -370,6 +332,13 @@ class P1(AstFullTraverser):
         # self.visit(node.ctx)
         if isinstance(node.ctx,(ast.Param,ast.Store)):
             st.defined_attrs.add(key)
+            
+    def find_parent_class_def(self, node):
+        if not node:
+            return None
+        if isinstance(node, ast.ClassDef):
+            return node
+        return self.find_parent_class_def(node.stc_context)
 
     def do_AugAssign(self,node):
         # g.trace('FT',self.u.format(node),g.callers())
@@ -387,6 +356,8 @@ class P1(AstFullTraverser):
         assert parent_cx == node.stc_context
         # Inject the symbol table for this node.
         node.stc_symbol_table = SymbolTable(parent_cx)
+        node.callable = False
+        node.self_variables = set()
         # Define the function name itself in the enclosing context.
         self.define_name(parent_cx,node.name)
         # Visit the children in a new context.
@@ -402,13 +373,17 @@ class P1(AstFullTraverser):
     def do_FunctionDef (self,node):
         self.n_contexts += 1
         parent_cx = self.context
+        pprint(parent_cx)
         assert parent_cx == node.stc_context
         # Inject the symbol table for this node.
         node.stc_symbol_table = SymbolTable(parent_cx)
         # Add a list of all returns
-        
         node.stc_symbol_table.returns = []
-        
+        # Check special functions
+        if isinstance(parent_cx, ast.ClassDef):
+            parent_cx.self_variables.add(node.name)
+            if node.name == "__call__":
+                parent_cx.callable = True
         # Define the function name itself in the enclosing context.
         self.define_name(parent_cx,node.name)
         # Visit the children in a new context.
@@ -504,6 +479,7 @@ class P1(AstFullTraverser):
             # For example, a += 1 generates a Store, but does not defined the symbol.
             # Instead, only ast.Assign nodes really define a symbol.
             node.stc_scope = None
+        return node.id
 
 class PatternFormatter (AstFormatter):
     # def __init__ (self):
@@ -679,7 +655,9 @@ class SymbolTable:
     
 
 class TypeInferrer(AstFullTraverser):
-    '''A class to infer the types of objects.'''
+    '''A class to infer the types of objects. 
+    
+       TODO: Analyse classes first. '''
     
    # def __init__ (self):
     #    AstFullTraverser.__init__(self)
@@ -724,12 +702,9 @@ class TypeInferrer(AstFullTraverser):
         self.variableTypes = {} # Used as string:name -> set():types
         self.currently_assigning = False
         self.awaiting_Typing = []  # Elements : (node, name)
-        self.functions = {}
         self.fun_params = []
-        
-        self.RETURN_TYPES_NAME = "return_types"
-        self.PARAMETER_TYPES_NAME = "parameter_types"
-        self.DEFAULTS_LEN_NAME = "defaults_length"
+        # The class definition we are currently under
+        self.current_class = None
 
         self.stats = Stats()
         self.u = Utils()
@@ -797,42 +772,28 @@ class TypeInferrer(AstFullTraverser):
         return method(node)
 
     def do_Attribute (self,node):
-        ti = self
-        trace = False and not g.app.runningAllUnitTests
-        
-        # g.trace(ti.format(node),node.value,node.attr)
-        t = ti.visit(node.value) or [] ###
-        t = ti.clean(t)
-        t = ti.merge_failures(t)
-        tag = '%s.%s' % (t,node.attr) # node.attr is always a string.
-        if t:
-            if len(t) == 1:
-                ti.stats.n_not_fuzzy += 1
-                t1 = t[0]
-                if ti.kind(t1) == 'Class_Type':
-                    aList = t1.cx.ivars_dict.get(node.attr)
-                    aList = ti.clean(aList) if aList else []
-                    if aList:
-                        t = []
-                        for node2 in aList:
-                            t.extend(ti.visit(node2))
-                        t = ti.clean(t)
-                        ti.set_cache(node,t,tag='ti.Attribute')
-                        ti.stats.n_attr_success += 1
-                    elif t1.cx.bases:
-                        pass ### Must check super classes.
-                        t = set([Unknown_Type(node)])
-                    else:
-                        t = set([Unknown_Type(node)])
+        ''' Always a variable of the form x.y . '''
+        if node.variable:
+            name = self.do_Name(node.value)[0]
+            if self.currently_assigning:
+                # Special case self
+                if name == "self":
+                    n_type = self.current_class
                 else:
-                    ti.stats.n_attr_fail += 1
-                    t = set([Unknown_Type(node)])
+                    n_type = self.variableTypes[name]
+                assert isinstance(n_type, Class_Type), "Error: Cannot assign to builtin class" + str(n_type)
+                return [Attribute_Type(n_type, node.attr)]
             else:
-                ti.stats.n_fuzzy += 1
+                result_types = set()
+                for n in name:
+                    assert isinstance(n, Class_Type), str(n) + " is not a class. "
+                    assert node.attr in n.global_vars, "Cannot find " + node.attr + " in " + str(n)
+                    result_types |= n.global_vars[node.attr]
+                return [result_types]
         else:
-            t = set([Unknown_Type(node)])
-        # ti.check_attr(node) # Does nothing
-        return [t]
+            # Class here. Like {}.__class__
+            ''' TODO: Find the types '''
+            return [set([any_type])]
 
     def do_Name(self,node):
         # Check whether the name is a function argument
@@ -843,6 +804,9 @@ class TypeInferrer(AstFullTraverser):
         # Stupidly True and False are Names. Return bool type
         if (node.id == "True" or node.id == "False"):
             return [set([bool_type])]
+        if node.id == "self":
+            assert self.current_class, "self used outside of class definition. "
+            return [set([self.current_class])]
         if node.id in self.variableTypes:
             return [self.variableTypes[node.id]]
         else:
@@ -898,8 +862,15 @@ class TypeInferrer(AstFullTraverser):
             if isinstance(value_types[i], Container_Type):
                 value_types[i].infer_types()
                 value_types[i] = set([value_types[i]])
-                
-            self.variableTypes[targets[i]] = value_types[i]
+
+            if isinstance(targets[i], Attribute_Type):
+                class_instance = targets[i].class_type
+                attr = targets[i].variable_type
+                class_instance.add_to_vars(attr, value_types[i])
+                print("global varsssssssssssssssssss")
+                pprint(class_instance.global_vars)
+            else:
+                self.variableTypes[targets[i]] = value_types[i]
             # For each new assign, check whether any are waiting on it.
             self.check_waiting(targets[i])
         
@@ -979,10 +950,6 @@ class TypeInferrer(AstFullTraverser):
                 return [set([a_type])]
         
         result_types = set()
-        for t in left_types:
-                print(type(t))
-                if isinstance(type(t), String_Type):
-                    print("t is string")
         
         for left in left_types:
             for right in right_types:
@@ -1066,7 +1033,7 @@ class TypeInferrer(AstFullTraverser):
             self.visit(z)
         for z in node.values:
             self.visit(z)
-        return [Dict_Type(node)]
+        return [set([Dict_Type(node)])]
     
     def do_If(self,node):
         self.visit(node.test)
@@ -1077,8 +1044,6 @@ class TypeInferrer(AstFullTraverser):
         phis = node.afterPhis
         for phi in phis:
             self.visit(phi)
-            
-        pprint(self.variableTypes)
         
     def do_Phi_Node(self, node):
         self.variableTypes[node.var] = set()
@@ -1114,7 +1079,6 @@ class TypeInferrer(AstFullTraverser):
         phis = node.afterPhis
         for phi in phis:
             self.visit(phi)
-        pprint(self.variableTypes)
                 
     def do_For(self, node):
         ''' TODO: Allow for any Iterable object in node.iter instead of just List_Type. '''
@@ -1122,11 +1086,7 @@ class TypeInferrer(AstFullTraverser):
         self.currently_assigning = True
         targets = self.visit(node.target)
         self.currently_assigning = False
-        print("targets")
-      #  pprint(targets)
-        print("types")
         value_types = self.visit(node.iter)
-        pprint(value_types)
         # value_types should be a list.
       #  assert isinstance(value_types, List_Type)
         self.conduct_assignment(targets, self.extract_list_types(value_types), node)
@@ -1170,7 +1130,6 @@ class TypeInferrer(AstFullTraverser):
         for z in node.args:
             given_arg_types.extend(self.visit(z))
         func_name = self.find_function_call(node)
-        print(func_name)
         func = self.builtin_type_dict.get(func_name,[])
         if func:
             return_types = func[self.RETURN_TYPES_NAME]
@@ -1186,8 +1145,6 @@ class TypeInferrer(AstFullTraverser):
                 accepted_types = [accepted_types[x] for x in range(len(accepted_types) - missing_num)]
                 
             for i in range(len(given_arg_types)):
-                pprint(given_arg_types[i])
-                pprint(accepted_types[i])
                 # If the arg is a function parameter then we can not type check
                 # generate a constraint and then move on.
                 if given_arg_types[i] in self.fun_params:
@@ -1197,10 +1154,6 @@ class TypeInferrer(AstFullTraverser):
                 for t1 in given_arg_types[i]:
                     type_allowed = False
                     for t2 in accepted_types[i]:
-                        print("t1")
-                        pprint(t1)
-                        print("t2")
-                        pprint(t2)
                         if (t1 <= t2):
                             type_allowed = True
                     assert type_allowed, "Incorrect type given to function"
@@ -1218,8 +1171,6 @@ class TypeInferrer(AstFullTraverser):
         for node2 in node.generators:
             self.visit(node2)
         t = self.visit(node.elt)
-        print("t")
-        pprint(t)
         # Reset types
         self.variableTypes = old_type_list
         return [set([List_Type(node, list(t), set())])]
@@ -1234,9 +1185,10 @@ class TypeInferrer(AstFullTraverser):
         self.conduct_assignment(targets, value_types, node)
         #return [List_Type(node)]
         
-    def do_FunctionDef (self,node):
+    def do_FunctionDef(self,node):
         ''' Find all args and return values. '''
-        pprint(node.stc_symbol_table.returns)
+        old_types = self.variableTypes.copy()
+
         # Create a constraint satisfaction problem for the arguments
         self.fun_params = self.visit(node.args)
         self.constraint_gen = ConstraintGenerator()
@@ -1248,7 +1200,7 @@ class TypeInferrer(AstFullTraverser):
         for z in node.decorator_list:
             self.visit(z)
             
-        # If nothing was added then this function does not return anythin
+        # If nothing was added then this function does not return anything
         if self.fun_return_types == set():
             self.fun_return_types = set([none_type])
         
@@ -1258,26 +1210,31 @@ class TypeInferrer(AstFullTraverser):
         parameter_types = []
         for arg in self.fun_params:
             parameter_types.append(self.variableTypes[arg])
-        
-        # Add the function to the list to be used later
-        self.functions[node.name] = {}
-        self.functions[node.name][self.RETURN_TYPES_NAME] = self.fun_return_types 
-        self.functions[node.name][self.PARAMETER_TYPES_NAME] = parameter_types
-        self.functions[node.name][self.DEFAULTS_LEN_NAME] = node.args.default_length
-        
-        pprint(self.functions[node.name])
-        
+            
         self.fun_params = []
-        pprint(self.variableTypes)
+        # Restore variables
+        self.variableTypes = old_types
+        
+        fun_type = Def_Type(parameter_types, self.fun_return_types, node.args.default_length)
+        self.variableTypes[node.name] = set([fun_type])
+        #Add to the currently class vars if there is one
+        if self.current_class:
+            self.current_class.add_to_vars(node.name, fun_type)
             
     def do_arguments(self,node):
         ''' We need to begin checking what types the args can take. Defaults
             already give us a nice possible value.
             The defaults list contains the value for the last len(defaults)
-            arguments. '''
+            arguments.
+            TODO: Deal with list length when self is removed. '''
         args = []
         for z in node.args:
             args.extend(self.visit(z))
+        # If this a function in a class then self should be the first arg
+        if self.current_class:
+            pprint(args[0])
+            assert(args[0] == "self"), "First argument of function " + node.stc_parent.name + " should be self."
+            del args[0]
         defaults = []
         for z in node.defaults:
             defaults.extend(self.visit(z))
@@ -1295,6 +1252,16 @@ class TypeInferrer(AstFullTraverser):
             
     def do_arg(self, node):
         return [node.id]
+    
+    def do_ClassDef(self,node):
+        ''' The __init__ will provide us with the majority of the self. vars
+            so we want to analyse that first. '''
+        old_types = self.variableTypes.copy()
+        self.current_class = Class_Type({}, node.callable)
+        for z in node.body:
+            self.visit(z)
+        self.variableTypes = old_types
+        self.variableTypes[node.name] = [set([self.current_class])]
 
     def do_Compare(self,node):
         ''' A comparison will always return a boolean type.
@@ -1303,6 +1270,18 @@ class TypeInferrer(AstFullTraverser):
         for z in node.comparators:
             self.visit(z)
         return [set([bool_type])]
+    
+    def do_Return(self,node):
+        if not node.value:
+            self.fun_return_types |= set([none_type])
+            return            
+        possible_return_type = self.visit(node.value)[0] # Can only be len 1
+        # If the a parameter is being returned then use the default value set
+        # Its probably any_type.
+        if possible_return_type in self.fun_params:
+            possible_return_type = self.variableTypes[possible_return_type]
+        assert isinstance(possible_return_type, set), "Can be a set of types!"
+        self.fun_return_types |= possible_return_type
 
     def do_Expr(self,node):
         ti = self
@@ -1349,19 +1328,6 @@ class TypeInferrer(AstFullTraverser):
     def do_Builtin(self,node):
         ti = self
         return [ti.builtin_type]
-
-    def do_ClassDef(self,node):
-        for z in node.body:
-            self.visit(z)
-
-    def do_Return(self,node):
-        possible_return_type = self.visit(node.value)[0] # Can only be len 1
-        # If the a parameter is being returned then use the default value set
-        # Its probably any_type.
-        if possible_return_type in self.fun_params:
-            possible_return_type = self.variableTypes[possible_return_type]
-        assert isinstance(possible_return_type, set), "Can be a set of types!"
-        self.fun_return_types |= possible_return_type
         
     def do_Yield(self,node):
         return self.return_helper(node)
