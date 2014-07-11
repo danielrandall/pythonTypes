@@ -351,19 +351,18 @@ class SSA_Traverser(AstFullTraverser):
         self.d = old_d
 
     def do_arguments(self,node):
-        print("HERE")
-    #    trace = True and not g.app.runningAllUnitTests
         assert isinstance(node,ast.AST),node
         
         for arg in node.args:
             self.visit(arg)
             
     def do_arg(self, node):
-            print("arg!")
-            print(node.arg)
-            node.originalId = node.arg
-            self.d[node.arg] = 1
-            node.id = node.originalId + str(self.d[node.originalId])
+        if node.arg == "self":
+            node.id = node.arg
+            return
+        node.originalId = node.arg
+        self.d[node.arg] = 1
+        node.id = node.originalId + str(self.d[node.originalId])
 
     def do_Assign(self,node):
         self.visit(node.value)
@@ -373,7 +372,16 @@ class SSA_Traverser(AstFullTraverser):
     def do_AugAssign(self,node):
         ''' We need to store the previous iteration of the target variable name
             so we know what to load in the type inference.
-            TODO: Assign prev_name a bit more elegently. '''
+            TODO: Assign prev_name a bit more elegantly.
+            TODO: Allow this to work with Expressions such as self.x += 4'''
+        pprint(node.target)
+        
+        self.visit(node.target)
+        self.visit(node.value)
+   #     pprint(node.target.attr)
+        # We to create a node.target.id but no need to visit it again
+        if isinstance(node.target, ast.Attribute):
+            self.visit(node.target)
         assert hasattr(node.target, 'id'), "Error: Target is not a variable."
         
         prev_name = ast.Name()
@@ -381,10 +389,20 @@ class SSA_Traverser(AstFullTraverser):
         prev_name.id = node.target.id
         node.prev_name = node.target.id
         self.visit(prev_name)
-        node.prev_name = prev_name
+        node.prev_name = prev_name        
         
-        self.visit(node.target)
-        self.visit(node.value)
+    def do_Attribute(self,node):
+        ''' Add a new variable of the form x.y if it's a variable.
+            SSA not currently performed '''
+        if isinstance(node.value, ast.Name):
+            node.id = node.value.id + '.' + node.attr
+            node.variable = True
+            return
+            self.do_Name(node)
+        else:
+            self.visit(node.attr)
+            self.visit(node.value)
+            node.variable = False
 
     def do_Import(self,node):        
         for z in node.names:
@@ -414,6 +432,8 @@ class SSA_Traverser(AstFullTraverser):
             return
         if node.id == "None":
             return
+        if node.id == "self":
+            return
         if node.id in self.built_in_classes:
             return
         if not hasattr(node, 'originalId'):
@@ -424,6 +444,10 @@ class SSA_Traverser(AstFullTraverser):
                 self.d[node.originalId] += 1
             else:
                 self.d[node.originalId] = 1
+        # If it's x.y attribute and a ast.Load then for now we assume that it's already present
+        ''' TODO: Check all possible attributes. '''
+        if isinstance(node.ctx, ast.Load) and isinstance(node, ast.Attribute):
+            return
                 
        # pprint(self.d)
         node.id = node.originalId + str(self.d[node.originalId])

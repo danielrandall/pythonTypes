@@ -47,7 +47,7 @@ class ConstraintGenerator:
     def extract_results(self):
         # Extract results
         solutions = self.csp_problem.getSolutions()
-        pprint(solutions)
+        #pprint(solutions)
         biggest_sols = self.find_largest_set_in_list_of_dicts(solutions)
         self.update_types(biggest_sols)
         
@@ -117,8 +117,8 @@ class ConstraintGenerator:
             TODO: sub / mult '''
         global BASE_ADD_TYPES
               
-        pprint(left_types)
-        pprint(right_types)
+        #pprint(left_types)
+        #pprint(right_types)
         if left_types not in self.parameters and right_types not in self.parameters:
             #return super(TypeInferrer, self).do_BinOp(node)
             return

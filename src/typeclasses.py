@@ -58,15 +58,24 @@ class Bytes_Type(BaseType):
 class Callable_Type(BaseType):
     
     def __init__(self, kind):
-        BaseType.__init__(self,kind)
-        self.callable = True
+        super().__init__(kind)
+        self.supports_calling = True
         # Variables used for analysis of callable types
         self.parameter_types = []
         self.return_types = set()
         self.arg_default_length = 0
     
     def is_callable(self):
-        return self.callable
+        return self.supports_calling
+    
+    def get_parameter_types(self):
+        return self.parameter_types
+    
+    def get_return_types(self):
+        return self.return_types
+    
+    def get_arg_default_length(self):
+        return self.arg_default_length
     
 class Attribute_Type():
         def __init__(self, class_type, variable_type):
@@ -74,33 +83,35 @@ class Attribute_Type():
             self.variable_type = variable_type
 
 # Note: ClassType is a Python builtin.
-class Class_Type(BaseType):
+class Class_Type(Callable_Type):
     ''' Class to define classes.
     
         TODO: Bultin functions such as __class__ .'''
-    def __init__(self, global_vars, callable):
+    def __init__(self, name, global_vars, supports_calling):
         ''' global_vars are variables accessible outside of the class. ''' 
         kind = 'Class: %s cx: %s'
-        BaseType.__init__(self,kind)
+        super().__init__(kind)
+        self.name = name
         self.global_vars = global_vars
-        self.callable = callable
+        self.supports_calling = supports_calling
         
     def __repr__(self):
-        return 'Class: %s'
+        return 'Class: %s' % self.name
     
     def add_to_vars(self, name, new_var):
         if name in self.global_vars:
             self.global_vars[name] |= new_var
         else:
             self.global_vars[name] = new_var
-
-    __str__ = __repr__
+            
+    def get_vars(self):
+        return self.global_vars
 
 class Def_Type(Callable_Type):    
     ''' TODO: deal with kind. '''
     def __init__(self, parameter_types, return_types, arg_default_length):
         kind = 'Def(%s)' % id(parameter_types)
-        BaseType.__init__(self,kind)
+        super().__init__(kind)
         self.parameter_types = parameter_types
         self.return_types = return_types
         self.arg_default_length = arg_default_length

@@ -23,7 +23,7 @@ class AstFullTraverser(AstBaseTraverser):
     # def __init__(self):
         # AstBaseTraverser.__init__(self)
 
-    def run (self,root):    
+    def run(self,root):    
         # py==lint: disable=W0221
             # Arguments number differs from overridden method.
         self.visit(root)
@@ -37,8 +37,11 @@ class AstFullTraverser(AstBaseTraverser):
     def do_Num(self,node):
         pass # Num(object n) # a number as a PyObject.
         
-    def do_Str (self,node):
+    def do_Str(self,node):
         pass # represents a string constant.
+    
+    def do_str(self, node):
+        pass
     
     def do_Set(self, node):
         pass
@@ -56,11 +59,9 @@ class AstFullTraverser(AstBaseTraverser):
         if node.annotation:
             self.visit(node.annotation)
 
-
     def do_Attribute(self,node):
         self.visit(node.value)
         # self.visit(node.ctx)
-
 
     def do_BinOp (self,node):
         self.visit(node.left)
@@ -91,7 +92,7 @@ class AstFullTraverser(AstBaseTraverser):
     def do_comprehension(self,node):
         self.visit(node.target) # A name.
         self.visit(node.iter) # An attribute.
-        for z in node.ifs: ### Bug fix.
+        for z in node.ifs:
             self.visit(z)
 
     def do_Dict(self,node):
@@ -186,7 +187,6 @@ class AstFullTraverser(AstBaseTraverser):
         self.visit(node.value)
 
     def do_AugAssign(self,node):
-        # g.trace('FT',Utils().format(node),g.callers())
         self.visit(node.target)
         self.visit(node.value)
 
@@ -200,16 +200,13 @@ class AstFullTraverser(AstBaseTraverser):
             self.visit(z)
         for z in node.decorator_list:
             self.visit(z)
+            
     def do_Continue(self,tree):
         pass
-
 
     def do_Delete(self,node):
         for z in node.targets:
             self.visit(z)
-    #@+node:ekr.20130314200806.9384: *5* ft.ExceptHandler
-    # Python 2: ExceptHandler(expr? type, expr? name, stmt* body)
-    # Python 3: ExceptHandler(expr? type, identifier? name, stmt* body)
 
     def do_ExceptHandler(self,node):
         if node.type:
@@ -315,7 +312,7 @@ class AstFullTraverser(AstBaseTraverser):
             self.visit(z)
 
     def do_While (self,node):
-        self.visit(node.test) # Bug fix: 2013/03/23.
+        self.visit(node.test)
         for z in node.body:
             self.visit(z)
         for z in node.orelse:
@@ -338,6 +335,3 @@ class AstFullTraverser(AstBaseTraverser):
         method_name = 'do_' + node.__class__.__name__
         method = getattr(self,method_name)
         return method(node)
-
-    def visit_children(self,node):
-        assert False,'must visit children explicitly'

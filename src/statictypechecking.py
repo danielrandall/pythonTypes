@@ -718,26 +718,33 @@ class TypeInferrer(AstFullTraverser):
 
         # Create the builtin type dict.
         ''' TODO: Differing number of parameters. '''
-        self.builtin_type_dict = {
-            'eval': {'parameter_types': [set([string_type])],
-                     'return_types': [set([any_type])],
-                     'defaults_length': 0},
-            'id':   {'parameter_types': [set([any_type])],
-                     'return_types': [set([int_type])]},
-            'str':  {'parameter_types': [set([any_type])],
-                     'return_types': [set([string_type])]},
-            'len':  {'parameter_types': [set([any_type])],
-                     'return_types': [set([int_type])]},
-            'range':  {'parameter_types': [set([int_type]), set([int_type]), set([int_type])],
-                     'return_types': [set([ List_Type(None, [], set([int_type]) ) ])] ,
-                     'defaults_length': 2} ,
-            'ord':  {'parameter_types': [set([string_type])],
-                     'return_types': [set([int_type])]},
-            'chr':  {'parameter_types': [set([int_type])],
-                     'return_types': [set([string_type])]},
+        builtin_type_dict = {
+            'eval': set([Def_Type([set([string_type])],
+                                  set([any_type]),
+                                  0)]),
+            'id':   set([Def_Type([set([any_type])],
+                                  set([int_type]),
+                                  0)]),
+            'str':  set([Def_Type([set([any_type])],
+                                  set([string_type]),
+                                  0)]),
+            'len':  set([Def_Type([set([any_type])],
+                                  set([int_type]),
+                                  0)]),
+            'range':  set([Def_Type([set([int_type]), set([int_type]), set([int_type])],
+                                    set([ List_Type(None, [], set([int_type]) ) ]),
+                                    2)]),
+            'ord':  set([Def_Type([set([string_type])],
+                                  set([int_type]),
+                                  0)]),
+            'chr':  set([Def_Type([set([int_type])],
+                                  set([string_type]),
+                                  0)])
             # list,tuple...
             # close,open,sort,sorted,super...
         }
+        # Add the builtin_types to the variable dict
+        self.variableTypes.update(builtin_type_dict)
         
        
     def run (self,root):        
@@ -827,8 +834,7 @@ class TypeInferrer(AstFullTraverser):
         pprint(self.variableTypes)
         
     def conduct_assignment(self, targets, value_types, node):
-        assert(len(value_types) == len(targets))
-            
+        assert(len(value_types) == len(targets)) 
         for i in range(len(targets)):
             for e in value_types[i]:
                 result = e.contains_waiting_type()
@@ -848,7 +854,6 @@ class TypeInferrer(AstFullTraverser):
                     del value_types[i]
                     del targets[i]
                     break
-        
         # Must start a new loop as we delete elements in the previous loop
         for i in range(len(targets)):
             if isinstance(targets[i], Container_Type):
@@ -867,8 +872,6 @@ class TypeInferrer(AstFullTraverser):
                 class_instance = targets[i].class_type
                 attr = targets[i].variable_type
                 class_instance.add_to_vars(attr, value_types[i])
-                print("global varsssssssssssssssssss")
-                pprint(class_instance.global_vars)
             else:
                 self.variableTypes[targets[i]] = value_types[i]
             # For each new assign, check whether any are waiting on it.
@@ -1124,16 +1127,21 @@ class TypeInferrer(AstFullTraverser):
         ''' Infer the value of a function called with a particular set of 
             arguments.
             TODO: Change so builtins can have more than 1 set of parameters. '''
-        # Special case builtins.
-        return_types = []
         given_arg_types = []
+        result_types = set()
         for z in node.args:
             given_arg_types.extend(self.visit(z))
-        func_name = self.find_function_call(node)
-        func = self.builtin_type_dict.get(func_name,[])
-        if func:
-            return_types = func[self.RETURN_TYPES_NAME]
-            accepted_types = func[self.PARAMETER_TYPES_NAME]
+        possible_funcs = self.visit(node.func)[0]
+        pprint(possible_funcs)
+        for x in possible_funcs:
+            print("-----------------------------")
+            pprint(x.is_callable())
+        callable_funcs = [x for x in possible_funcs if x.is_callable()]
+        # At least one possible type needs to be callable
+        assert callable_funcs, str(node.lineno) + " not callable."
+        for func in callable_funcs:
+            func_return_types = func.get_return_types()
+            accepted_types = func.get_parameter_types()
 
             # Check that the correct number of types has been given.
             # If the number is less than the maximum then ensure it falls
@@ -1141,7 +1149,7 @@ class TypeInferrer(AstFullTraverser):
             assert len(given_arg_types) <= len(accepted_types)
             if len(given_arg_types) < len(accepted_types):
                 missing_num = len(accepted_types) - len(given_arg_types)
-                assert missing_num <= func[self.DEFAULTS_LEN_NAME], "Too few args given"
+                assert missing_num <= func.get_arg_default_length, "Too few args given"
                 accepted_types = [accepted_types[x] for x in range(len(accepted_types) - missing_num)]
                 
             for i in range(len(given_arg_types)):
@@ -1157,10 +1165,9 @@ class TypeInferrer(AstFullTraverser):
                         if (t1 <= t2):
                             type_allowed = True
                     assert type_allowed, "Incorrect type given to function"
-            return return_types
-        # Cannot find the function. Return any
-        print("Function " + func_name + " not found")
-        return [set([any_type])]
+            result_types |= func_return_types
+        pprint(result_types)
+        return [result_types]
             
     def do_ListComp(self,node):
         ''' A list comp can edit values inside of comp. Therefore must reset the
@@ -1255,13 +1262,27 @@ class TypeInferrer(AstFullTraverser):
     
     def do_ClassDef(self,node):
         ''' The __init__ will provide us with the majority of the self. vars
-            so we want to analyse that first. '''
+            so we want to analyse that first.
+            TODO: Reverse base class list and update that way to avoid list comp. '''
+        print(node.callable)
         old_types = self.variableTypes.copy()
-        self.current_class = Class_Type({}, node.callable)
+        # Deal with inheritence.
+        inherited_vars = {}
+        for base in node.bases:
+            base_class = self.visit(base)[0]
+            acceptable_type = False
+            for possible_type in base_class:
+                if isinstance(possible_type, Class_Type):
+                    # If there is a clash, the first instance will be used
+                    inherited_vars.update({k:v for k,v in possible_type.get_vars().items() if k not in inherited_vars})
+                    acceptable_type = True
+            assert acceptable_type, base.id + " is not a class. "
+        self.current_class = Class_Type(node.name, inherited_vars, node.callable)
         for z in node.body:
             self.visit(z)
+        pprint(self.current_class.global_vars)
         self.variableTypes = old_types
-        self.variableTypes[node.name] = [set([self.current_class])]
+        self.variableTypes[node.name] = set([self.current_class])
 
     def do_Compare(self,node):
         ''' A comparison will always return a boolean type.
