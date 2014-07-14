@@ -356,7 +356,8 @@ class P1(AstFullTraverser):
         assert parent_cx == node.stc_context
         # Inject the symbol table for this node.
         node.stc_symbol_table = SymbolTable(parent_cx)
-        node.callable = False
+        # Holds whether the node is callable and the relevent func node
+        node.callable = False, None
         node.self_variables = set()
         # Define the function name itself in the enclosing context.
         self.define_name(parent_cx,node.name)
@@ -383,7 +384,7 @@ class P1(AstFullTraverser):
         if isinstance(parent_cx, ast.ClassDef):
             parent_cx.self_variables.add(node.name)
             if node.name == "__call__":
-                parent_cx.callable = True
+                parent_cx.callable = (True, node)
         # Define the function name itself in the enclosing context.
         self.define_name(parent_cx,node.name)
         # Visit the children in a new context.
@@ -1223,10 +1224,10 @@ class TypeInferrer(AstFullTraverser):
         self.variableTypes = old_types
         
         fun_type = Def_Type(parameter_types, self.fun_return_types, node.args.default_length)
-        self.variableTypes[node.name] = set([fun_type])
+        self.variableTypes[node.id] = set([fun_type])
         #Add to the currently class vars if there is one
         if self.current_class:
-            self.current_class.add_to_vars(node.name, fun_type)
+            self.current_class.add_to_vars(node.id, self.variableTypes[node.id])
             
     def do_arguments(self,node):
         ''' We need to begin checking what types the args can take. Defaults
@@ -1264,7 +1265,6 @@ class TypeInferrer(AstFullTraverser):
         ''' The __init__ will provide us with the majority of the self. vars
             so we want to analyse that first.
             TODO: Reverse base class list and update that way to avoid list comp. '''
-        print(node.callable)
         old_types = self.variableTypes.copy()
         # Deal with inheritence.
         inherited_vars = {}
@@ -1277,12 +1277,44 @@ class TypeInferrer(AstFullTraverser):
                     inherited_vars.update({k:v for k,v in possible_type.get_vars().items() if k not in inherited_vars})
                     acceptable_type = True
             assert acceptable_type, base.id + " is not a class. "
-        self.current_class = Class_Type(node.name, inherited_vars, node.callable)
+        self.current_class = Class_Type(node.id, inherited_vars, node.callable)
+        self.move_init_to_top(node.body)
         for z in node.body:
             self.visit(z)
-        pprint(self.current_class.global_vars)
+        # We need to set the parameters for init
+        init_def = list(self.variableTypes["__init__"])[0]
+        self.current_class.set_init_params(init_def.parameter_types)
+        pprint(self.variableTypes)
+        # Set the call if possible
+        is_callable, call_node = node.callable
+        if is_callable:
+            fun = list(self.variableTypes[call_node.id])
+            # Should be a list of size 1
+            assert len(fun) == 1, "__call__ multiply defined. "
+            self.current_class.set_callable_params(fun[0].get_parameter_types(), fun[0].get_return_types())
         self.variableTypes = old_types
-        self.variableTypes[node.name] = set([self.current_class])
+        self.variableTypes[node.id] = set([self.current_class])
+        
+    def move_init_to_top(self, body):
+        assert isinstance(body, list), "Body needs to be a list."
+        for i in range(len(body)):
+            elem = body[i]
+            if isinstance(elem, ast.FunctionDef):
+                if elem.name == "__init__":
+                    body.insert(0, body.pop(i))
+                    return
+        else:
+            # Insert a blank one if none found
+            init_def = ast.FunctionDef()
+            init_def.body = [ast.Pass()]
+            init_def.args = ast.arguments()
+            arg = ast.arg()
+            arg.id = "self"
+            init_def.args.args = [arg]
+            init_def.args.defaults = []
+            init_def.id = "__init__"
+            init_def.decorator_list = []
+            body.insert(0, init_def)
 
     def do_Compare(self,node):
         ''' A comparison will always return a boolean type.

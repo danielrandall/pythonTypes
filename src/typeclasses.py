@@ -84,19 +84,22 @@ class Attribute_Type():
 
 # Note: ClassType is a Python builtin.
 class Class_Type(Callable_Type):
-    ''' Class to define classes.
+    ''' Class to define classes. This is always callable due to init.
     
-        TODO: Bultin functions such as __class__ .'''
-    def __init__(self, name, global_vars, supports_calling):
+        TODO: Bultin functions such as __class__ .
+        TODO: Only allow static functions to be called from here. '''
+    def __init__(self, name, global_vars, has_call_func):
         ''' global_vars are variables accessible outside of the class. ''' 
-        kind = 'Class: %s cx: %s'
+        kind = 'Class Def: %s' % name
         super().__init__(kind)
         self.name = name
         self.global_vars = global_vars
-        self.supports_calling = supports_calling
+        self.has_call_func = has_call_func
+        self.call_param_types = None
+        self.call_return_types = None
         
     def __repr__(self):
-        return 'Class: %s' % self.name
+        return 'Class Dec: %s' % self.name
     
     def add_to_vars(self, name, new_var):
         if name in self.global_vars:
@@ -106,6 +109,33 @@ class Class_Type(Callable_Type):
             
     def get_vars(self):
         return self.global_vars
+    
+    def set_init_params(self, parameter_types):
+        self.parameter_types = parameter_types
+    
+    def set_callable_params(self, call_param_types, call_return_types):
+        self.call_param_types = call_param_types
+        self.call_return_types = call_return_types
+    
+    def get_return_types(self):
+        ''' We want to return a new instance every time. '''
+        return set([Class_Instance(self.name, self.global_vars.copy(), \
+                              self.has_call_func, self.call_param_types, \
+                              self.call_return_types)])
+    
+class Class_Instance(Callable_Type):
+    ''' Used to represent initialised classes. '''
+    def __init__(self, name, global_vars, has_call_func, call_parameter_types, \
+                 call_return_types):
+        kind = 'Class Instance: %s' % name
+        super().__init__(kind)
+        self.name = name
+        self.supports_calling = has_call_func
+        self.parameter_types = call_parameter_types
+        self.return_types = call_return_types
+    
+    def __repr__(self):
+        return 'Class Instance: %s' % self.name
 
 class Def_Type(Callable_Type):    
     ''' TODO: deal with kind. '''
