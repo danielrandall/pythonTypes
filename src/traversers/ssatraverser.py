@@ -110,6 +110,7 @@ class SSA_Traverser(AstFullTraverser):
             self.visit(node.starargs)
         if getattr(node,'kwargs',None):
             self.visit(node.kwargs)
+        self.visit(node.func)
 
     def do_For(self,node):
         ''' if loop, for now, is the same as the while loop. '''
@@ -313,8 +314,12 @@ class SSA_Traverser(AstFullTraverser):
             self.d[node.name] += 1
         else:
             self.d[node.name] = 1
+        node.originalId = node.name
+        node.id = node.originalId + str(self.d[node.originalId])
         old_d = self.d
         self.add_intial_class_names()
+        for z in node.bases:
+            self.visit(z)
         for z in node.body:
             self.visit(z)
         self.d = old_d
@@ -326,6 +331,8 @@ class SSA_Traverser(AstFullTraverser):
             self.d[node.name] += 1
         else:
             self.d[node.name] = 1
+        node.originalId = node.name
+        node.id = node.originalId + str(self.d[node.originalId])
         # Store d so we can eradicate local variables
         old_d = self.d
         print(node.name)
@@ -374,22 +381,26 @@ class SSA_Traverser(AstFullTraverser):
             so we know what to load in the type inference.
             TODO: Assign prev_name a bit more elegantly.
             TODO: Allow this to work with Expressions such as self.x += 4'''
-        pprint(node.target)
-        
-        self.visit(node.target)
         self.visit(node.value)
    #     pprint(node.target.attr)
         # We to create a node.target.id but no need to visit it again
         if isinstance(node.target, ast.Attribute):
             self.visit(node.target)
+            node.prev_name = node.target
+            return
         assert hasattr(node.target, 'id'), "Error: Target is not a variable."
         
         prev_name = ast.Name()
         prev_name.ctx = ast.Load()
         prev_name.id = node.target.id
         node.prev_name = node.target.id
+        node.prev_name = prev_name
         self.visit(prev_name)
-        node.prev_name = prev_name        
+        self.visit(node.target)
+        print("Target")      
+        print(node.target.id)
+        print("Prev name")
+        print(node.prev_name.id)  
         
     def do_Attribute(self,node):
         ''' Add a new variable of the form x.y if it's a variable.
@@ -397,8 +408,8 @@ class SSA_Traverser(AstFullTraverser):
         if isinstance(node.value, ast.Name):
             node.id = node.value.id + '.' + node.attr
             node.variable = True
-            return
             self.do_Name(node)
+            self.visit(node.value)
         else:
             self.visit(node.attr)
             self.visit(node.value)
@@ -450,7 +461,11 @@ class SSA_Traverser(AstFullTraverser):
             return
                 
        # pprint(self.d)
-        node.id = node.originalId + str(self.d[node.originalId])
+        try:
+            node.id = node.originalId + str(self.d[node.originalId])
+        except:
+            pass
+           
         
 class Phi_Node():
     ''' Class used to represent a phi node in the SSA. Allows us to represent

@@ -261,7 +261,7 @@ class P1(AstFullTraverser):
             self.stc_context = None
             self.stc_child_nodes = [] # Testing only.
 
-    def run (self,fn,root):
+    def run(self,fn,root):
         '''Run the prepass: init, then visit the root.'''
         # Init all ivars.
         self.context = None
@@ -354,8 +354,12 @@ class P1(AstFullTraverser):
         self.n_contexts += 1
         parent_cx = self.context
         assert parent_cx == node.stc_context
+        # Add this function to its parents contents dict
+        parent_cx.contents_dict[node.name] = node
         # Inject the symbol table for this node.
         node.stc_symbol_table = SymbolTable(parent_cx)
+        # The contents of this module to which children add themselves.
+        node.contents_dict = {}
         # Holds whether the node is callable and the relevent func node
         node.callable = False, None
         node.self_variables = set()
@@ -370,14 +374,19 @@ class P1(AstFullTraverser):
         for z in node.decorator_list:
             self.visit(z)
         self.context = parent_cx
+        print("CLASS CONTENTS")
+        pprint(node.contents_dict)
 
     def do_FunctionDef (self,node):
         self.n_contexts += 1
         parent_cx = self.context
-        pprint(parent_cx)
         assert parent_cx == node.stc_context
+        # Add this function to its parents contents dict
+        parent_cx.contents_dict[node.name] = node
         # Inject the symbol table for this node.
         node.stc_symbol_table = SymbolTable(parent_cx)
+        # The contents of this module to which children add themselves.
+        node.contents_dict = {}
         # Add a list of all returns
         node.stc_symbol_table.returns = []
         # Check special functions
@@ -456,12 +465,16 @@ class P1(AstFullTraverser):
         assert node.stc_context is None
         # Inject the symbol table for this node.
         node.stc_symbol_table = SymbolTable(node)
+        # The contents of this module to which children add themselves.
+        node.contents_dict = {}
         # Visit the children in the new context.
         self.context = node
         for z in node.body:
             self.visit(z)
         self.context = None
        # print(node.stc_symbol_table)
+        print("MODULE CONTENTS")
+        pprint(node.contents_dict)
 
     def do_Name(self,node):
         # g.trace('P1',node.id)
@@ -779,22 +792,28 @@ class TypeInferrer(AstFullTraverser):
         self.n_nodes += 1
         return method(node)
 
-    def do_Attribute (self,node):
-        ''' Always a variable of the form x.y . '''
+    def do_Attribute (self, node):
+        ''' Always a variable of the form x.y .
+            TODO: For assignments x.y = ? and x can be a number of different classes - do something clever. '''
         if node.variable:
             name = self.do_Name(node.value)[0]
             if self.currently_assigning:
                 # Special case self
                 if name == "self":
-                    n_type = self.current_class
+                    class_to_assign = self.current_class
                 else:
                     n_type = self.variableTypes[name]
-                assert isinstance(n_type, Class_Type), "Error: Cannot assign to builtin class" + str(n_type)
-                return [Attribute_Type(n_type, node.attr)]
+                    class_to_assign = None
+                    for n in n_type:
+                        if isinstance(n, Class_Base):
+                            class_to_assign = n
+                            break                 
+                assert class_to_assign, "Error: Cannot assign to builtin class" + str(n_type)
+                return [Attribute_Type(class_to_assign, node.attr)]
             else:
                 result_types = set()
                 for n in name:
-                    assert isinstance(n, Class_Type), str(n) + " is not a class. "
+                    assert isinstance(n, Class_Base), str(n) + " is not a class. "
                     assert node.attr in n.global_vars, "Cannot find " + node.attr + " in " + str(n)
                     result_types |= n.global_vars[node.attr]
                 return [result_types]
@@ -803,7 +822,7 @@ class TypeInferrer(AstFullTraverser):
             ''' TODO: Find the types '''
             return [set([any_type])]
 
-    def do_Name(self,node):
+    def do_Name(self, node):
         # Check whether the name is a function argument
         if node.id in self.fun_params:
             return [node.id]
@@ -817,10 +836,54 @@ class TypeInferrer(AstFullTraverser):
             return [set([self.current_class])]
         if node.id in self.variableTypes:
             return [self.variableTypes[node.id]]
-        else:
-            return [set([none_type])]
+        # Check if name has already been analysed (i.e. has an SSA)
+        pass
+        # Check if name is defined somewhere in the future
+        print(node.id)
+        found = self.find_in_parent_contexts(node.id, node.stc_context)
+        if found:
+            found_node, found_context = found
+            self.visit(found_node)
+            self.give_ssa_reference(node)
+            pprint(self.variableTypes)
+            assert node.id in self.variableTypes, "node.id should really be in there now!"
+            return [self.variableTypes[node.id]]
+        return [set([none_type])]
     
-    def do_Assign(self,node):
+    def find_in_parent_contexts(self, name_to_find, context):
+        ''' Returns a tuple containing the found node and it's context. '''
+        if name_to_find in context.contents_dict:
+            return (context.contents_dict[name_to_find], context)
+        # Keep going up the module hierarchy until a dead end is reached
+        if context.stc_context:
+            return self.find_in_parent_contexts(name_to_find, context.stc_context)
+        return None
+    
+    def find_biggest_ssa_reference(self, id):
+        ''' Finds the highest ssa reference, if one exists.
+        
+            This is useful when the SSA cannot not detect the reference as it is yet
+            to be seen but it has been referenced more than once. We do not want to
+            analyse it twice!
+            TODO: Make this work. Doesn't work now as two different variables x and x1 will clash. '''
+        current_check = 1
+        if id + str(current_check) not in self.variableTypes:
+            return False
+        while True:
+            if id + str(current_check + 1) in self.variableTypes:
+                current_check += 1
+            else:
+                break
+        return id + str(current_check)
+    
+    def give_ssa_reference(self, node):
+        ''' Gives an un-SSA'd node an SSA'd id.
+            Used if the id has not yet been accessed so the
+            find_in_parents_contexts function has been used.
+            This should just require adding 1. '''
+        node.id += str(1)
+    
+    def do_Assign(self, node):
         ''' Set all target variables to have the type of the value of the
             assignment. '''
         value_types = self.visit(node.value)
@@ -899,6 +962,8 @@ class TypeInferrer(AstFullTraverser):
         
         node.value = binOp_node
         self.do_Assign(node)
+        if "g1" in self.variableTypes:
+            pprint(list(self.variableTypes["g1"])[0].get_vars()) 
         
     def check_waiting(self, new_var):
         waiting = [x[0] for x in self.awaiting_Typing if x[1] == new_var]
@@ -1282,7 +1347,9 @@ class TypeInferrer(AstFullTraverser):
         for z in node.body:
             self.visit(z)
         # We need to set the parameters for init
-        init_def = list(self.variableTypes["__init__"])[0]
+        pprint(self.variableTypes)
+        init_ssa_reference = self.find_biggest_ssa_reference("__init__")
+        init_def = list(self.variableTypes[init_ssa_reference])[0]
         self.current_class.set_init_params(init_def.parameter_types)
         pprint(self.variableTypes)
         # Set the call if possible
@@ -1312,7 +1379,9 @@ class TypeInferrer(AstFullTraverser):
             arg.id = "self"
             init_def.args.args = [arg]
             init_def.args.defaults = []
-            init_def.id = "__init__"
+            init_def.name = "__init__"
+            init_def.id = "__init__1"
+            init_def.name = init_def.id
             init_def.decorator_list = []
             body.insert(0, init_def)
 

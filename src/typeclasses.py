@@ -82,8 +82,11 @@ class Attribute_Type():
             self.class_type = class_type
             self.variable_type = variable_type
 
+class Class_Base():
+    pass
+
 # Note: ClassType is a Python builtin.
-class Class_Type(Callable_Type):
+class Class_Type(Callable_Type, Class_Base):
     ''' Class to define classes. This is always callable due to init.
     
         TODO: Bultin functions such as __class__ .
@@ -122,20 +125,36 @@ class Class_Type(Callable_Type):
         return set([Class_Instance(self.name, self.global_vars.copy(), \
                               self.has_call_func, self.call_param_types, \
                               self.call_return_types)])
+        
+    def check_contains_variable(self, var):
+        return var in self.global_vars
     
-class Class_Instance(Callable_Type):
+class Class_Instance(Callable_Type, Class_Base):
     ''' Used to represent initialised classes. '''
     def __init__(self, name, global_vars, has_call_func, call_parameter_types, \
                  call_return_types):
         kind = 'Class Instance: %s' % name
         super().__init__(kind)
         self.name = name
+        self.global_vars = global_vars
         self.supports_calling = has_call_func
         self.parameter_types = call_parameter_types
         self.return_types = call_return_types
     
     def __repr__(self):
         return 'Class Instance: %s' % self.name
+    
+    def check_contains_variable(self, var):
+        return var in self.global_vars
+    
+    def add_to_vars(self, name, new_var):
+        if name in self.global_vars:
+            self.global_vars[name] |= new_var
+        else:
+            self.global_vars[name] = new_var
+            
+    def get_vars(self):
+        return self.global_vars
 
 class Def_Type(Callable_Type):    
     ''' TODO: deal with kind. '''
