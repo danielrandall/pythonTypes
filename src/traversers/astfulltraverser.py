@@ -138,6 +138,12 @@ class AstFullTraverser(AstBaseTraverser):
         elt = self.visit(node.elt)
         for z in node.generators:
             self.visit(z)
+            
+    def do_DictComp(self, node):
+        self.visit(node.key)
+        self.visit(node.value)
+        for z in node.generators:
+            self.visit(z)
 
     def do_Name(self,node):
         # self.visit(node.ctx)

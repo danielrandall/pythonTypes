@@ -274,7 +274,7 @@ class SSA_Traverser(AstFullTraverser):
         ''' We want to ssa any named lists. '''
         self.visit(node.iter)
         
-    def do_GeneratorExp(self,node):
+    def do_GeneratorExp(self, node):
         ''' We need not be interest in anything here. '''
         pass
     
@@ -288,7 +288,7 @@ class SSA_Traverser(AstFullTraverser):
         for z in node.finalbody:
             self.visit(z)
 
-    def do_TryExcept(self,node):
+    def do_TryExcept(self, node):
         ''' TODO: Treat this as an if. '''
         for z in node.body:
             self.visit(z)
@@ -300,13 +300,13 @@ class SSA_Traverser(AstFullTraverser):
             self.visit(z)
             # self.merge_dicts(aDict,aDict2)
 
-    def do_TryFinally(self,node):
+    def do_TryFinally(self, node):
         for z in node.body:
             self.visit(z)
         for z in node.finalbody:
             self.visit(z)
 
-    def do_ClassDef (self,node):
+    def do_ClassDef (self, node):
         ''' We need the global variables. Do not start with an empty d
             TODO: Check for classes defined after. '''
         # Class becomes a sort variable when defined
@@ -324,7 +324,7 @@ class SSA_Traverser(AstFullTraverser):
             self.visit(z)
         self.d = old_d
 
-    def do_FunctionDef (self,node):
+    def do_FunctionDef (self, node):
         ''' Variables defined in function should not exist outside. '''
         # Function becomes a sort variable when defined
         if node.name in self.d:
@@ -341,14 +341,14 @@ class SSA_Traverser(AstFullTraverser):
             self.visit(z)
         self.d = old_d
 
-    def do_Lambda(self,node):
+    def do_Lambda(self, node):
         old_d = self.d
         self.d = {}
         self.visit(node.args)
         self.visit(node.body)
         self.d = old_d
 
-    def do_Module (self,node):
+    def do_Module (self, node):
         old_d = self.d
         self.d = {}
         self.add_intial_module_names()
@@ -357,7 +357,7 @@ class SSA_Traverser(AstFullTraverser):
             self.visit(z)
         self.d = old_d
 
-    def do_arguments(self,node):
+    def do_arguments(self, node):
         assert isinstance(node,ast.AST),node
         
         for arg in node.args:
@@ -371,12 +371,12 @@ class SSA_Traverser(AstFullTraverser):
         self.d[node.arg] = 1
         node.id = node.originalId + str(self.d[node.originalId])
 
-    def do_Assign(self,node):
+    def do_Assign(self, node):
         self.visit(node.value)
         for target in node.targets:
             self.visit(target)
 
-    def do_AugAssign(self,node):
+    def do_AugAssign(self, node):
         ''' We need to store the previous iteration of the target variable name
             so we know what to load in the type inference.
             TODO: Assign prev_name a bit more elegantly.
@@ -402,7 +402,7 @@ class SSA_Traverser(AstFullTraverser):
         print("Prev name")
         print(node.prev_name.id)  
         
-    def do_Attribute(self,node):
+    def do_Attribute(self, node):
         ''' Add a new variable of the form x.y if it's a variable.
             SSA not currently performed '''
         if isinstance(node.value, ast.Name):
@@ -415,15 +415,15 @@ class SSA_Traverser(AstFullTraverser):
             self.visit(node.value)
             node.variable = False
 
-    def do_Import(self,node):        
+    def do_Import(self, node):        
         for z in node.names:
             self.visit(z)
 
-    def do_ImportFrom(self,node):
+    def do_ImportFrom(self, node):
         for z in node.names:
             self.visit(z)
             
-    def do_alias (self,node):
+    def do_alias (self, node):
         ''' Entered after imports.
             Store the module name. Add name to the variable list. Imports are
             essentially assigned to variables. '''
@@ -434,8 +434,13 @@ class SSA_Traverser(AstFullTraverser):
         else:
             self.d[node.name] = 1
             node.id = node.name + str(self.d[node.name])
+            
+    def do_Assert(self, node):
+        self.visit(node.test)
+        if node.msg:
+            self.visit(node.msg)
     
-    def do_Name(self,node):
+    def do_Name(self, node):
         ''' If the id is True or false then ignore. WHY ARE TRUE AND FALSE
             IDENTIFIED THE SAME WAY AS VARIABLES. GAH. '''
        # print(node.id)

@@ -1,5 +1,6 @@
 from pprint import pprint
 import src.constraint as python_constraint
+import src.binopconstraints as binopcons
 from src.typeclasses import *
 
 class ConstraintGenerator:
@@ -16,33 +17,10 @@ class ConstraintGenerator:
     def init(self):    
         temp = self.variable_types
         self.variableTypes = temp
-        self.ALL_TYPES = [List_Type(None, [], set()), int_type, float_type, bool_type, string_type, bytes_type]
-        self.BASE_ADD_TYPES = [List_Type(None, [], set()), int_type, float_type, string_type]
-        
-        self.op_types = {
-                         'Add' : self.BASE_ADD_TYPES
-                         }
-        subsets_as_lists = list(self.powerset(self.ALL_TYPES))
+        subsets_as_lists = list(self.powerset(binopcons.ALL_TYPES))
         subsets_as_sets = [set(x) for x in subsets_as_lists]
         self.csp_problem = python_constraint.Problem()
         self.csp_problem.addVariables(self.parameters, subsets_as_sets)
-        # Used when we have a concrete type and a parameter. It shows us which
-        # types can used in conjuction.
-        
-        self.bin_op_constraints = {
-            'Add' : { float_type : [float_type, int_type],
-                       int_type  : [float_type, int_type],
-                    #   List_Type().kind : [List_Type()],
-                       string_type : [string_type] }, 
-            'Mult' : { float_type : [float_type, int_type],
-                       int_type : [float_type, int_type, List_Type, string_type],
-                       List_Type: [List_Type, int_type],
-                       string_type.kind: [string_type, int_type] },
-            'Sub' : { float_type : [float_type, int_type],
-                       int_type : [float_type, int_type],
-                       List_Type: [List_Type] }                                
-        }
-        
         
     def extract_results(self):
         # Extract results
@@ -56,7 +34,7 @@ class ConstraintGenerator:
             solving failed (returned empty set). '''
         for var, types in param_types.items():
             assert isinstance(types, set)
-            if len(types) == len(self.ALL_TYPES) or types == set():
+            if len(types) == len(binopcons.ALL_TYPES) or types == set():
                 self.variable_types[var] = set([any_type])
             else:
                 self.variable_types[var] = types
@@ -112,22 +90,20 @@ class ConstraintGenerator:
         if node.id in self.parameters:
             return [node.id]
     
-    def do_BinOp(self, left_types, right_types, op_kind):
+    def do_BinOp(self, left_types, right_types, op_kind, lineno):
         ''' Function must still return types.
             TODO: sub / mult '''
-        global BASE_ADD_TYPES
-              
         #pprint(left_types)
         #pprint(right_types)
         if left_types not in self.parameters and right_types not in self.parameters:
             #return super(TypeInferrer, self).do_BinOp(node)
             return
         
-        assert op_kind in self.op_types.keys(), op_kind + " is not a valid op"
+        assert op_kind in binopcons.OP_TYPES.keys(), "Line " + str(lineno) + ": " + op_kind + " is not a valid op"
         
         if left_types in self.parameters and right_types in self.parameters:
             # We only need to worry about what types are limited by the operator
-            limiting_types = self.op_types[op_kind]
+            limiting_types = binopcons.OP_TYPES[op_kind]
             # Limit the types of both variables
             self.csp_problem.addConstraint(self.limit_to_set(set(limiting_types)), [left_types])
             self.csp_problem.addConstraint(self.limit_to_set(set(limiting_types)), [right_types])
@@ -144,9 +120,9 @@ class ConstraintGenerator:
             
         for a_type in contributing_types:
             if isinstance(a_type, Any_Type):
-                limiting_types = self.op_types[op_kind]
+                limiting_types = binopcons.OP_TYPES[op_kind]
             else:
-                limiting_types = self.bin_op_constraints[op_kind][a_type]
+                limiting_types = binopcons.BIN_OP_CONSTRAINTS[op_kind][a_type]
             self.csp_problem.addConstraint(self.limit_to_set(set(limiting_types)), [param_to_constrain])
             
         return [set(limiting_types)]
