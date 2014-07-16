@@ -28,7 +28,7 @@ class BaseType:
     def __ge__(self, other): return self.is_type(other) and ( (self.kind == 'Any' or other.kind == 'Any') or self.__eq__(other)  )
     def __gt__(self, other): return self.is_type(other) and (self.kind == 'Any' or other.kind == 'Any')
     def __hash__(self):      return hash(self.kind)
-    def __le__(self, other): return self.is_type(other) and ( (self.kind == 'Any' or other.kind == 'Any') or self.__eq__(other)  )
+    def __le__(self, other): return self.is_type(other) and ( (self.kind == 'Any' or other.kind == 'Any') or self.__eq__(other) or issubclass(self.__class__, other.__class__) )
     def __lt__(self, other): return self.is_type(other) and (self.kind == 'Any' or other.kind == 'Any')
     def __ne__(self, other): return self.is_type(other) and self.kind != other.kind
     

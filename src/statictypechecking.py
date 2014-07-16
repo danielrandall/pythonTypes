@@ -692,7 +692,10 @@ class TypeInferrer(AstFullTraverser):
                                   0)]),
             'max' : set([Def_Type([set([any_type]), set([any_type])],
                                   set([any_type]),
-                                  0)])
+                                  0)]),
+            'getattr' : set([Def_Type([set([any_type]), set([string_type]), set([any_type])],
+                                  set([any_type]),
+                                  1)])
             # list,tuple...
             # close,open,sort,sorted,super...
         }
@@ -844,6 +847,7 @@ class TypeInferrer(AstFullTraverser):
         pprint(self.variableTypes)
         
     def conduct_assignment(self, targets, value_types, node):
+        ''' TODO: Stop comparisons with instantiation of Container_Type. '''
         assert(len(value_types) == len(targets)) 
         for i in range(len(targets)):
             for e in value_types[i]:
@@ -869,7 +873,7 @@ class TypeInferrer(AstFullTraverser):
             if isinstance(targets[i], Container_Type):
                 assert len(value_types[i]) == 1
                 (value,) = value_types[i]
-                assert isinstance(value, Container_Type), "Error: Assigning non container type to a container"
+                assert value <= Container_Type(None, None, None, None), "Line " + str(node.lineno) + ": Assigning non container type to a container"
                 # Unpack the lists
                 self.container_assignment(targets[i], value, node)
                 continue
@@ -888,11 +892,15 @@ class TypeInferrer(AstFullTraverser):
             self.check_waiting(targets[i])
         
     def container_assignment(self, target_container, value_container, node):
-        assert isinstance(target_container, Container_Type)
-        assert isinstance(value_container, Container_Type)
-        
+        ''' Check both are containers. But if the value is any_type construct
+            an equivalently sized list with all any_types. '''
+        assert target_container <= Container_Type(None, None, None, None)
+        assert value_container <= Container_Type(None, None, None, None)
         targets = target_container.contents
-        values = value_container.contents
+        if value_container == any_type:
+            values = [set([any_type])] * len(targets)
+        else:
+            values = value_container.contents
         self.conduct_assignment(targets, values, node)
         
     def do_AugAssign(self,node):
@@ -1035,10 +1043,10 @@ class TypeInferrer(AstFullTraverser):
             Never fails.
             Boolean operators can return any types used in its values.
             ie. len(x) or [] can return Int or List. '''
-        all_types = []
+        all_types = set()
         for z in node.values:
-            all_types.extend(self.visit(z))
-        return [set(all_types)]
+            all_types |= self.visit(z)[0]
+        return [all_types]
 
     def do_Num(self,node):
         ''' Returns int or float. '''
@@ -1163,7 +1171,7 @@ class TypeInferrer(AstFullTraverser):
             return [set([any_type])]
         callable_funcs = [x for x in possible_funcs if x.is_callable()]
         # At least one possible type needs to be callable
-        assert callable_funcs, str(node.lineno) + " not callable."
+        assert callable_funcs, "Line " + str(node.lineno) + ": not callable."
         for func in callable_funcs:
             func_return_types = func.get_return_types()
             accepted_types = func.get_parameter_types()
@@ -1174,7 +1182,7 @@ class TypeInferrer(AstFullTraverser):
             assert len(given_arg_types) <= len(accepted_types), "Line " + str(node.lineno)
             if len(given_arg_types) < len(accepted_types):
                 missing_num = len(accepted_types) - len(given_arg_types)
-                assert missing_num <= func.get_arg_default_length, "Too few args given"
+                assert missing_num <= func.get_arg_default_length(), "Line " + str(node.lineno) + ": Too few args given"
                 accepted_types = [accepted_types[x] for x in range(len(accepted_types) - missing_num)]
                 
             for i in range(len(given_arg_types)):
@@ -1296,12 +1304,13 @@ class TypeInferrer(AstFullTraverser):
         for base in node.bases:
             base_class = self.visit(base)[0]
             acceptable_type = False
+            pprint(base_class)
             for possible_type in base_class:
                 if isinstance(possible_type, Class_Type):
                     # If there is a clash, the first instance will be used
                     inherited_vars.update({k:v for k,v in possible_type.get_vars().items() if k not in inherited_vars})
                     acceptable_type = True
-            assert acceptable_type, base.id + " is not a class. "
+            assert acceptable_type, "Line " + str(node.lineno) + ": " + base.id + " is not a class. "
         self.current_class = Class_Type(node.id, inherited_vars, node.callable)
         self.move_init_to_top(node.body)
         for z in node.body:
@@ -1406,19 +1415,20 @@ class TypeInferrer(AstFullTraverser):
             int_like_types = [x for x in upper_types if x <= int_type]
             assert int_like_types, "upper in slice must be an integer"
         if node.lower:
-            lower_types = self.visit(node.upper)[0]
+            lower_types = self.visit(node.lower)[0]
             int_like_types = [x for x in lower_types if x <= int_type]
             assert int_like_types, "lower in slice must be an integer"
         if node.step:
-            step_types = self.visit(node.upper)[0]
+            step_types = self.visit(node.step)[0]
             int_like_types = [x for x in step_types if x <= int_type]
             assert int_like_types, "step in slice must be an integer"
         return
 
     def do_Subscript(self, node):
-        ''' TODO: Allow user-defined types to index/slice. '''
+        ''' TODO: Allow user-defined types to index/slice.
+            TODO: Stop comparing with an instantiation of Container_Type - will probably be solved with the above'''
         value_types = self.visit(node.value)[0]
-        container_like_types = [x for x in value_types if isinstance(x, Container_Type)]
+        container_like_types = [x for x in value_types if x <= Container_Type(None, None, None, None)]
         assert container_like_types, "Line " + str(node.lineno) + ": cannot index/slice in non-container types. "
         self.visit(node.slice)
         if isinstance(node.slice, ast.Slice):
