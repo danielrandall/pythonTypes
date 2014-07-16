@@ -115,7 +115,6 @@ class BaseStats:
         self.init_tables()
 
     def print_distribution(self,d,name):
-        
         print('Distribution for %s...' % name)
         
         for n in sorted(d.keys()):
@@ -123,7 +122,6 @@ class BaseStats:
         print('')
 
     def print_stats (self):
-        
         max_n = 5
         for s in self.table:
             max_n = max(max_n,len(s))
@@ -684,6 +682,16 @@ class TypeInferrer(AstFullTraverser):
                                   0)]),
             'print': set([Def_Type([set([any_type])],
                                   set([none_type]),
+                                  0)]),
+            'sorted': set([Def_Type([set([List_Type(None, [], set())])],
+                                  set([List_Type(None, [], set())]),
+                                  0)]),
+            # min and max work on any iterable and have varargs
+            'min' : set([Def_Type([set([any_type]), set([any_type])],
+                                  set([any_type]),
+                                  0)]),
+            'max' : set([Def_Type([set([any_type]), set([any_type])],
+                                  set([any_type]),
                                   0)])
             # list,tuple...
             # close,open,sort,sorted,super...
@@ -742,16 +750,18 @@ class TypeInferrer(AstFullTraverser):
                 assert class_to_assign, "Error: Cannot assign to builtin class" + str(n_type)
                 return [Attribute_Type(class_to_assign, node.attr)]
             else:
+                # Generate a constraint if the value is a function parameter
+                if name in self.fun_params:
+                    name = self.constraint_gen.do_Attribute(name, node.attr, node.lineno)[0]
                 result_types = set()
                 for n in name:
                     if isinstance(n, Module_Type):
                         ''' TODO: Deal with modules. '''
                         return [set([any_type])]
-                    if isinstance(n, Class_Base):
-                        if node.attr in n.global_vars:
-                            result_types |= n.global_vars[node.attr]
-                        else:
-                            result_types.add(any_type)
+                    if node.attr in n.global_vars:
+                        result_types |= n.global_vars[node.attr]
+                    else:
+                        result_types.add(any_type)
                 return [result_types]
         else:
             # Class here. Like {}.__class__
@@ -989,13 +999,20 @@ class TypeInferrer(AstFullTraverser):
                 if left <= string_type and right <= string_type and op_kind == 'Add':
                     result_types.add(string_type)
                     continue
+                
+                if left <= string_type and op_kind == 'Mod':
+                    # String mod anything is a string, so long as there's stuff to format
+                    result_types.add(string_type)
+                    continue
+                
                 if op_kind == 'Mult' and (
                         (left <= string_type and right <= int_type) or
                         (left <= int_type and right <= string_type)):
                     result_types.add(string_type)
                     continue
             self.stats.n_binop_fail += 1
-        assert result_types, "No acceptable BinOp operation. "
+        pprint(self.current_class.get_vars())
+        assert result_types, "Line " + str(node.lineno) + ": " + "No acceptable BinOp operation. "
         return [result_types]
     
     def do_UnaryOp(self,node):
@@ -1110,7 +1127,11 @@ class TypeInferrer(AstFullTraverser):
                 assert isinstance(list_type, List_Type), "Should be a list but found a " + str(list_type)
                 list_type.infer_types()     # Just to make sure
                 extracted_types |= list_type.content_types
-        return [extracted_types]
+        # If nothing is found then return any_type
+        if extracted_types:
+            return [extracted_types]
+        else:
+            return [set([any_type])]
         
     def do_Import(self, node):
         for z in node.names:
@@ -1150,7 +1171,7 @@ class TypeInferrer(AstFullTraverser):
             # Check that the correct number of types has been given.
             # If the number is less than the maximum then ensure it falls
             # within the default range and adjust accordingly
-            assert len(given_arg_types) <= len(accepted_types)
+            assert len(given_arg_types) <= len(accepted_types), "Line " + str(node.lineno)
             if len(given_arg_types) < len(accepted_types):
                 missing_num = len(accepted_types) - len(given_arg_types)
                 assert missing_num <= func.get_arg_default_length, "Too few args given"
@@ -1231,6 +1252,7 @@ class TypeInferrer(AstFullTraverser):
         #Add to the currently class vars if there is one
         if self.current_class:
             self.current_class.add_to_vars(node.id, self.variableTypes[node.id])
+        pprint(parameter_types)
             
     def do_arguments(self,node):
         ''' We need to begin checking what types the args can take. Defaults
@@ -1369,26 +1391,46 @@ class TypeInferrer(AstFullTraverser):
         return t
 
     def do_Index(self, node):    
-        return self.visit(node.value)
+        value_types = self.visit(node.value)[0]
+        int_like_types = [x for x in value_types if x <= int_type]
+        assert int_like_types, "index value must be an integer"
+        return
 
     def do_Lambda (self, node):
-        ti = self
-        return ti.visit(node.body)
+        return self.visit(node.body)
 
     def do_Slice(self, node):
-        ti = self
-        if node.upper: junk = ti.visit(node.upper)
-        if node.lower: junk = ti.visit(node.lower)
-        if node.step:  junk = ti.visit(node.step)
-        return [ti.int_type] ### ???
+        ''' No need to return anything here. '''
+        if node.upper:
+            upper_types = self.visit(node.upper)[0]
+            int_like_types = [x for x in upper_types if x <= int_type]
+            assert int_like_types, "upper in slice must be an integer"
+        if node.lower:
+            lower_types = self.visit(node.upper)[0]
+            int_like_types = [x for x in lower_types if x <= int_type]
+            assert int_like_types, "lower in slice must be an integer"
+        if node.step:
+            step_types = self.visit(node.upper)[0]
+            int_like_types = [x for x in step_types if x <= int_type]
+            assert int_like_types, "step in slice must be an integer"
+        return
 
     def do_Subscript(self, node):
-        ti = self
-        trace = False and not g.app.runningAllUnitTests
-        t1 = ti.visit(node.value)
-        t2 = ti.visit(node.slice)
-        if t1 and trace: g.trace(t1,t2,ti.format(node))
-        return t1 ### ?
+        ''' TODO: Allow user-defined types to index/slice. '''
+        value_types = self.visit(node.value)[0]
+        container_like_types = [x for x in value_types if isinstance(x, Container_Type)]
+        assert container_like_types, "Line " + str(node.lineno) + ": cannot index/slice in non-container types. "
+        self.visit(node.slice)
+        if isinstance(node.slice, ast.Slice):
+            # Should return list
+            return [value_types]
+        if isinstance(node.slice, ast.Index):
+            # Should return something in the list
+            return_types = set()
+            for possible_container in container_like_types:
+                return_types |= possible_container.content_types
+            return [return_types]
+        assert False, "How did I get here?"
 
     def do_Builtin(self, node):
         ti = self
@@ -1398,6 +1440,7 @@ class TypeInferrer(AstFullTraverser):
         return self.return_helper(node)
 
     def do_With (self, node):
+        ''' TODO: Add new variable temporarily. '''
         ti = self
         t = []
         for z in node.body:

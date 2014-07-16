@@ -1,5 +1,6 @@
 from utils import Utils
 
+''' TODO - add variables and functions to global_vars '''
 
 class BaseType:
     '''BaseType is the base class for all type classes.
@@ -14,6 +15,7 @@ class BaseType:
     
     def __init__(self,kind):
         self.kind = kind
+        self.global_vars = {}
         
     def __repr__ (self):
         return self.kind
@@ -38,12 +40,17 @@ class BaseType:
     def is_callable(self):
         ''' Should be overriden for a type which is callable. '''
         return False
+    
+    def get_vars(self):
+        ''' Returns the variables/functions contained in this class. '''
+        return self.global_vars
 
 class Any_Type(BaseType):    
     def __init__(self):
         BaseType.__init__(self,'Any')
 
 class Bool_Type(BaseType):    
+    ''' Contains no varibles/functions. '''
     def __init__(self):
         BaseType.__init__(self,'Bool')
 
@@ -56,7 +63,6 @@ class Bytes_Type(BaseType):
         BaseType.__init__(self,'Bytes')
         
 class Callable_Type(BaseType):
-    
     def __init__(self, kind):
         super().__init__(kind)
         self.supports_calling = True
@@ -109,9 +115,6 @@ class Class_Type(Callable_Type, Class_Base):
             self.global_vars[name] |= new_var
         else:
             self.global_vars[name] = new_var
-            
-    def get_vars(self):
-        return self.global_vars
     
     def set_init_params(self, parameter_types):
         self.parameter_types = parameter_types
@@ -152,9 +155,6 @@ class Class_Instance(Callable_Type, Class_Base):
             self.global_vars[name] |= new_var
         else:
             self.global_vars[name] = new_var
-            
-    def get_vars(self):
-        return self.global_vars
 
 class Def_Type(Callable_Type):    
     ''' TODO: deal with kind. '''
@@ -166,14 +166,29 @@ class Def_Type(Callable_Type):
         self.arg_default_length = arg_default_length
 
 class Dict_Type(BaseType):
-    def __init__(self,node):
+    ''' TODO: Add values contained in a dict. '''
+    def __init__(self):
         # For now, all dicts are separate types.
         # kind = 'Dict(%s)' % (Utils().format(node))
-        kind = 'Dict(@%s)' % id(node)
-        BaseType.__init__(self,kind)
+        kind = 'Dict(@%s)'
+        BaseType.__init__(self, kind)
+        
+        self.global_vars = {# keys returns a dict view object - not yet supported
+                            'keys' : set([Def_Type([],
+                                  set([any_type]),
+                                  0)]),
+                            # items returns a dict view object - not yet supported
+                            'items' : set([Def_Type([],
+                                  set([any_type]),
+                                  0)]),
+                            # values returns a dict view object - not yet supported
+                            'values' : set([Def_Type([],
+                                  set([any_type]),
+                                  0)])
+                            }
 
 class Inference_Failure(BaseType):
-    def __init__(self,kind,node):
+    def __init__(self, kind, node):
         BaseType.__init__(self,kind)
         u = Utils()
         verbose = False
@@ -250,7 +265,8 @@ class Container_Type(BaseType):
     
 
 class List_Type(Container_Type):
-    def __init__(self,node, contents, c_types):
+    ''' TODO: Add new types when the function append is called or similar. '''
+    def __init__(self, node, contents, c_types):
         kind = 'List({})'
         Container_Type.__init__(self, kind, node, contents, c_types)
         
@@ -258,7 +274,7 @@ class List_Type(Container_Type):
         self.kind = 'List(%s)' % repr(self.content_types)
     
 class Tuple_Type(Container_Type):
-    def __init__(self,node, contents, c_types):
+    def __init__(self, node, contents, c_types):
         self.contents = contents 
         self.content_types = c_types
         kind = 'Tuple({})'
@@ -351,3 +367,5 @@ int_type = Int_Type()
 none_type = None_Type()
 string_type = String_Type()
 any_type = Any_Type()
+
+ALL_TYPES = [List_Type(None, [], set()), Dict_Type(), int_type, float_type, bool_type, string_type, bytes_type, builtin_type]

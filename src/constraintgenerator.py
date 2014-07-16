@@ -4,7 +4,7 @@ import src.binopconstraints as binopcons
 from src.typeclasses import *
 
 class ConstraintGenerator:
-    ''' We're only interest in a parameter until it is assigned a value. '''
+    ''' We're only interested in a parameter until it is assigned a value. '''
     
     def __call__(self, node, variable_types, parameters):
         self.variable_types = variable_types
@@ -126,7 +126,20 @@ class ConstraintGenerator:
             self.csp_problem.addConstraint(self.limit_to_set(set(limiting_types)), [param_to_constrain])
             
         return [set(limiting_types)]
-            
+    
+    def do_Attribute(self, value, attr, lineno):
+        ''' Attempts to find all classes which has attr has a variable.
+        
+            Value is the parameter we are limiting. '''
+        possible_types = set()
+        for t in ALL_TYPES:
+            if attr in t.get_vars():
+                possible_types.add(t)
+        # If no matches were found then return any_type
+        if not possible_types:
+            return [set([any_type])]
+        self.csp_problem.addConstraint(self.limit_to_set(possible_types), [value])
+        return [possible_types]
         
     def do_Call(self, accepted_types, param_to_constrain):
         ''' We're given all of the accept types and a parameter. The allowed
