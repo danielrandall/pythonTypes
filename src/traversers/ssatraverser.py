@@ -15,9 +15,6 @@ class SSA_Traverser(AstFullTraverser):
     '''
     def __init__(self):
         AstFullTraverser.__init__(self)
-        
-    def __call__(self,node):
-        return self.run(node)
 
     def dump_dict (self,aDict,tag=''):
         g.trace(tag)
@@ -70,7 +67,7 @@ class SSA_Traverser(AstFullTraverser):
         added = newKeys - oldKeys
         return set(o for o in intersection if oldDict[o] != newDict[o]) | added
 
-    def run(self,root):
+    def run(self, root):
         self.u = Utils()
         self.d = {}
             # Keys are names, values are lists of a.values
@@ -78,8 +75,9 @@ class SSA_Traverser(AstFullTraverser):
         self.built_in_classes = ["list", "set", "tuple", "float", "int"]  
         self.breaks = []
         self.continues = []
-        assert isinstance(root,ast.Module)
+        assert isinstance(root, ast.Module)
         self.visit(root)
+        return root
         
     def add_intial_module_names(self):
         ''' Add names which exist from the start '''

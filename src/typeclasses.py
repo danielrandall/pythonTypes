@@ -88,8 +88,18 @@ class Attribute_Type():
             self.class_type = class_type
             self.variable_type = variable_type
 
-class Class_Base():
-    pass
+class Class_Base():    
+    def check_contains_variable(self, var):
+        return var in self.global_vars
+    
+    def add_to_vars(self, name, new_var):
+        if name in self.global_vars:
+            self.global_vars[name] |= new_var
+        else:
+            self.global_vars[name] = new_var
+            
+    def get_vars(self, var):
+        return self.global_vars[var]
 
 # Note: ClassType is a Python builtin.
 class Class_Type(Callable_Type, Class_Base):
@@ -110,12 +120,6 @@ class Class_Type(Callable_Type, Class_Base):
     def __repr__(self):
         return 'Class Dec: %s' % self.name
     
-    def add_to_vars(self, name, new_var):
-        if name in self.global_vars:
-            self.global_vars[name] |= new_var
-        else:
-            self.global_vars[name] = new_var
-    
     def set_init_params(self, parameter_types):
         self.parameter_types = parameter_types
     
@@ -128,9 +132,6 @@ class Class_Type(Callable_Type, Class_Base):
         return set([Class_Instance(self.name, self.global_vars.copy(), \
                               self.has_call_func, self.call_param_types, \
                               self.call_return_types)])
-        
-    def check_contains_variable(self, var):
-        return var in self.global_vars
     
 class Class_Instance(Callable_Type, Class_Base):
     ''' Used to represent initialised classes. '''
@@ -146,15 +147,12 @@ class Class_Instance(Callable_Type, Class_Base):
     
     def __repr__(self):
         return 'Class Instance: %s' % self.name
-    
-    def check_contains_variable(self, var):
-        return var in self.global_vars
-    
-    def add_to_vars(self, name, new_var):
-        if name in self.global_vars:
-            self.global_vars[name] |= new_var
-        else:
-            self.global_vars[name] = new_var
+            
+class Module_Type(Class_Base, BaseType):
+    def __init__(self, name, global_vars):
+        kind = 'Module(%s)' % name
+        BaseType.__init__(self, kind)
+        self.global_vars = global_vars
 
 class Def_Type(Callable_Type):    
     ''' TODO: deal with kind. '''
@@ -282,12 +280,6 @@ class Tuple_Type(Container_Type):
         
     def define_kind(self):
         self.kind = 'Tuple(%s)' % repr(self.content_types)
-
-class Module_Type(BaseType):
-    def __init__(self,cx,node):
-        kind = 'Module(%s)@%s' % (cx,id(node))
-        BaseType.__init__(self,kind)
-        self.cx = cx # The context of the module.
 
 class None_Type(BaseType):
     def __init__(self):

@@ -1,4 +1,4 @@
-from nodegenerator import import NodeGenerator
+from src.generators.nodegenerator import NodeGenerator
 import ast
 class LocalNodeGenerator(NodeGenerator):
     

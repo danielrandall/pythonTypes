@@ -5,9 +5,14 @@ Created on 17 May 2014
 '''
 import src.stcglobals as stcglobals
 import src.statictypechecking as stc
+import src.extractpysfromdirectory as file_extractor
+from src.traversers.ssatraverser import SSA_Traverser
+
 import ast
 from pprint import pprint
 
+
+# Open source Python 3 projects to test on: https://pypi.python.org/pypi?%3Aaction=browse&c=533&show=all
 
 '''Return the entire contents of the file whose name is given.
    Almost most entirely copied from stc. '''
@@ -34,23 +39,12 @@ def printSymbolTable(source):
     pprint(source.stc_symbol_table.ssa_d)
 
 if __name__ == '__main__':
-    fn = "/homes/dr1810/4thYear/individualProject/pythonTypes/testFiles/test.py"
-    sourceAst = parseFile(fn)
-    
-    utils = stc.Utils()
-   # print(utils.dump_ast(sourceAst, True, None, False, 2))
-    
-    p1 = stc.P1()
-    p1(fn, sourceAst)
-   # printSymbolTable(sourceAst)
-   # print(utils.dump_ast(sourceAst))
-
-    ssa = stc.SSA_Traverser()
-    ssa(sourceAst)
- #   printSymbolTable(sourceAst)
-    print(utils.dump_ast(sourceAst, True))
-    
-  #  print(utils.dump_ivars_dict(sourceAst))
+  #  top_level = "/homes/dr1810/4thYear/individualProject/pythonTypes/"
+    top_level = "/homes/dr1810/4thYear/individualProject/pythonTypes/testFiles/realFiles/a"
+    file_tree = file_extractor.get_pys(top_level)
+    print(file_tree)
+   # fn = "/homes/dr1810/4thYear/individualProject/pythonTypes/testFiles/test.py"
+  #  fn = "/homes/dr1810/4thYear/individualProject/pythonTypes/src/statictypechecking.py"
   
     ti = stc.TypeInferrer()
-    ti(sourceAst)
+    ti.run(file_tree)

@@ -1,6 +1,5 @@
 from src.typeclasses import *
 
-ALL_TYPES = [List_Type(None, [], set()), int_type, float_type, bool_type, string_type, bytes_type]
 BASE_ADD_TYPES = [List_Type(None, [], set()), int_type, float_type, string_type]
 BASE_MOD_TYPES = [List_Type(None, [], set()), int_type, float_type, string_type]
         
