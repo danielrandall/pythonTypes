@@ -209,7 +209,7 @@ class TypeInferrer(AstFullTraverser):
         ''' TODO: Detect circular references. '''
         dependent_vars = {}
         if file.has_been_typed():
-            dependent_vars[file.get_name()] = set([Module_Type(file.get_name(), file.get_global_vars())])
+            #dependent_vars[file.get_name()] = set([Module_Type(file.get_name(), file.get_global_vars())])
             return dependent_vars
         root = file.get_source()
         for dependent in root.import_dependents:
@@ -222,7 +222,13 @@ class TypeInferrer(AstFullTraverser):
                 dependent_file = file_tree[directory][name]
                 dependent_dependents = self.check_dependents(dependent_file, file_tree)
                 self.type_file(dependent_file, dependent_dependents)
-                dependent_vars[as_name] = set([Module_Type(name, dependent_file.get_global_vars())])
+                # Check if a specific class is imported from the module
+                pprint(dependent_file.get_global_vars())
+                if dependent.is_import_from():
+                    value = dependent_file.get_global_vars()[dependent.get_class_name()]
+                else:
+                    value = set([Module_Type(name, dependent_file.get_global_vars())])
+                dependent_vars[as_name] = value
         return dependent_vars 
             
     def file_tree_to_list(self, file_tree):
