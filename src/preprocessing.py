@@ -1,9 +1,10 @@
 import ast
 from pprint import pprint
 
-from src.statictypechecking import SymbolTable
+from src.symboltable import SymbolTable
 from src.utils import Utils
 from src.traversers.astfulltraverser import AstFullTraverser
+from src.importdependent import ImportDependent
 
 class Preprocessor(AstFullTraverser):
     '''
@@ -207,21 +208,22 @@ class Preprocessor(AstFullTraverser):
     def do_Import(self,node):
         ''' Import(names=[alias(name='ast')])
             Import(names=[alias(name='os',asname='ossy')]) '''
-        self.alias_helper(node)
+        self.alias_helper(node, None)
                 
     def do_ImportFrom(self,node):
         ''' ImportFrom(module='b',names=[alias(name='*')],level=0)])'''
-        self.alias_helper(node)
+        self.alias_helper(node, node.module)
 
-    def alias_helper(self, node):
+    def alias_helper(self, node, import_from):
         ''' alias.name contains import name e.g. a.b.c.filename
             alias.asname contains the obvious asname e.g. import filename as asname
             TODO: Deal with asname
             TODO: Allow imports outside of start ''' 
         assert isinstance(node.stc_context, ast.Module)
         for alias in node.names:
-            directory = alias.name.replace('.', '/')
-            node.stc_context.import_dependents.append(directory)
+            as_name = alias.asname if alias.asname else None
+            import_dependent = ImportDependent(alias.name, import_from, as_name)
+            node.stc_context.import_dependents.append(import_dependent)
 
     def do_Lambda(self,node):
         self.n_contexts += 1

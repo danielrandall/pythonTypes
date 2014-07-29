@@ -48,16 +48,17 @@ https://groups.google.com/forum/?fromgroups#!forum/python-static-type-checking
 # 
 # You should have received a copy of the GNU General Public License along with
 # this program.  If not, see <http://www.gnu.org/licenses/>.
-#@-<< copyright notices >>
-use_leo_globals = True # Better for debugging.
-#@+<< imports >>
-#@+node:ekr.20120626085227.11393: ** .<< imports >>
+
 import sys
-isPython3 = sys.version_info >= (3,0,0)
 import imp
-from pprint import pprint
 import queue
-# Used for constraint solving
+import ast
+import gc
+import glob
+import io
+import os
+import time
+from pprint import pprint
 
 from src.constraintgenerator import ConstraintGenerator
 import src.binopconstraints as binopcons
@@ -65,80 +66,9 @@ from src.utils import Utils
 from src.traversers.astfulltraverser import AstFullTraverser
 from src.traversers.astformatter import AstFormatter
 from src.typeclasses import *
+from src.pyfile import *
 from src.traversers.ssatraverser import Phi_Node
-
-try:
-    if use_leo_globals: # This is better for EKR's debugging.
-        import leo.core.leoGlobals as g
-        # print('*** using leo.core.leoGlobals')
-    else:
-        raise ImportError
-except ImportError:
-    try:
-        import stcglobals as g
-        imp.reload(g)
-        print('*** using stcglobals')
-    except ImportError:
-        g = None # Will fail later.
-
-# Used by ast-oriented code.
-# if not isPython3:
-    # import __builtin__
-    
-import ast
-import gc
-import glob
-
-import os
-
-import time
-
-if isPython3:
-    import io
-    StringIO = io.StringIO
-else:
-    import cStringIO
-    StringIO = cStringIO.StringIO
-
-class BaseStats: 
-    '''The base class for all statistics classes.'''
-
-    def __init__ (self):
-        # May be overriden in subclases.
-        self.always_report = []
-        self.distribution_table = []
-        self.table = []
-        self.init_ivars()
-        self.init_tables()
-
-    def print_distribution(self,d,name):
-        print('Distribution for %s...' % name)
-        
-        for n in sorted(d.keys()):
-            print('%2s %s' % (n,d.get(n)))
-        print('')
-
-    def print_stats (self):
-        max_n = 5
-        for s in self.table:
-            max_n = max(max_n,len(s))
-            
-        print('\nStatistics...\n')
-        for s in self.table:
-            var = 'n_%s' % s
-            pad = ' ' * (max_n - len(s))
-            if s.startswith('*'):
-                if s[1:].strip():
-                    print('\n%s:\n' % s[1:])
-            else:
-                pad = ' ' * (max_n-len(s))
-                val = getattr(self,var)
-                if val or var in self.always_report:
-                    print('%s%s: %s' % (pad,s,val))
-        print('')
-        for d,name in self.distribution_table:
-            self.print_distribution(d,name)
-        print('')
+from src.importdependent import ImportDependent
 
 
 class PatternFormatter (AstFormatter):
@@ -161,158 +91,6 @@ class PatternFormatter (AstFormatter):
         '''This represents a string constant.'''
         return 'Str' # return repr(node.s)
 
-
-class Stats(BaseStats):
-    # def __init__(self):
-        # BaseStats.__init__(self):
-            
-    def init_ivars (self,n_files=0):
-        
-        self.n_files = n_files
-        
-        # Dictionaries for computing distributions.
-        # Keys are lengths (ints); values are counts for each lenght (ints).
-        self.actual_args_dict = {}
-        self.formal_args_dict = {}
-        
-        # Errors & warnings.
-        self.n_errors = 0
-        self.n_warnings = 0
-
-        # Pre-passes...
-        self.n_chains = 0
-        self.n_contexts = 0
-        self.n_files = 0 # set only in print_stats.
-        self.n_library_modules = 0
-        self.n_modules = 0
-        self.n_relinked_pointers = 0
-        # self.n_resolvable_names = 0
-        self.n_resolved_contexts = 0
-        self.n_relinked_names = 0
-        
-        # Cache & circular inferences
-        self.n_assign_hits = 0
-        self.n_assign_fails = 0
-        self.n_assign_misses = 0
-        self.n_call_hits = 0
-        self.n_call_misses = 0
-        self.n_circular_assignments = 0
-        self.n_outer_expr_hits = 0
-        self.n_outer_expr_misses = 0
-        self.n_recursive_calls = 0
-        
-        # Inference...
-        self.n_attr_fail = 0
-        self.n_attr_success = 0
-        self.n_binop_fail = 0
-        self.n_caches = 0
-        self.n_clean_fail = 0
-        self.n_clean_success = 0
-        self.n_find_call_e_fail = 0
-        self.n_find_call_e_success = 0
-        self.n_fuzzy = 0
-        self.n_not_fuzzy = 0
-        self.n_return_fail = 0
-        self.n_return_success = 0
-        self.n_ti_calls = 0
-        self.n_unop_fail = 0
-        
-        # Names...
-        self.n_attributes = 0
-        self.n_ivars = 0
-        self.n_names = 0        # Number of symbol table entries.
-        self.n_del_names = 0
-        self.n_load_names = 0
-        self.n_param_names = 0
-        self.n_param_refs = 0
-        self.n_store_names = 0
-        
-        # Statements...
-        self.n_assignments = 0
-        self.n_calls = 0
-        self.n_classes = 0
-        self.n_defs = 0
-        self.n_expressions = 0 # Outer expressions, ast.Expr nodes.
-        self.n_fors = 0
-        self.n_globals = 0
-        self.n_imports = 0
-        self.n_lambdas = 0
-        self.n_list_comps = 0
-        self.n_returns = 0
-        self.n_withs = 0
-        
-        # Times...
-        self.parse_time = 0.0
-        self.pass1_time = 0.0
-        self.pass2_time = 0.0
-        self.total_time = 0.0
-
-    def init_tables(self):
-
-        self.table = (
-            # '*', 'errors',
-
-            '*Pass1',
-            'files','classes','contexts','defs','library_modules','modules',
-            
-            '*Statements',
-            'assignments','calls','expressions','fors','globals','imports',
-            'lambdas','list_comps','returns','withs',
-            
-            '*Names',
-            'attributes','del_names','load_names','names',
-            'param_names','param_refs','store_names',
-            # 'resolvable_names',
-            'relinked_names','relinked_pointers',
-            
-            '*Inference',
-            'assign_hits','assign_fails','assign_misses',
-            'attr_fail','attr_success',
-            'call_hits','call_misses','recursive_calls',
-            'circular_assignments',
-            'clean_fail','clean_success',
-            'find_call_e_fail','find_call_e_success',
-            'fuzzy','not_fuzzy',
-            'outer_expr_hits','outer_expr_misses',
-            'return_fail','return_success',
-            'ti_calls',
-            'unop_fail',
-
-            '*Errors & Warnings',
-            'errors',
-            'warnings',
-        )
-        
-        self.always_report = (
-            'n_assign_hits',
-            'n_call_hits',
-            'n_outer_expr_hits',
-            'n_recursive_calls',
-            'n_fuzzy',
-        )
-        
-        self.distribution_table = (
-            (self.actual_args_dict,'actual args'),
-            (self.formal_args_dict,'formal args'),
-        )
-        
-class SymbolTable:
-    
-    def __init__ (self,cx):
-        self.cx = cx
-        self.attrs_d = {}
-            # Keys are attribute names.
-            # Values are sets of contexts having that name.
-        self.d = {} # Keys are names, values are type lists.
-        self.defined = set() # Set of defined names.
-        self.defined_attrs = set() # Set of defined attributes.
-        self.ssa_d = {} # Keys are names, values are reaching lists.
-    
-    def __repr__ (self):
-        return 'Symbol Table for %s\n' % self.cx
-    
-    __str__ = __repr__
-    
 
 class TypeInferrer(AstFullTraverser):
     '''A class to infer the types of objects. 
@@ -359,7 +137,6 @@ class TypeInferrer(AstFullTraverser):
         # The class definition we are currently under
         self.current_class = None
 
-        self.stats = Stats()
         self.u = Utils()
         
         # Local stats
@@ -420,31 +197,32 @@ class TypeInferrer(AstFullTraverser):
         ''' file_tree is a list of pyfiles.
             TODO: Do this file find outside of this module... '''
         # Keys are module name, values their typed dicts
-        self.checked_list = {}
         file_list = self.file_tree_to_list(file_tree)
         for file in file_list:
+            assert isinstance(file, PyFile), "Error: Not a Python file"
             if file.has_been_typed():
                 continue
             dependents = self.check_dependents(file, file_tree)
             self.type_file(file, dependents) 
             
     def check_dependents(self, file, file_tree):
+        ''' TODO: Detect circular references. '''
         dependent_vars = {}
         if file.has_been_typed():
-            dependent_vars[file.get_name()] = Module_Type(file.get_name(), file.get_global_vars())
+            dependent_vars[file.get_name()] = set([Module_Type(file.get_name(), file.get_global_vars())])
             return dependent_vars
         root = file.get_source()
         for dependent in root.import_dependents:
-                if dependent not in self.checked_list:
-                    split_string = dependent.split('/')
-                    name = split_string.pop()
-                    # We want to remove the last '/' as well
-                    directory = dependent[:dependent.rfind(name) - 1]
-                    assert(directory in file_tree), "File not found"   
-                    dependent_file = file_tree[directory][name]
-                    dependent_dependents = self.check_dependents(dependent_file, file_tree)
-                    self.type_file(dependent_file, dependent_dependents)
-                    dependent_vars[name] = Module_Type(name, dependent_file.get_global_vars())
+                assert isinstance(dependent, ImportDependent)
+                name = dependent.get_module_name()
+                as_name = dependent.get_as_name()
+                directory = dependent.get_directory_no_name()
+                print(directory)
+                assert(directory in file_tree), "File not found"   
+                dependent_file = file_tree[directory][name]
+                dependent_dependents = self.check_dependents(dependent_file, file_tree)
+                self.type_file(dependent_file, dependent_dependents)
+                dependent_vars[as_name] = set([Module_Type(name, dependent_file.get_global_vars())])
         return dependent_vars 
             
     def file_tree_to_list(self, file_tree):
@@ -458,8 +236,11 @@ class TypeInferrer(AstFullTraverser):
         ''' Runs the type_checking on an individual file. '''
         root = file.get_source()           
         self.init()
+        print("DEEEEEEEEEEEEEEEEEEEE")
+        pprint(dependents)
         self.variableTypes.update(dependents)
         self.visit(root)
+        pprint(self.variableTypes)
         file.set_global_vars(self.variableTypes)
         file.typed = True
 
@@ -897,20 +678,20 @@ class TypeInferrer(AstFullTraverser):
         else:
             return [set([any_type])]
         
-    def do_Import(self, node):
-        for z in node.names:
-            self.visit(z)
+  #  def do_Import(self, node):
+  #      for z in node.names:
+  #          self.visit(z)
             
-    def do_ImportFrom(self, node):
-        ''' TODO: Give the names the type module. '''
-        for z in node.names:
-            self.visit(z)
+  #  def do_ImportFrom(self, node):
+  #      ''' TODO: Give the names the type module. '''
+  #      for z in node.names:
+  #          self.visit(z)
             
-    def do_alias (self, node):
-        ''' Add the name as a Module type.
-            TODO: Link the module to the name.
-            TODO: Sort out cx '''
-        self.variableTypes[node.id] = set({Module_Type(node.module_name, node)})        
+   # def do_alias (self, node):
+   #     ''' Add the name as a Module type.
+   #         TODO: Link the module to the name.
+   #         TODO: Sort out cx '''
+    #    self.variableTypes[node.id] = set({Module_Type(node.module_name, node)})        
 
     def do_Call (self, node):
         ''' Infer the value of a function called with a particular set of 
@@ -1152,7 +933,6 @@ class TypeInferrer(AstFullTraverser):
 
     def do_GeneratorExp (self, node):
         ti = self
-        trace = False and not g.app.runningAllUnitTests
         junk = ti.visit(node.elt)
         t = []
         for node2 in node.generators:
@@ -1160,7 +940,6 @@ class TypeInferrer(AstFullTraverser):
             t.extend(t2)
         if ti.has_failed(t):
             t = ti.merge_failures(t)
-            if trace: g.trace('failed inference',ti.format(node),t)
         else:
             t = ti.clean(t)
         return t
