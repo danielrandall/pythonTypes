@@ -217,8 +217,13 @@ class TypeInferrer(AstFullTraverser):
                 name = dependent.get_module_name()
                 as_name = dependent.get_as_name()
                 directory = dependent.get_directory_no_name()
-                print(directory)
-                assert(directory in file_tree), "File not found"   
+               # assert(directory in file_tree), "File not found"
+               
+                # If can't find it then just set it to any   
+                if not directory in file_tree or name not in file_tree[directory]:
+                    dependent_vars[as_name] = set([any_type])
+                    continue
+                
                 dependent_file = file_tree[directory][name]
                 dependent_dependents = self.check_dependents(dependent_file, file_tree)
                 self.type_file(dependent_file, dependent_dependents)
@@ -417,7 +422,7 @@ class TypeInferrer(AstFullTraverser):
             if isinstance(targets[i], Container_Type):
                 assert len(value_types[i]) == 1
                 (value,) = value_types[i]
-                assert value <= Container_Type(None, None, None, None), "Line " + str(node.lineno) + ": Assigning non container type to a container"
+                assert value <= Container_Type(None, None, None, None), "Line " + str(node.lineno) + ": Assigning non-container type to a container"
                 # Unpack the lists
                 self.container_assignment(targets[i], value, node)
                 continue
@@ -425,7 +430,20 @@ class TypeInferrer(AstFullTraverser):
             if isinstance(value_types[i], Container_Type):
                 value_types[i].infer_types()
                 value_types[i] = set([value_types[i]])
-
+                
+            # This is updating types in a container. e.g. x[i] = 5
+            # We need to return here as it is not a traditional assignment
+            if isinstance(targets[i], ContainerUpdate):
+                if targets[i].is_slice():
+                    pprint(value_types[i])
+                    extracted_types = self.extract_container_types([value_types[i]])[0]
+                    assert extracted_types, "Line " + str(node.lineno) + ": Assigning non-container type to a slice"
+                    # Replace value_types (a container) with the types it contains
+                    value_types[i] = extracted_types
+                for container in targets[i].get_container_list():
+                    container.update_content_types(value_types[i])
+                return    
+                
             if isinstance(targets[i], Attribute_Type):
                 class_instance = targets[i].class_type
                 attr = targets[i].variable_type
@@ -447,6 +465,11 @@ class TypeInferrer(AstFullTraverser):
             values = value_container.contents
         self.conduct_assignment(targets, values, node)
         
+    def update_var_types(self):
+        ''' This functions decides whether variable types are updated or
+            overwritten. '''
+        pass
+        
     def do_AugAssign(self,node):
         ''' This covers things like x += ... x -=...
             This is pretty much just a BinOp so modify the node so node.value is a binop
@@ -460,8 +483,6 @@ class TypeInferrer(AstFullTraverser):
         
         node.value = binOp_node
         self.do_Assign(node)
-        if "g1" in self.variableTypes:
-            pprint(list(self.variableTypes["g1"])[0].get_vars()) 
         
     def check_waiting(self, new_var):
         waiting = [x[0] for x in self.awaiting_Typing if x[1] == new_var]
@@ -562,7 +583,6 @@ class TypeInferrer(AstFullTraverser):
                         (left <= int_type and right <= string_type)):
                     result_types.add(string_type)
                     continue
-            self.stats.n_binop_fail += 1
         assert result_types, "Line " + str(node.lineno) + ": " + "No acceptable BinOp operation. "
         return [result_types]
     
@@ -667,17 +687,17 @@ class TypeInferrer(AstFullTraverser):
         self.conduct_assignment(targets, self.extract_list_types(value_types), node)
         self.loop_helper(node)
         
-    def extract_list_types(self, list_of_lists):
+    def extract_container_types(self, list_of_containers):
         ''' Should be given a list of sets which contains only List_Type.
             This function returns a list containing a single set which contains
             all types find in each list. '''
         extracted_types = set()
-        assert isinstance(list_of_lists, list)
-        for possible_types in list_of_lists:
-            for list_type in possible_types:
-                assert isinstance(list_type, List_Type), "Should be a list but found a " + str(list_type)
-                list_type.infer_types()     # Just to make sure
-                extracted_types |= list_type.content_types
+        assert isinstance(list_of_containers, list)
+        for possible_types in list_of_containers:
+            for container_type in possible_types:
+                assert container_type <= Container_Type(None, None, None, None), "Should be a container but found a " + str(container_type)
+                container_type.infer_types()     # Just to make sure
+                extracted_types |= container_type.content_types
         # If nothing is found then return any_type
         if extracted_types:
             return [extracted_types]
@@ -764,7 +784,7 @@ class TypeInferrer(AstFullTraverser):
         targets = self.visit(node.target) # A name.
         self.currently_assigning = False
         value_types = self.visit(node.iter) # An attribute.
-        value_types = self.extract_list_types(value_types)
+        value_types = self.extract_container_types(value_types)
         self.conduct_assignment(targets, value_types, node)
         #return [List_Type(node)]
         
@@ -949,15 +969,15 @@ class TypeInferrer(AstFullTraverser):
         else:
             t = ti.clean(t)
         return t
+    
+    def do_Lambda (self, node):
+        return self.visit(node.body)
 
     def do_Index(self, node):    
         value_types = self.visit(node.value)[0]
         int_like_types = [x for x in value_types if x <= int_type]
         assert int_like_types, "index value must be an integer"
         return
-
-    def do_Lambda (self, node):
-        return self.visit(node.body)
 
     def do_Slice(self, node):
         ''' No need to return anything here. '''
@@ -976,12 +996,25 @@ class TypeInferrer(AstFullTraverser):
         return
 
     def do_Subscript(self, node):
-        ''' TODO: Allow user-defined types to index/slice.
-            TODO: Stop comparing with an instantiation of Container_Type - will probably be solved with the above'''
+        ''' You can have slice assignment. e.g. x[0:2] = [1, 2]
+            TODO: Allow user-defined types to index/slice.
+            TODO: Stop comparing with an instantiation of Container_Type - will probably be solved with the above. '''
         value_types = self.visit(node.value)[0]
+        if self.currently_assigning:
+            # Check whether variable can be a container
+            value_types = self.variableTypes[value_types]
         container_like_types = [x for x in value_types if x <= Container_Type(None, None, None, None)]
         assert container_like_types, "Line " + str(node.lineno) + ": cannot index/slice in non-container types. "
+        
+        # When checking the type of slice we can't have currently_assigning being true
+        old_ca = self.currently_assigning
+        self.currently_assigning = False
         self.visit(node.slice)
+        self.currently_assigning = old_ca
+        
+        if self.currently_assigning:
+            return [ContainerUpdate(container_like_types, isinstance(node.slice, ast.Slice))]
+        
         if isinstance(node.slice, ast.Slice):
             # Should return list
             return [value_types]

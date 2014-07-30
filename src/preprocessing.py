@@ -55,6 +55,7 @@ class Preprocessor(AstFullTraverser):
         self.n_defined = 0
         self.n_nodes = 0
         self.parent = self.Dummy_Node()
+        self.import_dependents = None
         self.visit(root)
         # Undo references to Dummy_Node objects.
         root.stc_parent = None
@@ -219,11 +220,11 @@ class Preprocessor(AstFullTraverser):
             alias.asname contains the obvious asname e.g. import filename as asname
             TODO: Deal with asname
             TODO: Allow imports outside of start ''' 
-        assert isinstance(node.stc_context, ast.Module)
+        #assert self.import_dependents
         for alias in node.names:
             as_name = alias.asname if alias.asname else None
             import_dependent = ImportDependent(alias.name, import_from, as_name)
-            node.stc_context.import_dependents.append(import_dependent)
+            self.import_dependents.append(import_dependent)
 
     def do_Lambda(self,node):
         self.n_contexts += 1
@@ -260,6 +261,7 @@ class Preprocessor(AstFullTraverser):
         # The contents of this module to which children add themselves.
         node.contents_dict = {}
         node.import_dependents = []
+        self.import_dependents = node.import_dependents
         # Visit the children in the new context.
         self.context = node
         for z in node.body:

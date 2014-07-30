@@ -16,37 +16,6 @@ class SSA_Traverser(AstFullTraverser):
     def __init__(self):
         AstFullTraverser.__init__(self)
 
-    def dump_dict (self,aDict,tag=''):
-        g.trace(tag)
-        for key in sorted(aDict.keys()):
-            print('  %s = [%s]' % (key,self.u.format(aDict.get(key,[]))))
-
-    # Similar to p1.lookup, but node can be any node.
-    def lookup(self,node,key):
-        '''Return the symbol table for key, starting the search at node cx.'''
-        trace = False and not g.app.runningAllUnitTests
-        if isinstance(node,(ast.Module,ast.ClassDef,ast.FunctionDef)):
-            cx = node
-        else:
-            cx = node.stc_context
-        while cx:
-            # d = getattr(cx,'stc_symbol_table',{})
-            d = cx.stc_symbol_table.d
-            if key in d.keys():
-                if trace: g.trace('found',key,self.u.format(cx))
-                return d
-            else:
-                cx = cx.stc_context
-        g.trace(' not found',key,self.u.format(node))
-        return None
-        
-        # for d in (self.builtins_d,self.special_methods_d):
-            # if key in d.keys():
-                # return d
-        # else:
-            # g.trace(node,key)
-            # return None
-
     def merge_dicts(self,aDict,aDict2):
         '''Merge the lists in aDict2 into aDict.'''
         for key in aDict2.keys():
@@ -305,19 +274,21 @@ class SSA_Traverser(AstFullTraverser):
             self.visit(z)
 
     def do_ClassDef (self, node):
-        ''' We need the global variables. Do not start with an empty d
-            TODO: Check for classes defined after. '''
+        ''' - We do not assign ssa numbers to class names as it's impossible
+              to track order of execution.
+            - We need the global variables. Do not start with an empty d
+            TODO: Check for classes defined after. '''    
         # Class becomes a sort variable when defined
-        if node.name in self.d:
-            self.d[node.name] += 1
-        else:
-            self.d[node.name] = 1
+        #if node.name in self.d:
+        #    self.d[node.name] += 1
+        #else:
+        #    self.d[node.name] = 1
         node.originalId = node.name
-        node.id = node.originalId + str(self.d[node.originalId])
+        node.id = node.originalId #+ str(self.d[node.originalId])
         old_d = self.d
-        self.add_intial_class_names()
-        for z in node.bases:
-            self.visit(z)
+        #self.add_intial_class_names()
+        #for z in node.bases:
+        #    self.visit(z)
         for z in node.body:
             self.visit(z)
         self.d = old_d
@@ -325,16 +296,17 @@ class SSA_Traverser(AstFullTraverser):
     def do_FunctionDef (self, node):
         ''' Variables defined in function should not exist outside. '''
         # Function becomes a sort variable when defined
-        if node.name in self.d:
-            self.d[node.name] += 1
-        else:
-            self.d[node.name] = 1
-        node.originalId = node.name
-        node.id = node.originalId + str(self.d[node.originalId])
+       
+      #  if node.name in self.d:
+       #     self.d[node.name] += 1
+       # else:
+      #      self.d[node.name] = 1
+      #  node.originalId = node.name
+      #  node.id = node.originalId + str(self.d[node.originalId])
         # Store d so we can eradicate local variables
         old_d = self.d
-        print(node.name)
-        self.visit(node.args)
+       # print(node.name)
+       # self.visit(node.args)
         for z in node.body:
             self.visit(z)
         self.d = old_d
@@ -386,6 +358,7 @@ class SSA_Traverser(AstFullTraverser):
             self.visit(node.target)
             node.prev_name = node.target
             return
+        pprint(node.target)
         assert hasattr(node.target, 'id'), "Error: Target is not a variable."
         
         prev_name = ast.Name()
@@ -432,6 +405,14 @@ class SSA_Traverser(AstFullTraverser):
         else:
             self.d[node.name] = 1
             node.id = node.name + str(self.d[node.name])
+            
+
+    #def do_Subscript(self, node):
+    #    self.visit(node.value)
+    #    self.visit(node.slice)
+    #    assert isinstance(node.value, ast.Name), "Cannot index/slice into a non-variable."
+    #    node.id = node.value.id
+
             
     def do_Assert(self, node):
         self.visit(node.test)

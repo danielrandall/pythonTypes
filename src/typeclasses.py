@@ -237,17 +237,24 @@ class Container_Type(BaseType):
         ''' Calculate the types contained in the list.
             Check if any element is a list and calculate their types. '''
         # Don't infer it's already been done
-        if not self.content_types:
-            # All elements are sets.
-            for element in self.contents:
-                for t in element:
-                    if isinstance(t, Container_Type):
-                        t.infer_types()
-                        self.content_types.add(t)
-                    else:
+     #   if not self.content_types:
+         # All elements are sets.
+        for element in self.contents:
+            for t in element:
+                if isinstance(t, Container_Type):
+                    t.infer_types()
+                    self.content_types.add(t)
+                else:
            #             pprint(element)
-                        self.content_types |= element
+                    self.content_types |= element
         self.define_kind()
+        
+    def get_content_types(self):
+        return self.content_types
+        
+    def update_content_types(self, new_types):
+        self.content_types |= new_types
+        self.infer_types()
         
     def contains_waiting_type(self):
         self.infer_types()
@@ -261,6 +268,17 @@ class Container_Type(BaseType):
         ''' Override this. '''
         raise NotImplementedError
     
+class ContainerUpdate():
+        ''' Used to indicate a slice/index update is occurring. '''
+        def __init__(self, container_list, slice_update):
+            self.container_list = container_list
+            self.slice_update = slice_update
+            
+        def get_container_list(self):
+            return self.container_list
+        
+        def is_slice(self):
+            return self.slice_update
 
 class List_Type(Container_Type):
     ''' TODO: Add new types when the function append is called or similar. '''
