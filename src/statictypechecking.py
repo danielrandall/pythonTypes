@@ -247,7 +247,6 @@ class TypeInferrer(AstFullTraverser):
         ''' Runs the type_checking on an individual file. '''
         root = file.get_source()           
         self.init()
-        print("DEEEEEEEEEEEEEEEEEEEE")
         pprint(dependents)
         self.variableTypes.update(dependents)
         self.visit(root)
@@ -473,7 +472,8 @@ class TypeInferrer(AstFullTraverser):
     def do_AugAssign(self,node):
         ''' This covers things like x += ... x -=...
             This is pretty much just a BinOp so modify the node so node.value is a binop
-            work out the type and then assign the result. '''
+            work out the type and then assign the result.
+            TODO: Do all of this modification in the preprocessing. Can then eliminate this function. '''
         binOp_node = ast.BinOp()
         binOp_node.left = node.prev_name
         binOp_node.right = node.value

@@ -1,6 +1,7 @@
 from src.traversers.astfulltraverser import AstFullTraverser
 from src.utils import Utils
 import ast
+import copy
 from pprint import pprint
 
 class SSA_Traverser(AstFullTraverser):
@@ -353,25 +354,15 @@ class SSA_Traverser(AstFullTraverser):
             TODO: Allow this to work with Expressions such as self.x += 4'''
         self.visit(node.value)
    #     pprint(node.target.attr)
-        # We to create a node.target.id but no need to visit it again
         if isinstance(node.target, ast.Attribute):
             self.visit(node.target)
             node.prev_name = node.target
             return
-        pprint(node.target)
-        assert hasattr(node.target, 'id'), "Error: Target is not a variable."
-        
-        prev_name = ast.Name()
+        prev_name = copy.deepcopy(node.target)
         prev_name.ctx = ast.Load()
-        prev_name.id = node.target.id
-        node.prev_name = node.target.id
         node.prev_name = prev_name
         self.visit(prev_name)
         self.visit(node.target)
-        print("Target")      
-        print(node.target.id)
-        print("Prev name")
-        print(node.prev_name.id)  
         
     def do_Attribute(self, node):
         ''' Add a new variable of the form x.y if it's a variable.
