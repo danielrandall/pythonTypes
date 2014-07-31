@@ -279,6 +279,15 @@ class ContainerUpdate():
         
         def is_slice(self):
             return self.slice_update
+        
+class Set_Type(Container_Type):
+    ''' TODO: Add new types when the function append is called or similar. '''
+    def __init__(self, node, contents, c_types):
+        kind = 'set({})'
+        Container_Type.__init__(self, kind, node, contents, c_types)
+        
+    def define_kind(self):
+        self.kind = 'set(%s)' % repr(self.content_types)
 
 class List_Type(Container_Type):
     ''' TODO: Add new types when the function append is called or similar. '''

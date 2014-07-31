@@ -186,12 +186,20 @@ class Preprocessor(AstFullTraverser):
         # Visit the children in a new context.
         self.context = node
         pprint(self.context.stc_symbol_table.returns)
+        
+        node.args.lineno = node.lineno
         self.visit(node.args)
         for z in node.body:
             self.visit(z)
         for z in node.decorator_list:
             self.visit(z)
         self.context = parent_cx
+        
+    def do_Call(self, node):
+        self.visit(node.func)
+        for z in node.args:
+            z.lineno = node.lineno
+            self.visit(z)
         
     def do_Return(self,node):
         assert hasattr(self.context.stc_symbol_table, 'returns'), "Return outside of function"
@@ -267,6 +275,19 @@ class Preprocessor(AstFullTraverser):
         for z in node.body:
             self.visit(z)
         self.context = None
+        
+    def do_arguments(self, node):
+        for z in node.args:
+            z.lineno = node.lineno
+            self.visit(z)
+        for z in node.defaults:
+            z.lineno = node.lineno
+            self.visit(z)
+        
+    def do_Subscript(self, node):
+        node.slice.lineno = node.lineno
+        self.visit(node.slice)
+        self.visit(node.value)
 
     def do_Name(self,node):
         # g.trace('P1',node.id)

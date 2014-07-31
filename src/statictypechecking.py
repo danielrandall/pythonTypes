@@ -32,10 +32,6 @@ https://groups.google.com/forum/?fromgroups#!forum/python-static-type-checking
 # IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 # 
-# The License for the HTMLReportTraverser:
-#     
-# Copyright (C) 2005-2012 Paul Boddie <paul@boddie.org.uk>
-# 
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
 # Foundation; either version 3 of the License, or (at your option) any later
@@ -149,6 +145,7 @@ class TypeInferrer(AstFullTraverser):
         # Create the builtin type dict.
         ''' TODO: Differing number of parameters. '''
         builtin_type_dict = {
+            # Functions
             'eval': set([Def_Type([set([string_type])],
                                   set([any_type]),
                                   0)]),
@@ -185,9 +182,19 @@ class TypeInferrer(AstFullTraverser):
                                   0)]),
             'getattr' : set([Def_Type([set([any_type]), set([string_type]), set([any_type])],
                                   set([any_type]),
-                                  1)])
-            # list,tuple...
-            # close,open,sort,sorted,super...
+                                  1)]),
+            'isinstance': set([Def_Type([set([any_type]), set([any_type])],
+                                  set([bool_type]),
+                                  0)]),
+            'dir': set([Def_Type([set([any_type])],
+                                  set([List_Type(None, [], set())]),
+                                  1)]),
+            # Should this be a function or class?
+            'set': set([Def_Type([set([List_Type(None, [], set())])],
+                                  set([Set_Type(None, [], set())]),
+                                  1)]),
+            # Classes
+            'object' : set([Class_Type("object", {}, False)])
         }
         # Add the builtin_types to the variable dict
         self.variableTypes.update(builtin_type_dict)
@@ -206,7 +213,8 @@ class TypeInferrer(AstFullTraverser):
             self.type_file(file, dependents) 
             
     def check_dependents(self, file, file_tree):
-        ''' TODO: Detect circular references. '''
+        ''' TODO: Detect circular references.
+            TODO: Wildcard imports '''
         dependent_vars = {}
         if file.has_been_typed():
             #dependent_vars[file.get_name()] = set([Module_Type(file.get_name(), file.get_global_vars())])
@@ -245,8 +253,10 @@ class TypeInferrer(AstFullTraverser):
             
     def type_file(self, file, dependents):   
         ''' Runs the type_checking on an individual file. '''
-        root = file.get_source()           
+        root = file.get_source()     
+        print("Printing module " + file.get_name() + " ------------------------------")      
         self.init()
+        print("-DEPENDENTS-")
         pprint(dependents)
         self.variableTypes.update(dependents)
         self.visit(root)
@@ -285,6 +295,7 @@ class TypeInferrer(AstFullTraverser):
     def do_Attribute (self, node):
         ''' Always a variable of the form x.y .
             TODO: For assignments x.y = ? and x can be a number of different classes - do something clever. '''
+        print(node.lineno)
         if node.variable:
             name = self.do_Name(node.value)[0]
             if self.currently_assigning:
@@ -395,9 +406,13 @@ class TypeInferrer(AstFullTraverser):
         pprint(self.variableTypes)
         
     def conduct_assignment(self, targets, value_types, node):
-        ''' TODO: Stop comparisons with instantiation of Container_Type. '''
+        ''' TODO: Stop comparisons with instantiation of Container_Type.
+            TODO: Deal with fun params better '''
         assert(len(value_types) == len(targets)) 
         for i in range(len(targets)):
+            # Switch fun param to types
+            if value_types[i] in self.fun_params:
+                value_types[i] = self.variableTypes[value_types[i]]
             for e in value_types[i]:
                 result = e.contains_waiting_type()
                 if result:
@@ -601,14 +616,23 @@ class TypeInferrer(AstFullTraverser):
         a_type = [set([Unknown_Type(node)])]
         return a_type
     
-    def do_BoolOp(self,node):
+    def do_BoolOp(self, node):
         ''' For and/or
             Never fails.
             Boolean operators can return any types used in its values.
-            ie. len(x) or [] can return Int or List. '''
+            ie. len(x) or [] can return Int or List.
+            TODO: Deal with fun param better '''
         all_types = set()
+        print(node.lineno)
+        print(self.currently_assigning)
+        pprint(self.variableTypes)
         for z in node.values:
-            all_types |= self.visit(z)[0]
+            types = self.visit(z)[0]
+            # Get the types if it's a fun param
+            if types in self.fun_params:
+                types = self.variableTypes[types]
+            pprint(types)
+            all_types |= types
         return [all_types]
 
     def do_Num(self,node):
@@ -628,7 +652,7 @@ class TypeInferrer(AstFullTraverser):
             self.visit(z)
         for z in node.values:
             self.visit(z)
-        return [set([Dict_Type(node)])]
+        return [set([Dict_Type()])]
     
     def do_If(self,node):
         self.visit(node.test)
@@ -684,7 +708,7 @@ class TypeInferrer(AstFullTraverser):
         value_types = self.visit(node.iter)
         # value_types should be a list.
       #  assert isinstance(value_types, List_Type)
-        self.conduct_assignment(targets, self.extract_list_types(value_types), node)
+        self.conduct_assignment(targets, self.extract_container_types(value_types), node)
         self.loop_helper(node)
         
     def extract_container_types(self, list_of_containers):
@@ -695,9 +719,11 @@ class TypeInferrer(AstFullTraverser):
         assert isinstance(list_of_containers, list)
         for possible_types in list_of_containers:
             for container_type in possible_types:
-                assert container_type <= Container_Type(None, None, None, None), "Should be a container but found a " + str(container_type)
-                container_type.infer_types()     # Just to make sure
-                extracted_types |= container_type.content_types
+                if container_type == any_type:
+                    return [set([any_type])]
+                if container_type <= Container_Type(None, None, None, None):
+                    container_type.infer_types()     # Just to make sure
+                    extracted_types |= container_type.content_types
         # If nothing is found then return any_type
         if extracted_types:
             return [extracted_types]
@@ -829,10 +855,10 @@ class TypeInferrer(AstFullTraverser):
         self.variableTypes = old_types
         
         fun_type = Def_Type(parameter_types, self.fun_return_types, node.args.default_length)
-        self.variableTypes[node.id] = set([fun_type])
+        self.variableTypes[node.name] = set([fun_type])
         #Add to the currently class vars if there is one
         if self.current_class:
-            self.current_class.add_to_vars(node.id, self.variableTypes[node.id])
+            self.current_class.add_to_vars(node.name, self.variableTypes[node.name])
         pprint(parameter_types)
             
     def do_arguments(self, node):
@@ -865,7 +891,7 @@ class TypeInferrer(AstFullTraverser):
         return args
             
     def do_arg(self, node):
-        return [node.id]
+        return [node.arg]
     
     def do_ClassDef(self, node):
         ''' The __init__ will provide us with the majority of the self. vars
@@ -890,14 +916,14 @@ class TypeInferrer(AstFullTraverser):
             self.visit(z)
         # We need to set the parameters for init
         pprint(self.variableTypes)
-        init_ssa_reference = self.find_biggest_ssa_reference("__init__")
-        init_def = list(self.variableTypes[init_ssa_reference])[0]
+       #init_ssa_reference = self.find_biggest_ssa_reference("__init__")
+        init_def = list(self.variableTypes["__init__"])[0]
         self.current_class.set_init_params(init_def.parameter_types)
         pprint(self.variableTypes)
         # Set the call if possible
         is_callable, call_node = node.callable
         if is_callable:
-            fun = list(self.variableTypes[call_node.id])
+            fun = list(self.variableTypes[call_node.name])
             # Should be a list of size 1
             assert len(fun) == 1, "__call__ multiply defined. "
             self.current_class.set_callable_params(fun[0].get_parameter_types(), fun[0].get_return_types())
@@ -918,11 +944,11 @@ class TypeInferrer(AstFullTraverser):
             init_def.body = [ast.Pass()]
             init_def.args = ast.arguments()
             arg = ast.arg()
-            arg.id = "self"
+            arg.arg = "self"
             init_def.args.args = [arg]
             init_def.args.defaults = []
             init_def.name = "__init__"
-            init_def.id = "__init__1"
+            init_def.id = "__init__"
             init_def.name = init_def.id
             init_def.decorator_list = []
             body.insert(0, init_def)
@@ -974,9 +1000,13 @@ class TypeInferrer(AstFullTraverser):
         return self.visit(node.body)
 
     def do_Index(self, node):    
+        ''' TODO: Adjust this so it checks the type.
+            Lists have to be int
+            Dicts can have any type for a key. '''
         value_types = self.visit(node.value)[0]
-        int_like_types = [x for x in value_types if x <= int_type]
-        assert int_like_types, "index value must be an integer"
+        pprint(value_types)
+        int_like_types = [x for x in value_types if x <= any_type]
+        assert int_like_types, "Line " + str(node.lineno) + ": index value must be an integer"
         return
 
     def do_Slice(self, node):
@@ -1022,6 +1052,9 @@ class TypeInferrer(AstFullTraverser):
             # Should return something in the list
             return_types = set()
             for possible_container in container_like_types:
+                pprint(container_like_types)
+                if isinstance(possible_container, Any_Type):
+                    return [set([any_type])]
                 return_types |= possible_container.content_types
             return [return_types]
         assert False, "How did I get here?"
@@ -1031,7 +1064,7 @@ class TypeInferrer(AstFullTraverser):
         return [ti.builtin_type]
         
     def do_Yield(self,node):
-        return self.return_helper(node)
+        return
 
     def do_With (self, node):
         ''' TODO: Add new variable temporarily. '''
