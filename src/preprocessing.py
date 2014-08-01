@@ -29,7 +29,7 @@ class Preprocessor(AstFullTraverser):
     This code now injects empty dicts only in context nodes, which does
     not cause significant problems.
     
-    TODO: Edit this and make it more useful
+    TODO: Add global variables to the module dictionary
     '''
     def __init__(self):
         AstFullTraverser.__init__(self)
@@ -100,6 +100,7 @@ class Preprocessor(AstFullTraverser):
         d = st.attrs_d
         key = node.attr
         val = node.value
+        node.variable = isinstance(node.value, ast.Name)
         # Check if leftside is self
         if name == "self":
             parent_class = self.find_parent_class_def(node)
@@ -306,7 +307,7 @@ class Preprocessor(AstFullTraverser):
             # For example, a += 1 generates a Store, but does not defined the symbol.
             # Instead, only ast.Assign nodes really define a symbol.
             node.stc_scope = None
-        return node.id
+        return node.id     
     
     def do_Yield(self, node):
         ''' If a yield is found anywhere in a function then it is a generator

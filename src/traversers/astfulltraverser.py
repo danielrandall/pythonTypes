@@ -293,7 +293,7 @@ class AstFullTraverser(AstBaseTraverser):
         if node.value:
             self.visit(node.value)
 
-    def do_Try(self,node):
+    def do_Try(self, node):
         for z in node.body:
             self.visit(z)
         for z in node.handlers:
@@ -303,7 +303,7 @@ class AstFullTraverser(AstBaseTraverser):
         for z in node.finalbody:
             self.visit(z)
 
-    def do_TryExcept(self,node):
+    def do_TryExcept(self, node):
         for z in node.body:
             self.visit(z)
         for z in node.handlers:
@@ -311,25 +311,29 @@ class AstFullTraverser(AstBaseTraverser):
         for z in node.orelse:
             self.visit(z)
 
-    def do_TryFinally(self,node):
+    def do_TryFinally(self, node):
         for z in node.body:
             self.visit(z)
         for z in node.finalbody:
             self.visit(z)
 
-    def do_While (self,node):
+    def do_While (self, node):
         self.visit(node.test)
         for z in node.body:
             self.visit(z)
         for z in node.orelse:
             self.visit(z)
             
-    def do_With (self,node):
-        self.visit(node.context_expr)
-        if node.optional_vars:
-            self.visit(node.optional_vars)
+    def do_With(self, node):
+        print(node.__dict__)
+        for z in node.items:
+            self.visit(z)
         for z in node.body:
             self.visit(z)
+            
+    def do_withitem(self, node):
+        self.visit(node.context_expr)
+        self.visit(node.optional_vars)
 
     def do_Yield(self,node):
         if node.value:

@@ -329,12 +329,12 @@ class SSA_Traverser(AstFullTraverser):
         self.d = old_d
 
     def do_arguments(self, node):
-        assert isinstance(node,ast.AST),node
-        
+        assert isinstance(node, ast.AST), node
         for arg in node.args:
             self.visit(arg)
             
     def do_arg(self, node):
+        return
         if node.arg == "self":
             node.id = node.arg
             return
@@ -363,27 +363,14 @@ class SSA_Traverser(AstFullTraverser):
         node.prev_name = prev_name
         self.visit(prev_name)
         self.visit(node.target)
-        
-    def do_Attribute(self, node):
-        ''' Add a new variable of the form x.y if it's a variable.
-            SSA not currently performed '''
-        if isinstance(node.value, ast.Name):
-            node.id = node.value.id + '.' + node.attr
-            node.variable = True
-            self.do_Name(node)
-            self.visit(node.value)
-        else:
-            self.visit(node.attr)
-            self.visit(node.value)
-            node.variable = False
 
-    def do_Import(self, node):        
-        for z in node.names:
-            self.visit(z)
+  #  def do_Import(self, node):        
+  #      for z in node.names:
+  #          self.visit(z)
 
-    def do_ImportFrom(self, node):
-        for z in node.names:
-            self.visit(z)
+  #  def do_ImportFrom(self, node):
+  #      for z in node.names:
+  #          self.visit(z)
             
     def do_alias (self, node):
         ''' Entered after imports.
@@ -413,7 +400,7 @@ class SSA_Traverser(AstFullTraverser):
     def do_Name(self, node):
         ''' If the id is True or false then ignore. WHY ARE TRUE AND FALSE
             IDENTIFIED THE SAME WAY AS VARIABLES. GAH. '''
-       # print(node.id)
+        print(node.id)
         if node.id == "True" or node.id == "False":
             return
         if node.id == "None":

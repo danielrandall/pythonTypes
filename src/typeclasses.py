@@ -163,28 +163,6 @@ class Def_Type(Callable_Type):
         self.return_types = return_types
         self.arg_default_length = arg_default_length
 
-class Dict_Type(BaseType):
-    ''' TODO: Add values contained in a dict. '''
-    def __init__(self):
-        # For now, all dicts are separate types.
-        # kind = 'Dict(%s)' % (Utils().format(node))
-        kind = 'Dict(@%s)'
-        BaseType.__init__(self, kind)
-        
-        self.global_vars = {# keys returns a dict view object - not yet supported
-                            'keys' : set([Def_Type([],
-                                  set([any_type]),
-                                  0)]),
-                            # items returns a dict view object - not yet supported
-                            'items' : set([Def_Type([],
-                                  set([any_type]),
-                                  0)]),
-                            # values returns a dict view object - not yet supported
-                            'values' : set([Def_Type([],
-                                  set([any_type]),
-                                  0)])
-                            }
-
 class Inference_Failure(BaseType):
     def __init__(self, kind, node):
         BaseType.__init__(self,kind)
@@ -279,6 +257,29 @@ class ContainerUpdate():
         
         def is_slice(self):
             return self.slice_update
+        
+class Dict_Type(Container_Type):
+    ''' TODO: Add values contained in a dict. '''
+    def __init__(self, node, contents, c_types):
+        kind = 'dict(@%s)'
+        Container_Type.__init__(self, kind, node, contents, c_types)
+        
+        self.global_vars = {# keys returns a dict view object - not yet supported
+                            'keys' : set([Def_Type([],
+                                  set([any_type]),
+                                  0)]),
+                            # items returns a dict view object - not yet supported
+                            'items' : set([Def_Type([],
+                                  set([any_type]),
+                                  0)]),
+                            # values returns a dict view object - not yet supported
+                            'values' : set([Def_Type([],
+                                  set([any_type]),
+                                  0)])
+                            }
+        
+    def define_kind(self):
+        self.kind = 'dict(%s)' % repr(self.content_types)
         
 class Set_Type(Container_Type):
     ''' TODO: Add new types when the function append is called or similar. '''
@@ -387,4 +388,4 @@ none_type = None_Type()
 string_type = String_Type()
 any_type = Any_Type()
 
-ALL_TYPES = [List_Type(None, [], set()), Dict_Type(), int_type, float_type, bool_type, string_type, bytes_type, builtin_type]
+ALL_TYPES = [List_Type(None, [], set()), Dict_Type(None, [], set()), int_type, float_type, bool_type, string_type, bytes_type, builtin_type]

@@ -1,5 +1,5 @@
 import ast
-from astbasetraverser import AstBaseTraverser
+from src.traversers.astbasetraverser import AstBaseTraverser
 class StatementTraverser(AstBaseTraverser):
         
     # def __init__(self):

@@ -1,4 +1,4 @@
-from astbasetraverser import AstBaseTraverser
+from src.traversers.astbasetraverser import AstBaseTraverser
 import ast
 class AllStatementsTraverser(AstBaseTraverser):
         

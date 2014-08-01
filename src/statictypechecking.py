@@ -152,6 +152,9 @@ class TypeInferrer(AstFullTraverser):
             'id':   set([Def_Type([set([any_type])],
                                   set([int_type]),
                                   0)]),
+            'int': set([Def_Type([set([string_type, int_type, float_type, bytes_type]), set([int_type])],
+                                  set([int_type]),
+                                  2)]),
             'str':  set([Def_Type([set([any_type])],
                                   set([string_type]),
                                   0)]),
@@ -167,12 +170,16 @@ class TypeInferrer(AstFullTraverser):
             'chr':  set([Def_Type([set([int_type])],
                                   set([string_type]),
                                   0)]),
+            # Needs varlength arg and keyword args
             'print': set([Def_Type([set([any_type])],
                                   set([none_type]),
                                   0)]),
-            'sorted': set([Def_Type([set([List_Type(None, [], set())])],
-                                  set([List_Type(None, [], set())]),
+            'reversed': set([Def_Type([set([any_type])],
+                                  set([any_type]),
                                   0)]),
+            'sorted': set([Def_Type([set([List_Type(None, [], set())]), set([any_type]), set([bool_type])],
+                                  set([List_Type(None, [], set())]),
+                                  2)]),
             # min and max work on any iterable and have varargs
             'min' : set([Def_Type([set([any_type]), set([any_type])],
                                   set([any_type]),
@@ -189,6 +196,10 @@ class TypeInferrer(AstFullTraverser):
             'dir': set([Def_Type([set([any_type])],
                                   set([List_Type(None, [], set())]),
                                   1)]),
+            # TODO: Get this to return a file-object
+            'open': set([Def_Type([set([string_type]), set([string_type]), set([int_type]), set([string_type]), set([string_type]), set([string_type]), set([bool_type]), set([any_type])],
+                                  set([any_type]),
+                                  7)]),
             # Should this be a function or class?
             'set': set([Def_Type([set([List_Type(None, [], set())])],
                                   set([Set_Type(None, [], set())]),
@@ -296,6 +307,8 @@ class TypeInferrer(AstFullTraverser):
         ''' Always a variable of the form x.y .
             TODO: For assignments x.y = ? and x can be a number of different classes - do something clever. '''
         print(node.lineno)
+        print(node.value)
+        print(node.attr)
         if node.variable:
             name = self.do_Name(node.value)[0]
             if self.currently_assigning:
@@ -414,6 +427,7 @@ class TypeInferrer(AstFullTraverser):
             if value_types[i] in self.fun_params:
                 value_types[i] = self.variableTypes[value_types[i]]
             for e in value_types[i]:
+                print(e)
                 result = e.contains_waiting_type()
                 if result:
                     if result.waiting_for == targets[i]:
@@ -652,7 +666,7 @@ class TypeInferrer(AstFullTraverser):
             self.visit(z)
         for z in node.values:
             self.visit(z)
-        return [set([Dict_Type()])]
+        return [set([Dict_Type(None, [], set())])]
     
     def do_If(self,node):
         self.visit(node.test)
@@ -873,7 +887,7 @@ class TypeInferrer(AstFullTraverser):
         # If this a function in a class then self should be the first arg
         if self.current_class:
             pprint(args[0])
-            assert(args[0] == "self"), "First argument of function " + node.stc_parent.name + " should be self."
+            assert(args[0] == "self"), "Line " + str(node.lineno) + ": First argument of function " + node.stc_parent.name + " should be self."
             del args[0]
         defaults = []
         for z in node.defaults:
@@ -898,6 +912,7 @@ class TypeInferrer(AstFullTraverser):
             so we want to analyse that first.
             TODO: Reverse base class list and update that way to avoid list comp. '''
         old_types = self.variableTypes.copy()
+        parent_class = self.current_class
         # Deal with inheritence.
         inherited_vars = {}
         for base in node.bases:
@@ -905,6 +920,9 @@ class TypeInferrer(AstFullTraverser):
             acceptable_type = False
             pprint(base_class)
             for possible_type in base_class:
+                if possible_type == any_type:
+                    # What the hell do I do here?
+                    acceptable_type = True
                 if isinstance(possible_type, Class_Type):
                     # If there is a clash, the first instance will be used
                     inherited_vars.update({k:v for k,v in possible_type.get_vars().items() if k not in inherited_vars})
@@ -916,7 +934,7 @@ class TypeInferrer(AstFullTraverser):
             self.visit(z)
         # We need to set the parameters for init
         pprint(self.variableTypes)
-       #init_ssa_reference = self.find_biggest_ssa_reference("__init__")
+        #init_ssa_reference = self.find_biggest_ssa_reference("__init__")
         init_def = list(self.variableTypes["__init__"])[0]
         self.current_class.set_init_params(init_def.parameter_types)
         pprint(self.variableTypes)
@@ -928,6 +946,7 @@ class TypeInferrer(AstFullTraverser):
             assert len(fun) == 1, "__call__ multiply defined. "
             self.current_class.set_callable_params(fun[0].get_parameter_types(), fun[0].get_return_types())
         self.variableTypes = old_types
+        self.current_class = parent_class
         self.variableTypes[node.id] = set([self.current_class])
         
     def move_init_to_top(self, body):
@@ -1034,6 +1053,8 @@ class TypeInferrer(AstFullTraverser):
             # Check whether variable can be a container
             value_types = self.variableTypes[value_types]
         container_like_types = [x for x in value_types if x <= Container_Type(None, None, None, None)]
+        pprint(value_types)
+        pprint(container_like_types)
         assert container_like_types, "Line " + str(node.lineno) + ": cannot index/slice in non-container types. "
         
         # When checking the type of slice we can't have currently_assigning being true
@@ -1067,10 +1088,18 @@ class TypeInferrer(AstFullTraverser):
         return
 
     def do_With (self, node):
-        ''' TODO: Add new variable temporarily. '''
-        ti = self
-        t = []
+        ''' Uses __enter__ and __exit__ methods to ensure initialisation and cleaning of the variable.
+            TODO: Add new variable temporarily. '''
+        old_vars = self.variableTypes
+        for z in node.items:
+            self.visit(z)
         for z in node.body:
-            t.append(ti.visit(z))
-        t = ti.clean(t)
-        return t
+            self.visit(z)
+    
+    def do_withitem(self, node):
+        ''' Equivalent to an assignment.
+            TODO: Make it call __enter__ method here. '''
+        assignment = ast.Assign()
+        assignment.targets = [node.optional_vars]
+        assignment.value = node.context_expr
+        self.visit(assignment)

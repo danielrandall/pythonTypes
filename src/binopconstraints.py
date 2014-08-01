@@ -26,6 +26,9 @@ BIN_OP_CONSTRAINTS = {
         'Mod' : { float_type : [float_type, int_type],
                   int_type : [float_type, int_type],
                   List_Type: [List_Type],
-                  string_type: [any_type]
-            }                            
+                  string_type: [any_type]},
+        'Div' : { float_type : [float_type, int_type],
+                  int_type : [float_type, int_type],
+                  List_Type: [List_Type],
+                  string_type : [string_type] }                            
 }

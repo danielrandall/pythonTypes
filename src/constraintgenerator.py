@@ -121,7 +121,11 @@ class ConstraintGenerator:
         for a_type in contributing_types:
             if isinstance(a_type, Any_Type):
                 limiting_types = binopcons.OP_TYPES[op_kind]
+            if isinstance(a_type, None_Type):
+                # Nothing doing here
+                continue
             else:
+                print(lineno)
                 limiting_types = binopcons.BIN_OP_CONSTRAINTS[op_kind][a_type]
             self.csp_problem.addConstraint(self.limit_to_set(set(limiting_types)), [param_to_constrain])
             
