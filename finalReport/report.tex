@@ -109,6 +109,39 @@ This program will never raise a type error, despite the fact $5 + ``Hello  world
 \end{lstlisting}
 With all the extra code the programmer had to write for the `special potion' they forgot to use the \textit{add\_health} function! The types of \textit{character\_health} and \textit{potion} are incompatible together with the \textit{+=} operator and a type error will be raised if this branch is executed. If the programmer also neglects to include this special potion in their test suite then this code may be shipped with this branch having never met a Python interpreter.
 
+\subsection{Abstract Syntax Tree}
+An abstract syntax tree (AST) ``represents the hierarchical syntactic structure of the source 
+program''~\cite{dragonBook} in a tree data structure where ``each 
+interior node represents an operator; the children of the node represent the 
+operands of the operator.''~\cite{dragonBook} \\
+An AST provides us with the means of reasoning about the source code. Instead of having to parse a single large string to find what what we need we can search through and manipulate the tree data structure. \\
+Python provides the built-in \textit{ast} module which generates an AST from Python source code. The ast module transforms the following module:
+\begin{lstlisting}
+    x = 4
+    if x == 4:
+      x = 5.0 + 1
+    else:
+      x = "Hi"
+      print(x)
+\end{lstlisting}
+into the following AST:
+\begin{verbatim}
+Module(body=[
+    Assign(targets=[Name(id='x',ctx=Store())],
+                              value=Num(n=4))
+    If(
+      test=Compare(left=Name(id='x',ctx=Load()),
+                   ops=[Eq()],comparators=[Num(n=4)])
+      body=[Assign(targets=[Name(id='x',ctx=Store())],
+                   value=BinOp(left=Num(n=5.0),op=Add(),
+                               right=Num(n=1)))]
+      orelse=[Assign(targets=[Name(id='x',ctx=Store())],
+                     value=Str(s='Hi'))])
+    Expr(value=Call(func=Name(id='print',ctx=Load()),
+                        args=[Name(id='x',ctx=Load())]))])
+\end{verbatim}
+As far as we can tell, no other library has been written which generates ASTs from Python source code.
+
 \subsection{Control Flow}
 The control flow of an application is the route taken when the program is executed or the order in which individual statements are executed. Consider the following program:
 \begin{lstlisting}
@@ -184,7 +217,7 @@ A flow-sensitive algorithm is clearly the more accurate approach but requires a 
 Ryder~\cite{ryder03} suggests that the difference between a flow-sensitive and flow-insensitive approach is minimal in regards to object-oriented programs due to the size of methods being small. While Python can be, and is, used for object-oriented programming, a significant number of Python programs are written as scripts and so the benefits of a flow-sensitive algorithm can not ruled out in our case.
 
 \subsection{SSA Naming}
-Primarily used in compilers, Single Static Assignment (SSA) is used to acquire ``unique names for distinct entities.''~\cite{ssaBook} What this means is that each variable should only be assigned to once. There are number of variants of SSA, each designed for a specialised purpose. In our case we are only required to use the basic version of SSA, `vanilla' SSA. \\
+Primarily used in compilers, Single Static Assignment (SSA) is used to acquire ``unique names for distinct entities.''~\cite{ssaBook} What this means is that each variable should only be assigned to once. There are number of variants of SSA, each designed for a specialised purpose, such as Hashed SSA form which intends to capture the fact that a single static use or definition (e.g.\ $*p$ in C) could potentially impact multiple variables. In our case we are only required to use the basic version of SSA, `vanilla' SSA which we will now describe. \\
 Consider the following example:
 \begin{lstlisting}
 	x = 5
@@ -278,20 +311,44 @@ Whether flagging an error on unreachable code constitutes a false-positive is on
 Unfortunately there are no out-of-the-box solutions to this problem for Python programs. \\
 
 \subsection{Constraints and Constraint Solvers}
-A  constraint satisfaction problem (CSP) can be broken down into one of three categories, boolean satisfiability problem (SAT), the Satisfiability Modulo Theories (SMT) and answer set programming (ASP). A CSP is typically described using the following notation: $\langle X, D, C \rangle$. Where $X$ represents a set of variables, $D$ is a set of corresponding domains and $C$ is a set of constraints which must be followed by any solution. Every variable must have a \textit{domain}. A domain is a specific area over which the variables can take a form. An example domain is the set of integers, $\mathbb{Z}$. \\
-A solution to a CSP is a mapping from the given variables to a value in the domain which satisfies the constraints provided. \\
-Constraints are frequently solve using constraint solvers. \\
-The most popular constraint solving software for Python is \textit{python-constraint}.
+``A constraint satisfaction problem [CSP] is a problem where one has to find value for a (finite) set of variables satisfying a (finite) set of constraints.''~\cite{constraintBook} A CSP is typically described using the following notation: $\langle X, D, C \rangle$. Where $X$ represents a set of variables, $D$ is a set of corresponding domains and $C$ is a set of constraints which must be followed by any solution. Every variable must have a \textit{domain}. A domain is a specific area from which the variables can take a value. An example domain is the set of integers, $\mathbb{Z}$. A solution to a CSP is a mapping from the given variables to a value in the domain which satisfies the constraints provided. \\
+An example of a CSP is the following, where each letter must be replaced with a different number such that the sum evaluates correctly~\cite{constraintPrinciples}: \\
+\begin{equation*}
+\frac{
+    \begin{array}[b]{r}
+      SEND \\
+      + MORE
+    \end{array}
+  }{
+    MONEY
+  }
+\end{equation*}
+In this problem the  $\langle X, D, C \rangle$ are as follows:
+\begin{verbatim}
+    X:
+      S, E, N, D, M, O, R, Y 
+    D:
+      [1..9] for S, M
+      [0..9] for E, N, D, O, R, Y
+    C:
+      AllDifferent([S, E, N, D, M, O, R, Y])
+      ExactSum([SEND, MORE], MONEY)
+\end{verbatim}
+There is a single solution to this CSP:
+\begin{verbatim}
+    S = 9, E = 5, N = 6, D = 7, M = 1, O = 0, R = 8, Y = 2
+\end{verbatim}
+Constraints are frequently solved using constraint solvers. A third-party constraint solving package for Python called \textit{python-constraint}. python-constraint provides a number of built-in constraint types to use such as \textit{NotInSetConstraint}, \textit{AllEqualConstraint} and \textit{ExactSumConstraint}. However, it also allows you use a \textit{FunctionConstraint} to which you provide a function defining the constraint logic. This means the constraints it can handle are endless.
 
 \newpage
 \section{Type Inference}
 The main problem which is required to be solved by this project is how to statically infer the types in Python without executing the program. \\
-In this section we look at a number of the existing techniques to achieve this while keeping in mind the objectives described at the beginning of this report.
+In this section we look at a number of the existing techniques to achieve this while keeping in mind the objectives described at the beginning of this report. Those were for it to return a low number of false positives, for it to statically analyse the code (not run it) and for it to be a out-of-the-box solution and for it to be reasonably fast.
 
 \subsection{Hindley-Milner}
 The Hindley-Milner algorithm was developed by Robin Milner based on the work of J. Roger Hindley. Hindley described the \textit{principal
 type schema}~\cite{hindley69}, ``which is the most general polymorphic type of an expression, and showed that if a combinatorial term has a type, then it has a principal type.''~\cite{cardelli87} Milner's contribution was an extension to Hindley's \textit{principal type schema} which included the ``notion of generic and non-generic type variables, which is essential for handling declarations of polymorphic functions.''~\cite{cardelli87} Milner's work culminated in the type inference system for the ML language~\cite{milner84}. \\
-The Hindley-Milner algorithm uses the operations performed on expressions to generate constraints on the types of those expressions. This is done by annotating the nodes of an expression tree with the constraints in a bottom up fashion\footnote{The Hindley-Milner algorithm can be implemented top-down, called the $\mathcal{M}$ algorithm, or bottom-up, called $\mathcal{W}$~\cite{heeren02}. However, the bottom-up version appears to much more common.}. \\ The constraint is solved to infer a type for a term using a \textit{unification} algorithm.
+The Hindley-Milner algorithm uses the operations performed on expressions to generate constraints on the types of those expressions. This is done by annotating the nodes of an expression tree with the constraints in a bottom up fashion\footnote{The Hindley-Milner algorithm can be implemented top-down, called the $\mathcal{M}$ algorithm, or bottom-up, called $\mathcal{W}$~\cite{heeren02}. However, the bottom-up version appears to be much more common.}. \\ The constraint is solved to infer a type for a term using a \textit{unification} algorithm.
 Bugs can be detected by determining whether there are inconsistencies in the set of constraints.
 
 \paragraph{Limitations}\mbox{}\\
@@ -309,8 +366,15 @@ Developed by Jeff Ruberg~\cite{pyty}, Pyty is a bug checker which analyses annot
 \paragraph{Limitations}\mbox{}\\
 Pyty requires annotations to the source code in a specific format. This is quite tedious and prevents from being an `out-of-the-box' solution to our problem.
 
+\subsubsection{Palsberg and Schwartzbach Algorithm}
+The Palsberg and Schwartzbach algorithm works by constructing a network of constraints where each expression in the analysed program is represented by a node in the network. The node contains the types for which the expression may become during execution. All types are initially set to be empty except from constants and literals. The constraints between the nodes are created in response to statements in the program. In the Palsberg and Schwartzbach algorithm algorithm there are two ways in which a constraint can generated: assignments and function calls. An assignment such as $x := y$ is represented by the constraint $type(x) \subset type(y)$. Function calls generate constraints between the \textit{actual} arguments used in the function call and the formal arguments in the function definition. The constraints are solved by propagating types through the constraint edges until a fixed-point in reached. \\
+The algorithm was adapted to be used for object-oriented code by copying the bodies of base classes inherited class into the child classes. Similarly, Class definitions are duplicated are construction sites and method bodies are duplicated at call sites. \\
+\paragraph*{Limitations}\mbox{}\\
+The excessive duplication makes the algorithm impractical. In the worst case, successive expansions squared the size of the program to be analysed.
+
+
 \subsection{Cartesian Product Algorithm}
-The Cartesian Product Algorithm (CPA) was originally conceived by Agesen for the language Self~\cite{agesen95} and was later adapted by Michael Salib for Python~\cite{starkiller}. \\
+The Cartesian Product Algorithm (CPA) was originally conceived by Agesen as an improvement on the Palsberg and Schwartzbach algorithm for the language Self~\cite{agesen95}. \\
 The Cartesian Product Algorithm works by modelling data flow as opposed to the constraint and unification method adopted by the Hindley-Milner algorithm. This is done by building a set of possible types an expression can take. Consider the following code:
 \begin{lstlisting}
 	if (y):	
@@ -319,7 +383,7 @@ The Cartesian Product Algorithm works by modelling data flow as opposed to the c
 	  x = 5.0  
 \end{lstlisting}
 The inferred types for $x$ would be the set $\left\{ {int, float}\right\}$, where the possible \textit{int} type is found in the \textit{then} branch and the \textit{float} type is found in the \textit{else} branch. The types from each branch are added to the set of possible types for $x$. The CPA algorithm guarantees that the type of the variable is contained within the set. \\
-In order to infer the types handed to a function the Cartesian Product of the set of possible types for all given arguments is taken. Consider the following code:
+In order to infer the types handed to a function the cartesian product of the set of possible types for all given arguments is taken. Consider the following code:
 \begin{lstlisting}
 	if (y):	
 	  x = 5 
@@ -329,18 +393,21 @@ In order to infer the types handed to a function the Cartesian Product of the se
 	  z = True
 	f(x, z)
 \end{lstlisting}
-The set of inferred types for $x$ is, as before, $\left\{ {int, float}\right\}$ and the set for $z$ is $\left\{ {str, bool}\right\}$. The possible types of the inputs to the function $f$ are: $\left\{ {int, float}\right\} \times \left\{ {str, bool}\right\} = \left\{ {(int, str), (int, bool), (float, str), (float, bool)}\right\}$, where each tuple represents the possible types of the variables given to $f$.
+The set of inferred types for $x$ is, as before, $\left\{ {int, float}\right\}$ and the set for $z$ is $\left\{ {str, bool}\right\}$. The possible types of the inputs to the function $f$ are: $\left\{ {int, float}\right\} \times \left\{ {str, bool}\right\} = \left\{ {(int, str), (int, bool), (float, str), (float, bool)}\right\}$, where each tuple represents the possible types of the variables given to $f$. \\
+The biggest fault of the Palsberg and Schwartzbach algorithm, the expansions, was remedied by the CPA algorithm. This was done by duplicating function bodies such that they contain an argument list with monomorphic types which Agesen calls templates. Each argument list generated by taking the cartesian product at calls sites is connected with constraints to the corresponding template. The types of the values returned by each template is connected to the result of the function call.
 \paragraph*{Limitations}\mbox{}\\
 The size of the Cartesian products grows exponentially with the number of arguments given to the function call. However the size is bounded by the number of types available. \\
-The difficulty of implementation is greater than that of the Hindley-Milner algorithm which is known as being a fairly simple algorithm to code~\cite{jones95}.
+The difficulty of implementation is greater than that of the Hindley-Milner algorithm which is known as being a fairly simple algorithm to code~\cite{jones95}. \\
+Taking the cartesian product of the possible types given to a function call is unnecessary the possible types the function can take are already known. \\
+While duplication has been reduced in comparison to the Palsberg and Schwartzbach algorithm, each function body is still duplicated to generate all possible templates.
 
 \subsubsection{Starkiller}
 Starkiller was designed by Michael Salib as the type inference method of a Python-to-C++ compiler~\cite{starkiller}. The algorithm used was based loosely on Agesen’s Cartesian Product Algorithm and achieves a complete type inference of Python source code.
 \paragraph*{Limitations}\mbox{}\\
-Unable to infer types for the dynamic constructs such as \textit{eval}, or \textit{exec}. Exceptions are unsupported. The implementation is flow-insensitive and so is not as precise as it could be.
+Unable to infer types for the dynamic constructs such as \textit{eval}, or \textit{exec}. Exceptions are unsupported. The implementation is flow-insensitive and so is not as precise as it could be. Does not handle exceptions.
 
 \subsubsection{Shed Skin}
-Shed Skin is a Python-to-C++ compiler developed by Mark Dufour which boasts up to a 40-fold performance increase over Psyco~\cite{shedskin}. Shedskin employs the Cartesian Product Algorithm alongside iterative class-splitting. Class-splitting is...
+Shed Skin is a Python-to-C++ compiler developed by Mark Dufour which boasts up to a 40-fold performance increase over an older Python-to-C++ compiler, Psyco~\cite{shedskin}. Shedskin employs the Cartesian Product Algorithm (CPA) alongside iterative class-splitting. The CPA algorithm is used to allow the user to know which functions need to be defined. For instance, if Shed Skin comes across $max(1, a)$ where $a$ can be the types in the set $\{int, float\}$ the $max$ function needs to be duplicated in C++ to cover $max(int, int)$ and $max(int, float)$ which need to be defined. Dufour also needs to define classes for the types used. For data polymorphic types such as lists, the class cannot always be shared so the the classes are `split' once they can longer share the same representation of data in the equivalent C++ program.
 
 \paragraph*{Limitations}\mbox{}\\
 The programs consumed by Shed Skin are required to be implicitly statically typed. Meaning the type of a variable can not dynamically change. Shed Skin also does not support a number of Python features such as \textit{eval} and \textit{isinstance}.
@@ -362,7 +429,7 @@ The phrase `success typings' was coined by Lindhal and Sagonas in the 2006 paper
 	and(_, false) $\rightarrow$ false;
 \end{lstlisting}
 where the symbol `\_' represents a \textit{don't care} option for pattern matching, meaning it will match any value for the corresponding parameter. \\
-An acceptable success typing for this function, and, indeed, for any function with two arguments, would be: $(any(), any()) \rightarrow any()$ where $any()$ denotes the set of all Erlang types. Such a typing would raise no warnings about the any use of the function and so can be used when no typing information can be inferred about a function. However, a more useful typing for the function in question is $(any(), any()) \rightarrow bool()$ where the return type of the function is restricted to all subtypes of $bool()$. Since we have the \textit{don't cares} any parameter paired with an instance of $false$, such as $(42, false)$, is a valid use of the function. This optimistic approach avoids any possible false positives from any warnings from reasoning about the typing and so will never reject a well-formed program. This typing does allow for warnings to be issued as a result of type clashes in matching a value which is not a subtype of $bool()$ with the result of the function. \\
+An acceptable success typing for this function, and, indeed, for any function with two arguments, would be: $(any(), any()) \rightarrow any()$ where $any()$ denotes the set of all Erlang types. Such a typing would raise no warnings about the any use of the function and so can be used when no typing information can be inferred about a function. However, a more useful typing for the function in question is $(any(), any()) \rightarrow bool()$ where the return type of the function is restricted to all subtypes of $bool()$. Since we have the \textit{don't cares} any parameter paired with an instance of $false$, such as $(42, false)$, is a valid use of the function. This optimistic approach avoids any possible false positives and so will never reject a well-formed program. This typing does allow for warnings to be issued as a result of type clashes in matching a value which is not a subtype of $bool()$ with the result of the function. \\
 A success typing is inferred by building constraints by traversing the code and then solving them. \\
 Constraints are built by providing a list of derivation rule. Assume the following definitions:
 $e$ is any expression which can be built in a language, \\
@@ -423,7 +490,7 @@ RPython is an intermediate language, a subset of Python which is entirely static
 The major limitation of PyPy is the use of RPython. One feature of RPython is that it does not allow variables to change their type.
 
 \subsection{Related Work}
-To the best of my knowledge, there is currently no debugger for Python which does not return any false positives. The most active debuggers at the time of writing are Pylint and and PyChecker.
+To the best of my knowledge, there is currently no bug finder for type errors in Python which does not return any false positives. The most active debuggers at the time of writing are Pylint and and PyChecker.
 %\subsubsection{Psyco}
 %Psyco is a just-in-time (JIT) compiler for Python, designed to improve performance~\cite{psyco}. Psyco replaces the main interpreter loop of Python in order to examine the bytecode and, where appropriate, emits specialized bytecode in its place. CITATION NEEDED
 %\paragraph*{Limitations}\mbox{}\\
@@ -431,9 +498,9 @@ To the best of my knowledge, there is currently no debugger for Python which doe
 
 \subsubsection{Pylint}
 Pylint is an error checking tool for Python which statically analyses Python source code to look for errors, including type errors, and to assess the coding style. Pylint is a static analyser and so it looks for errors without importing/running the source code. \\
-Documentation on Pylint is almost non-existent. The source code is also quite difficult to understand so the author currently does not know how the type inference works.
+Documentation on Pylint is almost non-existent and the source code is also quite difficult to understand so, unfortunately, the author currently does not know how the type inference works in Pylint.
 \paragraph{Limitations}\mbox{}\\
-Can often return a lot of false positives and offers a number of command-line options in an attempt to allow users to suppress them.
+Can often return a lot of false positives and offers a large number of command-line options in an attempt to allow users to manually suppress them.
 
 \subsubsection{PyChecker}
 PyChecker is an bug checker for Python which checks for type errors among a host of other errors. PyChecker is similar to Pylint except it does not checker the coding style of the source program. PyChecker also differs in that it needs to runs the code in order to analyse it.
@@ -481,13 +548,15 @@ Due to the limitations of the CFG generators for Python as previously described,
 
 
 \subsubsection{Breaks and Continues} 
-Taking inspiration from the PyPy implementation, a stack was implemented on which labels are pushed (\textit{F\_BLOCK\_LOOP, F\_BLOCK\_EXCEPT, F\_BLOCK\_FINALLY, F\_BLOCK\_FINALLY\_END}) alongside their corresponding nodes. Once we encounter a break or continue statement we cycle through the labels until we encounter a \textit{F\_BLOCK\_LOOP} label. Then for a break statement we add an exit for the current block to the loop's next block and to the loop block itself for a continue statement.
+Taking inspiration from the PyPy implementation, a stack was implemented on which labels are pushed (\textit{F\_BLOCK\_LOOP}, \textit{F\_BLOCK\_EXCEPT}, \textit{F\_BLOCK\_FINALLY}, \textit{F\_BLOCK\_FINALLY\_END}) alongside their corresponding nodes. Once we encounter a break or continue statement we cycle through the labels until we encounter a \textit{F\_BLOCK\_LOOP} label. Then for a break statement we add an exit for the current block to the loop's next block and to the loop block itself for a continue statement.
 
 \subsubsection{Try, Excepts and Finallys} 
 
 \subsection{SSA Form}
 
 \subsection{Type Inference}
+
+\subsubsection{Global and Local Variables}
 
 \subsubsection{Inferring the Types of Simple Assignments}
 All changes to the types of variables involve assignment. For each assignment the variable on the left-hand side (LHS) assumes all of the types which the right-hand side (RHS) can possibly have. The following shows a number of ways in which this can be done.
@@ -509,18 +578,32 @@ Assignments with a simple numeric or string value can be type inferred very easi
 % [x, y] = [5, 2]
 
 \subsubsection{Inferring the Types in Del statements}
-The \textit{Del} statement is used to remove an identifier binding. If the target of the Del statement is a variable then the type of that variable is then set to \textit{None\_Type}.
+The \textit{Del} statement is used to remove an identifier binding. If the target of the Del statement is a variable then the type of that variable is then set to \textit{None\_Type}. Otherwise, if the target is an element in a list or dict then that single element is removed. In the case that is a variable then we can change the set of types assigned to this variable. However, it is more complicated if the target is an element of a list or dict. In theory we could simply remove the type(s) associated with that element from the types contained in the list/dict but this would only be correct if the element being removed was the \textit{only} element in the list/dict with that type. This may prove difficult to track. For instance, consider the following trivial example:
+\begin{lstlisting}[mathescape]
+    from random import randomint
+    l = ["Hi", 5, 5.0]
+    del l[randint(0, 2)]
+\end{lstlisting}
+This example will delete a random element from the list. It impossible to statically predict which element, and therefore type, that will be. A similar problem arises when dynamic number of elements are added, such as looping over a file and adding elements found until the end of the file is reached. In this case we cannot determine how many elements need to removed before we can safely remove the type from the set of types contained in the list/dict. \\
+For these reasons we do not manipulate the set of types contained in the list/dict after a \textit{del} operation.
 
 \subsubsection{Inferring the Types in For/While Loops}
-A \textit{while} loop in SSA form looks like:
+The following shows a `raw' while loop and the same while loop in SSA form:
 \begin{lstlisting}[mathescape]
-	x1 = 5
-	while (p):
-	  x2 = $\phi$(x1, x3)
-	  y1 = x2
-	  x3 = "Hi"
-	x4 = $\phi$(x1, x3)
-	y2 = $\phi$(y1, None)
+    # Raw form
+    x = 5
+    while (p):
+      y = x
+      x = "Hi"
+	
+    # SSA form
+    x1 = 5
+    while (p):
+      x2 = $\phi$(x1, x3)
+      y1 = x2
+      x3 = "Hi"
+    x4 = $\phi$(x1, x3)
+    y2 = $\phi$(y1, None)
 \end{lstlisting}
 A problem raised by this is that the $\phi$ functions which exist at the beginning of the loop depend of types which can not be determined until the end of the loop body. In between then there may be other variables which use the result of the $\phi$ function in their own assignment, like $y1$ above. To overcome this we use a \textit{Awaiting\_Type} value which is assigned to any variable which is awaiting the type of another variable, the \textit{waiter} along with the name of the variable they are waiting for, the \textit{waitee}. In the case above we have $x2$ waiting for $x3$ and $y1$ waiting for $x2$. When a waitee is assigned its types then attempts are made to type all of that variable's waiters. If it is found they also need to wait for another variable then the same process occurs again otherwise they are successfully typed. Currently this approach collapses if there is a circular assignment involving a waiter and waitee, e.g.\ $x2 = x1 + 1$ where $x1$ which can cause the waiter of each to be each other. Currently if this circular assignment is detected then both variables are assigned the Any\_Type.
 
