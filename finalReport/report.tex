@@ -264,7 +264,9 @@ A similar, slightly more complex case arises for loops. In this case, we must co
 	  x = x + 1.0
 	z = x + 1
 \end{lstlisting}
-At the entry of the loop, $x$ can come from the statement immediately outside of the loop as well as the end of the loop. The case for immediately outside of the loop is the same as in case for \textit{if}. Using this information gives us two cases for $\phi$ function. The result program in SSA form is:
+At the entry of the loop, $x$ can come from the statement immediately before of the loop as well as the end of the loop. The case for immediately outside of the loop is the same as in the case for \textit{if}. This can be seen clearly in Figure~\ref{phiCFG} where there are two entries into the loop header where $x$ may take a value. Using this information gives us two causes for a $\phi$ function. The resulting program in SSA form is:
+
+
 \begin{lstlisting}[mathescape]
 	x1 = 5
 	while (y):
@@ -294,6 +296,13 @@ Here we can see that the function \textit{f} has a number of different \textit{r
 \end{lstlisting}
 
 The usefulness of SSA naming is immediately obvious. We need not track how the types of a variable may change over time. We may treat each new naming as a completely distinct variable. Managing the control-flow also becomes a much simpler task as we are easily able to express the fact that a variable can possibly be a number of different types depending on the path taken through the program.
+
+\begin{figure}[h]
+\centering
+\includegraphics[scale=0.5]{images/ssaPhiNode.pdf}
+\caption{while loop as a CFG}
+\label{phiCFG}
+\end{figure}
 
 \subsection{Dead Code Elimination}
 Dead Code Elimination, also known as Tree Shaking, is the process of detecting that a section of code is dead (unreachable) and completely eliminating it from the program. Code may be unreachable if it is placed after a \textit{break}, \textit{continue} or \textit{return} statement or if the code has the effect of only modifying variables which will never be used again (`dead' variables.) The advantages of this is that we need not type check it, thus improving the speed of our program.
@@ -404,7 +413,7 @@ While duplication has been reduced in comparison to the Palsberg and Schwartzbac
 \subsubsection{Starkiller}
 Starkiller was designed by Michael Salib as the type inference method of a Python-to-C++ compiler~\cite{starkiller}. The algorithm used was based loosely on Agesen’s Cartesian Product Algorithm and achieves a complete type inference of Python source code.
 \paragraph*{Limitations}\mbox{}\\
-Unable to infer types for the dynamic constructs such as \textit{eval}, or \textit{exec}. Exceptions are unsupported. The implementation is flow-insensitive and so is not as precise as it could be. Does not handle exceptions.
+Unable to infer types for the dynamic constructs such as \textit{eval}, or \textit{exec}. Exceptions are unsupported. The implementation is flow-insensitive and so is not as precise as it could be. Does not handle exceptions. The types of function arguments are inferred from the call sites. The call sites are assumed to be correct.
 
 \subsubsection{Shed Skin}
 Shed Skin is a Python-to-C++ compiler developed by Mark Dufour which boasts up to a 40-fold performance increase over an older Python-to-C++ compiler, Psyco~\cite{shedskin}. Shedskin employs the Cartesian Product Algorithm (CPA) alongside iterative class-splitting. The CPA algorithm is used to allow the user to know which functions need to be defined. For instance, if Shed Skin comes across $max(1, a)$ where $a$ can be the types in the set $\{int, float\}$ the $max$ function needs to be duplicated in C++ to cover $max(int, int)$ and $max(int, float)$ which need to be defined. Dufour also needs to define classes for the types used. For data polymorphic types such as lists, the class cannot always be shared so the the classes are `split' once they can longer share the same representation of data in the equivalent C++ program.
@@ -553,10 +562,28 @@ Taking inspiration from the PyPy implementation, a stack was implemented on whic
 \subsubsection{Try, Excepts and Finallys} 
 
 \subsection{SSA Form}
+The implementation of SSA was performed precisely as described in the background section. A few additional allowances were required for the system to function correctly. These will be explained here.
+
+\subsubsection{Global and Local Variables}
+Consider the following snippet of Python code:
+\begin{lstlisting}
+    class C():
+      def f(self):
+        self.x = 5
+     
+      def g(self):
+        self.x = 5.0         
+        
+      def h(self):
+        a + self.x 
+\end{lstlisting}
+The references to $self.x$ refer to the same variable. The principles of SSA naming state that a variable should only be assigned to once. But which $x$ should be labelled $x_1$ and which should be labelled $x_2$? Or, rather, which of the assignments to $x$ in function \textit{f} and function \textit{g} will be called first? Without any analysis of the call sites or typical run-time behaviour it is impossible to determine statically. A similar problem arises when we attempt to decide which reference to give to the instance of \textit{self.x} in function \textit{h}. Without knowledge of the order the functions are called (if a consistent ordering even exists) we cannot predict which is the correct label. For this reason SSA naming is only performed on local variables.
+
 
 \subsection{Type Inference}
 
-\subsubsection{Global and Local Variables}
+
+
 
 \subsubsection{Inferring the Types of Simple Assignments}
 All changes to the types of variables involve assignment. For each assignment the variable on the left-hand side (LHS) assumes all of the types which the right-hand side (RHS) can possibly have. The following shows a number of ways in which this can be done.
