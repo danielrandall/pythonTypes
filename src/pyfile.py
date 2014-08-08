@@ -11,10 +11,10 @@ class PyFile(object):
         ast_source = PyFile.parse_file(root)
         utils = Utils()
         print(utils.dump_ast(ast_source))
-        ssa_source = PyFile.apply_ssa(ast_source)
-        pp_source = PyFile.apply_preprocessing(root, ssa_source)
+        pp_source = PyFile.apply_preprocessing(root, ast_source)
+        ssa_source = PyFile.apply_ssa(pp_source)
         
-        self.source = pp_source
+        self.source = ssa_source
         self.name = name
         self.path = relative_path
         self.typed = False

@@ -401,6 +401,9 @@ class SSA_Traverser(AstFullTraverser):
         ''' If the id is True or false then ignore. WHY ARE TRUE AND FALSE
             IDENTIFIED THE SAME WAY AS VARIABLES. GAH. '''
         print(node.id)
+        # We don't SSA a global variable
+        if isinstance(node.stc_context, ast.Module):
+            return
         if node.id == "True" or node.id == "False":
             return
         if node.id == "None":

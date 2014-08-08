@@ -137,7 +137,9 @@ class Preprocessor(AstFullTraverser):
             self.in_aug_assign = False
         self.visit(node.value)
 
-    def do_ClassDef (self,node):
+    def do_ClassDef(self, node):
+        node.variableTypes = {}
+        
         self.n_contexts += 1
         parent_cx = self.context
         assert parent_cx == node.stc_context
@@ -147,7 +149,7 @@ class Preprocessor(AstFullTraverser):
         node.stc_symbol_table = SymbolTable(parent_cx)
         # The contents of this module to which children add themselves.
         node.contents_dict = {}
-        # Holds whether the node is callable and the relevent func node
+        # Holds whether the node is callable and the relevant func node
         node.callable = False, None
         node.self_variables = set()
         # Define the function name itself in the enclosing context.
@@ -163,8 +165,15 @@ class Preprocessor(AstFullTraverser):
         self.context = parent_cx
         print("CLASS CONTENTS")
         pprint(node.contents_dict)
+        
+        # Add self variables to the starting list. Initially empty
+        print("SELF VARS")
+        for self_var in node.self_variables:
+            print(self_var)
 
-    def do_FunctionDef (self,node):
+    def do_FunctionDef (self, node):     
+        node.variableTypes = {}
+        
         self.n_contexts += 1
         parent_cx = self.context
         assert parent_cx == node.stc_context
@@ -200,6 +209,8 @@ class Preprocessor(AstFullTraverser):
         self.visit(node.func)
         for z in node.args:
             z.lineno = node.lineno
+            self.visit(z)
+        for z in node.keywords:
             self.visit(z)
         
     def do_Return(self,node):
@@ -262,6 +273,8 @@ class Preprocessor(AstFullTraverser):
         self.context = parent_cx
 
     def do_Module (self,node):
+        node.variableTypes = {}
+        
         self.n_contexts += 1
         assert self.context is None
         assert node.stc_context is None
@@ -290,10 +303,11 @@ class Preprocessor(AstFullTraverser):
         self.visit(node.slice)
         self.visit(node.value)
 
-    def do_Name(self,node):
-        # g.trace('P1',node.id)
+    def do_Name(self, node):
+        # If node is a global variable, add it to the module list.
+    #    if isinstance(node.ctx, ast.Store) and isinstance(node.stc_context, ast.Module):
+    #        node.stc_context.node_contents.append(node.id)
         
-        # self.visit(node.ctx)
         cx = node.stc_context
         if isinstance(node.ctx,(ast.Param,ast.Store)):
             # The scope is unambigously cx, **even for AugAssign**.

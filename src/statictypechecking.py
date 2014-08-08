@@ -126,7 +126,6 @@ class TypeInferrer(AstFullTraverser):
             u.first_line(u.format(node)))
     
     def init(self):   
-        self.variableTypes = {} # Used as string:name -> set():types
         self.currently_assigning = False
         self.awaiting_Typing = []  # Elements : (node, name)
         self.fun_params = []
@@ -265,7 +264,8 @@ class TypeInferrer(AstFullTraverser):
     def type_file(self, file, dependents):   
         ''' Runs the type_checking on an individual file. '''
         root = file.get_source()     
-        print("Printing module " + file.get_name() + " ------------------------------")      
+        print("Printing module " + file.get_name() + " ------------------------------")   
+        self.variableTypes = root.variableTypes
         self.init()
         print("-DEPENDENTS-")
         pprint(dependents)
@@ -274,28 +274,6 @@ class TypeInferrer(AstFullTraverser):
         pprint(self.variableTypes)
         file.set_global_vars(self.variableTypes)
         file.typed = True
-
-    def has_failed(self,t1,t2=[],t3=[]):
-        return any([isinstance(z,Inference_Failure) for z in t1+t2+t3])
-        
-    def is_circular(self,t1,t2=[],t3=[]):
-        return any([isinstance(z,Circular_Assignment) for z in t1+t2+t3])
-        
-    def is_recursive(self,t1,t2=[],t3=[]):
-        return any([isinstance(z,Recursive_Inference) for z in t1+t2+t3])
-        
-    def ignore_failures(self,t1,t2=[],t3=[]):
-        return [z for z in t1+t2+t3 if not isinstance(z,Inference_Failure)]
-        
-    def ignore_unknowns(self,t1,t2=[],t3=[]):
-        return [z for z in t1+t2+t3 if not isinstance(z,(Unknown_Type,Unknown_Arg_Type))]
-        
-    def merge_failures(self,t1,t2=[],t3=[]):
-        aList = [z for z in t1+t2+t3 if isinstance(z,Inference_Failure)]
-        if len(aList) > 1:
-            # Prefer the most specific reason for failure.
-            aList = [z for z in aList if not isinstance(z,Unknown_Type)]
-        return aList
     
     def visit(self,node):
         '''Visit a single node.  Callers are responsible for visiting children.'''
@@ -330,11 +308,10 @@ class TypeInferrer(AstFullTraverser):
                     name = self.constraint_gen.do_Attribute(name, node.attr, node.lineno)[0]
                 result_types = set()
                 for n in name:
-                    if isinstance(n, Module_Type):
-                        ''' TODO: Deal with modules. '''
-                        return [set([any_type])]
                     if node.attr in n.global_vars:
                         result_types |= n.global_vars[node.attr]
+                        # Add the context - change this to work with others
+                        n.update_dependents(node.attr, node.stc_context)
                     else:
                         result_types.add(any_type)
                 return [result_types]
@@ -360,12 +337,10 @@ class TypeInferrer(AstFullTraverser):
         # Check if name has already been analysed (i.e. has an SSA)
         pass
         # Check if name is defined somewhere in the future
-        print(node.id)
         found = self.find_in_parent_contexts(node.id, node.stc_context)
         if found:
             found_node, found_context = found
             self.visit(found_node)
-            self.give_ssa_reference(node)
             pprint(self.variableTypes)
             assert node.id in self.variableTypes, "node.id should really be in there now!"
             return [self.variableTypes[node.id]]
@@ -379,30 +354,6 @@ class TypeInferrer(AstFullTraverser):
         if context.stc_context:
             return self.find_in_parent_contexts(name_to_find, context.stc_context)
         return None
-    
-    def find_biggest_ssa_reference(self, id):
-        ''' Finds the highest ssa reference, if one exists.
-        
-            This is useful when the SSA cannot not detect the reference as it is yet
-            to be seen but it has been referenced more than once. We do not want to
-            analyse it twice!
-            TODO: Make this work. Doesn't work now as two different variables x and x1 will clash. '''
-        current_check = 1
-        if id + str(current_check) not in self.variableTypes:
-            return False
-        while True:
-            if id + str(current_check + 1) in self.variableTypes:
-                current_check += 1
-            else:
-                break
-        return id + str(current_check)
-    
-    def give_ssa_reference(self, node):
-        ''' Gives an un-SSA'd node an SSA'd id.
-            Used if the id has not yet been accessed so the
-            find_in_parents_contexts function has been used.
-            This should just require adding 1. '''
-        node.id += str(1)
     
     def do_Assign(self, node):
         ''' Set all target variables to have the type of the value of the
@@ -472,14 +423,28 @@ class TypeInferrer(AstFullTraverser):
                     container.update_content_types(value_types[i])
                 return    
                 
+            # Class globals has a special assignment
             if isinstance(targets[i], Attribute_Type):
-                class_instance = targets[i].class_type
-                attr = targets[i].variable_type
-                class_instance.add_to_vars(attr, value_types[i])
+                self.attribute_assignment(targets[i], value_types[i])
             else:
                 self.variableTypes[targets[i]] = value_types[i]
             # For each new assign, check whether any are waiting on it.
             self.check_waiting(targets[i])
+            
+    def attribute_assignment(self, target, value):
+        ''' Update the types of the variable and then update those that
+            reference it. '''
+        class_instance = target.class_type
+        attr = target.variable_type
+        # Update the types in the var
+        type_changed = class_instance.update_vars_types(attr, value)
+        if type_changed:
+            # Update all others
+            update_list = class_instance.get_var_depedent_list(attr)
+            old_vars = self.variableTypes
+            for to_update in update_list:
+                self.visit(to_update)
+            self.variableTypes = old_vars
         
     def container_assignment(self, target_container, value_container, node):
         ''' Check both are containers. But if the value is any_type construct
@@ -492,11 +457,6 @@ class TypeInferrer(AstFullTraverser):
         else:
             values = value_container.contents
         self.conduct_assignment(targets, values, node)
-        
-    def update_var_types(self):
-        ''' This functions decides whether variable types are updated or
-            overwritten. '''
-        pass
         
     def do_AugAssign(self,node):
         ''' This covers things like x += ... x -=...
@@ -575,7 +535,6 @@ class TypeInferrer(AstFullTraverser):
                 if isinstance(left, Any_Type) and isinstance(right, Any_Type):
                     return [set([any_type])]
                 if isinstance(left, Any_Type):
-                    pprint(right)
                     result_types |= set(binopcons.BIN_OP_CONSTRAINTS[op_kind][right])
                     continue
                 if isinstance(right, Any_Type):
@@ -637,15 +596,11 @@ class TypeInferrer(AstFullTraverser):
             ie. len(x) or [] can return Int or List.
             TODO: Deal with fun param better '''
         all_types = set()
-        print(node.lineno)
-        print(self.currently_assigning)
-        pprint(self.variableTypes)
         for z in node.values:
             types = self.visit(z)[0]
             # Get the types if it's a fun param
             if types in self.fun_params:
                 types = self.variableTypes[types]
-            pprint(types)
             all_types |= types
         return [all_types]
 
@@ -690,8 +645,7 @@ class TypeInferrer(AstFullTraverser):
                 self.awaiting_Typing.append((node, target))
                 self.variableTypes[node.var] = set([Awaiting_Type(node.var, target)])
                 return
-            self.variableTypes[node.var] = (
-                                 self.variableTypes[node.var] | possibleTypes)
+            self.variableTypes[node.var] |= possibleTypes
             self.check_waiting(node.var)
         
     def do_While (self, node):
@@ -742,22 +696,7 @@ class TypeInferrer(AstFullTraverser):
         if extracted_types:
             return [extracted_types]
         else:
-            return [set([any_type])]
-        
-  #  def do_Import(self, node):
-  #      for z in node.names:
-  #          self.visit(z)
-            
-  #  def do_ImportFrom(self, node):
-  #      ''' TODO: Give the names the type module. '''
-  #      for z in node.names:
-  #          self.visit(z)
-            
-   # def do_alias (self, node):
-   #     ''' Add the name as a Module type.
-   #         TODO: Link the module to the name.
-   #         TODO: Sort out cx '''
-    #    self.variableTypes[node.id] = set({Module_Type(node.module_name, node)})        
+            return [set([any_type])]  
 
     def do_Call (self, node):
         ''' Infer the value of a function called with a particular set of 
@@ -802,7 +741,6 @@ class TypeInferrer(AstFullTraverser):
                             type_allowed = True
                     assert type_allowed, "Incorrect type given to function"
             result_types |= func_return_types
-        pprint(result_types)
         return [result_types]
             
     def do_ListComp(self, node):
@@ -832,7 +770,8 @@ class TypeInferrer(AstFullTraverser):
         ''' Find all args and return values.
         
             TODO: Find out possible types in *karg dict. '''
-        old_types = self.variableTypes.copy()
+        self.variableTypes = node.variableTypes
+        self.variableTypes.update(node.stc_context.variableTypes)
 
         # Create a constraint satisfaction problem for the arguments
         self.fun_params = self.visit(node.args)
@@ -865,15 +804,18 @@ class TypeInferrer(AstFullTraverser):
             parameter_types.append(self.variableTypes[arg])
             
         self.fun_params = []
+        if node.name == "__init__":
+            print("INIT------------------")
+            pprint(self.variableTypes)
+        
         # Restore variables
-        self.variableTypes = old_types
+        self.variableTypes = node.stc_context.variableTypes
         
         fun_type = Def_Type(parameter_types, self.fun_return_types, node.args.default_length)
         self.variableTypes[node.name] = set([fun_type])
-        #Add to the currently class vars if there is one
+        # Add to the currently class vars if there is one
         if self.current_class:
-            self.current_class.add_to_vars(node.name, self.variableTypes[node.name])
-        pprint(parameter_types)
+            self.current_class.update_vars_types(node.name, self.variableTypes[node.name])
             
     def do_arguments(self, node):
         ''' We need to begin checking what types the args can take. Defaults
@@ -886,7 +828,6 @@ class TypeInferrer(AstFullTraverser):
             args.extend(self.visit(z))
         # If this a function in a class then self should be the first arg
         if self.current_class:
-            pprint(args[0])
             assert(args[0] == "self"), "Line " + str(node.lineno) + ": First argument of function " + node.stc_parent.name + " should be self."
             del args[0]
         defaults = []
@@ -901,7 +842,6 @@ class TypeInferrer(AstFullTraverser):
                 self.variableTypes[args[i]] = set([any_type])
             else:
                 self.variableTypes[args[i]] = set([any_type])
-        pprint(self.variableTypes)
         return args
             
     def do_arg(self, node):
@@ -911,14 +851,15 @@ class TypeInferrer(AstFullTraverser):
         ''' The __init__ will provide us with the majority of the self. vars
             so we want to analyse that first.
             TODO: Reverse base class list and update that way to avoid list comp. '''
-        old_types = self.variableTypes.copy()
+        self.variableTypes = node.variableTypes
+        self.variableTypes.update(node.stc_context.variableTypes)
+        
         parent_class = self.current_class
         # Deal with inheritence.
         inherited_vars = {}
         for base in node.bases:
             base_class = self.visit(base)[0]
             acceptable_type = False
-            pprint(base_class)
             for possible_type in base_class:
                 if possible_type == any_type:
                     # What the hell do I do here?
@@ -928,16 +869,18 @@ class TypeInferrer(AstFullTraverser):
                     inherited_vars.update({k:v for k,v in possible_type.get_vars().items() if k not in inherited_vars})
                     acceptable_type = True
             assert acceptable_type, "Line " + str(node.lineno) + ": " + base.id + " is not a class. "
+        # Add the self variables found
+        for self_var in node.self_variables:
+            if self_var not in inherited_vars:
+                inherited_vars[self_var] = set()
         self.current_class = Class_Type(node.id, inherited_vars, node.callable)
         self.move_init_to_top(node.body)
+        
         for z in node.body:
             self.visit(z)
         # We need to set the parameters for init
-        pprint(self.variableTypes)
-        #init_ssa_reference = self.find_biggest_ssa_reference("__init__")
         init_def = list(self.variableTypes["__init__"])[0]
         self.current_class.set_init_params(init_def.parameter_types)
-        pprint(self.variableTypes)
         # Set the call if possible
         is_callable, call_node = node.callable
         if is_callable:
@@ -945,9 +888,14 @@ class TypeInferrer(AstFullTraverser):
             # Should be a list of size 1
             assert len(fun) == 1, "__call__ multiply defined. "
             self.current_class.set_callable_params(fun[0].get_parameter_types(), fun[0].get_return_types())
-        self.variableTypes = old_types
-        self.current_class = parent_class
+        
+        pprint("class globals")
+        pprint(node.self_variables)
+        
+        # Restore parents variables
+        self.variableTypes = node.stc_context.variableTypes
         self.variableTypes[node.id] = set([self.current_class])
+        self.current_class = parent_class
         
     def move_init_to_top(self, body):
         assert isinstance(body, list), "Body needs to be a list."
@@ -1023,7 +971,6 @@ class TypeInferrer(AstFullTraverser):
             Lists have to be int
             Dicts can have any type for a key. '''
         value_types = self.visit(node.value)[0]
-        pprint(value_types)
         int_like_types = [x for x in value_types if x <= any_type]
         assert int_like_types, "Line " + str(node.lineno) + ": index value must be an integer"
         return
@@ -1053,7 +1000,6 @@ class TypeInferrer(AstFullTraverser):
             # Check whether variable can be a container
             value_types = self.variableTypes[value_types]
         container_like_types = [x for x in value_types if x <= Container_Type(None, None, None, None)]
-        pprint(value_types)
         pprint(container_like_types)
         assert container_like_types, "Line " + str(node.lineno) + ": cannot index/slice in non-container types. "
         
