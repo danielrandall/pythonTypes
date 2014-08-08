@@ -52,20 +52,20 @@
 
 \section{Introduction}
 \subsection{Motivation}
-High level, dynamically typed languages such as Python have been gaining popularity in recent years. Python is used as a teaching language in 80\% of the top ten Computer Science department in the USA, surpassing previous favourites such as Java~\cite{guoTeaching}. Python has also become a force in the industry and has been picked up by important software engineering companies such as Google and Yahoo!~\cite{organisationsPython}. One reason for this is a high level of productivity involved in using such languages, partly due to the programmer being free from having to declare the types of the variables used. However, the benefits gained from this design decision are at the expense of the security provided by a statically typed language. Type errors which are easily caught by a compiler for a statically typed language, such as Java or C++, can be left unnoticed in Python source code into the release stage of a product where its execution may prove fatal. % Specifying types is regarded as superfluous by many in the Python community.
-While there was has been significant talk of adding optional static typing to Python~\cite{guido1}~\cite{guido2}~\cite{guido3}, the backlash from such discussions is strong enough such that it is very unlikely we shall see this addition to the Python language anytime soon. \\
-Tools attempting to provide the benefits of a statically typed language to Python do exist, such as Pylint\footnote{\url{http://www.pylint.org/}} and PyChecker\footnote{\url{http://pychecker.sourceforge.net/}}, however their usability is hampered by the false positives returned and the amount of configuration needed. \\
-This project aims to design and implement a type checker for Python which returns no false positives. The basis for our implementation is a field called success typings. We harness this technique in order to provide a over-approximation of how a function is intended to be used. This allows us to determine that a violation of a function's contract is guaranteed to be a legitimate programming error. We describe success typing as well as the general theory behind type systems in section 2. We then examine similar products and techniques and show the limitations in their application. \\
+High level, dynamically typed languages such as Python have been gaining popularity in recent years. Python is used as a teaching language in 80\% of the top ten Computer Science department in the USA, surpassing previous favourites such as Java~\cite{guoTeaching}. Python has also become a force in industry and has been picked up by important software engineering companies such as Google and Yahoo!~\cite{organisationsPython}. One reason for this is a high level of productivity involved in using such languages, partly due to the programmer being free from having to declare the types of the variables used. However, the benefits gained from this design decision are at the expense of the security provided by a statically typed language. Type errors which are easily caught by a compiler for a statically typed language, such as Java or C++, can be left unnoticed in Python source code into the release stage of a product where its execution may prove fatal. % Specifying types is regarded as superfluous by many in the Python community.
+While there has been significant talk of adding optional static typing to Python~\cite{guido1}~\cite{guido2}~\cite{guido3}, the backlash from such discussions is strong enough that it is very unlikely we shall see this addition to the Python language anytime soon. \\
+Tools attempting to provide the benefits of a statically typed language to Python do exist, such as Pylint\footnote{\url{http://www.pylint.org/}} and PyChecker\footnote{\url{http://pychecker.sourceforge.net/}}, however their usability is hampered by the number of false positives returned and the amount of configuration needed. \\
+This project aims to design and implement a type checker for Python which returns no false positives. The basis for our implementation is a method called success typings. We harness this technique in order to provide a over-approximation of how a function is intended to be used. This allows us to determine that a violation of a function's contract is guaranteed to be a legitimate programming error. We describe success typing as well as the general theory behind type systems in Section 2. We then examine similar products and techniques and show the limitations in their application. \\
 \indent Using the methods and techniques we described, we begin to define our solution and evaluate the best way to solve the problems we shall face. Once we decide upon the best methods we then set about evaluating the best 3\textsuperscript{rd} party software we can use to achieve these tasks and why we should not implement our own solutions. \\
-\indent In section 3 we describe what we have done and begin to evaluate it. We evaluate our implementation in three ways: speed, ease of use and the number of false positives/negatives it reports. We benchmark our solution against existing type checkers for Python. We see in which environments our work excels and in which it fails to make an impression.
+\indent In Section 3 we describe what we have done and evaluate it. We evaluate our implementation in three ways: speed, ease of use and the number of false positives/negatives it reports. We benchmark our solution against existing type checkers for Python.
 
 \subsection{Objectives}
 The objectives for this project are as follows:
 \begin{itemize}
-	\item \textbf{A low number of false positives} - Our solution should report a minimal number of errors which are then found not to be genuine bugs in the program. A `genuine' bug can be defined as one which is guaranteed to cause a run-time crash when executed.
-	\item \textbf{Static} - Our solution should not require the user to run the program with a test suite in order to use the tool.
-	\item \textbf{Out-of-the-box} - The user should not need to specify the way the tool should run, such as command line arguments. The user also should not have to modify their program in any way in order to successfully use our solution.
-	\item \textbf{Fast} - Our system will ideally run at a high speed, similar to alternative type checkers for Python.
+	\item \textbf{A low number of false positives} - Our solution should report a minimal number of errors which are then found not to be genuine bugs in the program. A `genuine' bug can be defined as one which is guaranteed to cause an un-caught run-time exception when executed.
+	\item \textbf{Static} - Our solution should not require the user to run the program.
+	\item \textbf{Out-of-the-box} - The user should not need to specify the way in which the tool should run, such as command line arguments. The user also should not have to modify their program in any way in order to successfully use our solution.
+	\item \textbf{Fast} - Our system will ideally run at a high speed, similar to other type checkers for Python.
 \end{itemize} 
 
 \newpage
@@ -74,7 +74,7 @@ Type systems are created by the developers of programming languages to prevent i
 \begin{quote}
 	\emph{``A type system is a tractable syntactic method for proving the absence of certain program behaviors by classifying phrases according to the kinds of values they compute.''}
 \end{quote}
-In order for this to hold in programming languages, the phrases (e.g.\ variables, expressions, method calls) are labelled in order to express the classification. This labelling can be achieved in a number of ways and allows the language to prevent operations being used with terms with a classification they were not designed to be used with. \\
+In order for this to hold in programming languages, the phrases (e.g.\ variables, expressions, method calls) are labelled to express the classification. This labelling can be achieved in a number of ways and allows the language to prevent operations from being used with terms with a classification that they were not designed to be used with. \\
 A type system can used for detecting errors, documentation, language safety, abstraction and efficiency~\cite{pierce02}. This report focuses on error detection.
 
 \subsection{Static and Dynamic Type Systems}
@@ -86,15 +86,15 @@ Static type systems require programs to be written such that all variables are l
 	  int x = 5 + "Hello world";
 	}
 \end{lstlisting}
-The C++ compiler will not accept this code despite the fact it will, intuitively, behave well at run-time. This is because the type system is able to determine the \textit{absence} of type errors, that is it can determine whether code can possibly type error. However, it can not detect the \textit{presence} of type errors, that is whether code which could type error will ever be executed at all or in such a way that it will ever type error. \\
-Dynamic type systems do not require a type for variables until run-time where ``run-time type tags are used to distinguish different kinds of structures in the heap.''~\cite{pierce02} Dynamic type systems do not suffer from the same conservative nature as statically typed languages. For instance, the equivalent program to the previous C++ example in Python is:
+The C++ compiler will not accept this code despite the fact that it will, intuitively, behave well at run-time. This is because the type system is able to determine the \textit{absence} of type errors, that is it can determine whether code can possibly type error. However, it can not detect the \textit{presence} of type errors, that is whether code which could type error will ever be executed at all or in such a way that it will ever type error. \\
+Dynamic type systems do not require types for variables until run-time where ``run-time type tags are used to distinguish different kinds of structures in the heap.''~\cite{pierce02} Dynamic type systems do not suffer from the same conservative nature as statically typed languages. For instance, the equivalent program to the previous C++ example in Python is:
 \begin{lstlisting}
 	if (True):	
 	  x = 5;
 	else:
 	  x = 5 + "Hello world"
 \end{lstlisting}
-This program will never raise a type error, despite the fact $5 + ``Hello  world"$ is an illegal operation. Using a dynamic type system, only programs about to go wrong during run-time are rejected. The obvious downside to this is that errors which would be caught easily by a static type system may go undetected by a dynamic type system and wreck havoc later in the production cycle. As a trivial example of this, imagine the following snippet of Python code is a small part of a large program. This program allows a user to heal their characters using potions. The designer has decided that the health of a character should be within a wrapper class and a function \textit{add\_health} is used to combine health points:
+This program will never raise a type error, despite the fact $5 + ``Hello  world"$ is an illegal operation. Using a dynamic type system, only programs about to go wrong during run-time are rejected. The obvious downside to this is that errors which would be caught easily by a static type system may go undetected by a dynamic type system and wreak havoc later in the production cycle. As a trivial example of this, consider the following snippet of Python code is a small part of a large program. This program allows a user to heal their characters using potions. The designer has decided that the health of a character should be within a wrapper class and a function \textit{add\_health} is used to combine health points:
 \begin{lstlisting}
 	def add_health(character, healer):
 	  character.hp += healer.health_gain	
@@ -108,7 +108,7 @@ This program will never raise a type error, despite the fact $5 + ``Hello  world
 	    character.hp += potion		
 	    return
 \end{lstlisting}
-With all the extra code the programmer had to write for the `special potion' they forgot to use the \textit{add\_health} function! The types of \textit{character\_health} and \textit{potion} are incompatible together with the \textit{+=} operator and a type error will be raised if this branch is executed. If the programmer also neglects to include this special potion in their test suite then this code may be shipped with this branch having never met a Python interpreter.
+With all the extra code the programmer had to write for the `special potion' they forgot to use the \textit{add\_health} function! The types of \textit{character\_health} and \textit{potion} are incompatible together with the \textit{+=} operator and a type error will be raised if this branch is executed. If the programmer also neglects to include this special potion in their test suite then this code may be shipped without this branch ever been executed.
 
 \subsection{Abstract Syntax Tree}
 An abstract syntax tree (AST) ``represents the hierarchical syntactic structure of the source 
@@ -165,13 +165,13 @@ A control flow graph (CFG) is a way of depicting the control flow of a program. 
 CFGs introduce the concept of a \textit{basic block} which consists of only straight line code and no branching statements such as ifs and loops. ``The nodes of the flow 
 graph are the basic blocks. There is an edge from block B to block C if and 
 only if it is possible for the first instruction in block C to immediately follow 
-the last instruction in block B.''~\cite{dragonBook} Control flow statements introduce new basic blocks for each branch created by them. For example, an if statement creates two basic blocks, one for the then body and one for the else body. The basic blocks are then linked using directed links with a block pointed towards its successors. \\
+the last instruction in block B.''~\cite{dragonBook} Control flow statements introduce new basic blocks for each branch created by them. For example, an if statement creates two basic blocks, one for the then body and one for the else body. The basic blocks are then linked using directed links with each block pointed towards its successors. \\
 Using the last example of \textit{if} statement in the previous section we get:
 \begin{figure}[h]
 \centering
 \includegraphics[scale=0.4]{images/controlFlowGraph.pdf}
 \end{figure}  \\
-Since the primary use for CFGs in computing is for compilers it is natural that a good place to find a CFG generator in Python is in a Python compiler. The most commonly used interpreter for Python code is \textit{CPython}. CPython does use CFGs~\cite{cpythonCFG}. However CPython is written in C, making it necessary to go through the cumbersome process of converting C data structures into equivalent Python data structures. As well as this, the CPython process of generating a CFG is to rely on generated bytecode to determine how a program branches. Due to this a iterable CFG is never generated. \\
+Since the primary use for CFGs in computing is for compilers it is natural that a good place to find a CFG generator in Python is in a Python compiler. The most commonly used interpreter for Python code is \textit{CPython}. CPython uses CFGs~\cite{cpythonCFG, but is written in C, making it necessary to go through the cumbersome process of converting C data structures into equivalent Python data structures. As well as this, the CPython process of generating a CFG is to rely on generated bytecode to determine how a program branches. Due to this a iterable CFG is never generated. \\
 \textit{PyPy}, an alternative interpreter for Python, also uses CFG generation in its tool-chain~\cite{pypyCFG}. Unlike CPython, PyPy is written in Python, however its design is very similar to that of CPython meaning it also depends on a bytecode interpreter to generate its CFGs. \\
 In 2013 a student named Ashwin Panchapakesan from the University of Ottawa built a tool to generated CFGs from Python source code~\cite{ashwinCFG}. To do this the program parses an AST created from the Python code into XML. The XML uses tags to indicate the type of a statement, such as if, while or expression. Within these tags is the line number of the statement. An example of this XML is as follows:
 \begin{verbatim}
@@ -213,12 +213,12 @@ Another case in which ignoring the flow of execution can change the types inferr
 	x = 5
 	x = 5.0
 \end{lstlisting}
-A flow-insensitive algorithm would infer the type of \textit{x}, for any future occurrences of $x$, to be the set $\left\{ {int, float}\right\}$. A flow-sensitive algorithm is able to recognise that the second statement `overwrites' the first. This permits a more accurate representation of the flow, allowing it to infer more accurately the type of $x$ as the set $\left\{ {float}\right\}$. \\
+A flow-insensitive algorithm would infer the type of \textit{x}, for any future occurrences of $x$, to be in the set $\left\{ {int, float}\right\}$. A flow-sensitive algorithm is able to recognise that the second statement `overwrites' the first. This permits a more accurate representation of the flow, allowing it to infer more accurately the type of $x$ as the set $\left\{ {float}\right\}$. \\
 A flow-sensitive algorithm is clearly the more accurate approach but requires a comparatively complex algorithm which consumes more information than a flow-insensitive approach. \\
 Ryder~\cite{ryder03} suggests that the difference between a flow-sensitive and flow-insensitive approach is minimal in regards to object-oriented programs due to the size of methods being small. While Python can be, and is, used for object-oriented programming, a significant number of Python programs are written as scripts and so the benefits of a flow-sensitive algorithm can not ruled out in our case.
 
 \subsection{SSA Naming}
-Primarily used in compilers, Single Static Assignment (SSA) is used to acquire ``unique names for distinct entities.''~\cite{ssaBook} What this means is that each variable should only be assigned to once. There are number of variants of SSA, each designed for a specialised purpose, such as Hashed SSA form which intends to capture the fact that a single static use or definition (e.g.\ $*p$ in C) could potentially impact multiple variables. In our case we are only required to use the basic version of SSA, `vanilla' SSA which we will now describe. \\
+Primarily used in compilers, Single Static Assignment (SSA) is used to acquire ``unique names for distinct entities.''~\cite{ssaBook} What this means is that each variable should only be assigned to once. There are number of variants of SSA, each designed for a specialised purpose, such as Hashed SSA form which intends to capture the fact that a single static use or definition (e.g.\ $*p$ in C) could potentially impact multiple variables. In our case we are only to use a basic version of SSA, `vanilla' SSA which we will now describe. \\
 Consider the following example:
 \begin{lstlisting}
 	x = 5
@@ -226,7 +226,7 @@ Consider the following example:
 	x = 7
 	z = x + 1
 \end{lstlisting}
-This code violates SSA requirements since the variable $x$ is assigned to twice. Translating this block into SSA form would give us the following:
+This code violates the SSA requirements since the variable $x$ is assigned to twice. Translating this block into SSA form would give us the following:
 \begin{lstlisting}
 	x1 = 5
 	y1 = x1 + 1
@@ -246,7 +246,7 @@ In a sequential program the manner used to number new variables is quite intuiti
 	  x = 6
 	z = x + 1
 \end{lstlisting}
-The \textit{if} statement has two branches which both assign a new value to the the variable $x$. Assigning new names to these variables is required by the rules of SSA, however it is unclear which name we are to use after the \textit{if} and \textit{else} when \textit{x} is used in then assignment to the variable \textit{z}. \\
+The \textit{if} statement has two branches which both assign a new value to the variable $x$. Assigning new names to these variables is required by the rules of SSA, however it is unclear which name we are to use after the \textit{if} and \textit{else} when \textit{x} is used in then assignment to the variable \textit{z}. \\
 To resolve this problem, we introduce the concept of the \emph{$\phi$ function}. The $\phi$ function is used ``to merge values from different incoming paths, at control-flow merge points.''~\cite{ssaBook} Put simply, the result of the $\phi$ can be said to be \emph{any} of the parameters given. 
 \begin{lstlisting}[mathescape]
 	x1 = 5
@@ -265,7 +265,7 @@ A similar, slightly more complex case arises for loops. In this case, we must co
 	  x = x + 1.0
 	z = x + 1
 \end{lstlisting}
-At the entry of the loop, $x$ can come from the statement immediately before of the loop as well as the end of the loop. The case for immediately outside of the loop is the same as in the case for \textit{if}. This can be seen clearly in Figure~\ref{phiCFG} where there are two entries into the loop header where $x$ may take a value. Using this information gives us two causes for a $\phi$ function. The resulting program in SSA form is:
+At the entry of the loop, $x$ can come from the statement immediately before the loop as well as the end of the loop. The case for immediately outside the loop is the same as the case for \textit{if}. This can be seen clearly in Figure~\ref{phiCFG} where there are two entries into the loop header where $x$ may take a value. Using this information gives us two causes for a $\phi$ function. The resulting program in SSA form is:
 
 
 \begin{lstlisting}[mathescape]
@@ -285,7 +285,7 @@ The $\phi$ function can also be used for inferring the possible return types of 
 		  return "Hi"
 		return 5.0
 \end{lstlisting}
-Here we can see that the function \textit{f} has a number of different \textit{return} statements which can return a number of different types. In order to infer the possible types that a function can return we need to look at the values created by each return statement. We can use the $\phi$ function in order to simplify this task. To do this we modify the function like so:
+Here we can see that the function \textit{f} has a number of different \textit{return} statements which can return a number of different types. In order to infer the possible types that a function can return we need to look at the types of each return statements. We can use the $\phi$ function in order to simplify this task. To do so we modify the function as follows:
 \begin{lstlisting}[mathescape]
 	def f():
 		if ($p_1$):
@@ -321,7 +321,7 @@ Whether flagging an error on unreachable code constitutes a false-positive is on
 Unfortunately there are no out-of-the-box solutions to this problem for Python programs. \\
 
 \subsection{Constraints and Constraint Solvers}
-``A constraint satisfaction problem [CSP] is a problem where one has to find value for a (finite) set of variables satisfying a (finite) set of constraints.''~\cite{constraintBook} A CSP is typically described using the following notation: $\langle X, D, C \rangle$. Where $X$ represents a set of variables, $D$ is a set of corresponding domains and $C$ is a set of constraints which must be followed by any solution. Every variable must have a \textit{domain}. A domain is a specific area from which the variables can take a value. An example domain is the set of integers, $\mathbb{Z}$. A solution to a CSP is a mapping from the given variables to a value in the domain which satisfies the constraints provided. \\
+``A constraint satisfaction problem [CSP] is a problem where one has to finda  value for a (finite) set of variables satisfying a (finite) set of constraints.''~\cite{constraintBook} A CSP is typically described using the following notation: $\langle X, D, C \rangle$. Where $X$ represents a set of variables, $D$ is a set of corresponding domains and $C$ is a set of constraints that any solution must satisfy. Every variable must have a \textit{domain}. A domain specifies the values a variable can take. An example domain is the set of integers, $\mathbb{Z}$. A solution to a CSP is a mapping from the given variables to a value in the domain which satisfies the constraints provided. \\
 An example of a CSP is the following, where each letter must be replaced with a different number such that the sum evaluates correctly~\cite{constraintPrinciples}: \\
 \begin{equation*}
 \frac{
@@ -352,7 +352,7 @@ Constraints are frequently solved using constraint solvers. A third-party constr
 
 \newpage
 \section{Type Inference}
-The main problem which is required to be solved by this project is how to statically infer the types in Python without executing the program. \\
+The main problem which is required to be solved by this project is how to statically infer the types in Python. \\
 In this section we look at a number of the existing techniques to achieve this while keeping in mind the objectives described at the beginning of this report. Those were for it to return a low number of false positives, for it to statically analyse the code (not run it) and for it to be a out-of-the-box solution and for it to be reasonably fast.
 
 \subsection{Hindley-Milner}
@@ -369,7 +369,7 @@ The technique does not allow polymorphic argument to be of a different type in d
 	else:
 	  x = 5.0   
 \end{lstlisting}
-We have already seen examples such as this in previous sections, and so the Hindley-Milner approach is not appropriate in our case.
+We have already seen examples such as this in previous chapters, and so the Hindley-Milner approach is not appropriate in our case.
 
 \subsubsection{Pyty}
 Developed by Jeff Ruberg~\cite{pyty}, Pyty is a bug checker which analyses annotated source code to detect errors related to the misuse of types. Pyty employs Hindley-Milner as its type inferencing algorithm.
@@ -377,8 +377,8 @@ Developed by Jeff Ruberg~\cite{pyty}, Pyty is a bug checker which analyses annot
 Pyty requires annotations to the source code in a specific format. This is quite tedious and prevents from being an `out-of-the-box' solution to our problem.
 
 \subsubsection{Palsberg and Schwartzbach Algorithm}
-The Palsberg and Schwartzbach algorithm works by constructing a network of constraints where each expression in the analysed program is represented by a node in the network. The node contains the types for which the expression may become during execution. All types are initially set to be empty except from constants and literals. The constraints between the nodes are created in response to statements in the program. In the Palsberg and Schwartzbach algorithm algorithm there are two ways in which a constraint can generated: assignments and function calls. An assignment such as $x := y$ is represented by the constraint $type(x) \subset type(y)$. Function calls generate constraints between the \textit{actual} arguments used in the function call and the formal arguments in the function definition. The constraints are solved by propagating types through the constraint edges until a fixed-point in reached. \\
-The algorithm was adapted to be used for object-oriented code by copying the bodies of base classes inherited class into the child classes. Similarly, Class definitions are duplicated are construction sites and method bodies are duplicated at call sites. \\
+The Palsberg and Schwartzbach algorithm works by constructing a network of constraints where each expression in the analysed program is represented by a node in the network. The node contains the types which the expression may assume during execution. All types are initially set to be empty except from constants and literals. The constraints between the nodes are created in response to statements in the program. In the Palsberg and Schwartzbach algorithm there are two ways in which a constraint can generated: assignments and function calls. An assignment such as $x := y$ is represented by the constraint $type(x) \subset type(y)$. Function calls generate constraints between the \textit{actual} arguments used in the function call and the formal arguments in the function definition. The constraints are solved by propagating types through the constraint edges until a fixed-point in reached. \\
+The algorithm was adapted to be used for object-oriented code by copying the bodies of base classes inherited into the child classes. Similarly, class definitions are duplicated at all sites at which they are constructed and method bodies are duplicated at call sites. \\
 \paragraph*{Limitations}\mbox{}\\
 The excessive duplication makes the algorithm impractical. In the worst case, successive expansions squared the size of the program to be analysed.
 
@@ -388,7 +388,7 @@ The Cartesian Product Algorithm (CPA) was originally conceived by Agesen as an i
 The Cartesian Product Algorithm works by modelling data flow as opposed to the constraint and unification method adopted by the Hindley-Milner algorithm. This is done by building a set of possible types an expression can take. Consider the following code:
 \begin{lstlisting}
 	if (y):	
-      x = 5     
+          x = 5     
 	else:
 	  x = 5.0  
 \end{lstlisting}
@@ -404,11 +404,11 @@ In order to infer the types handed to a function the cartesian product of the se
 	f(x, z)
 \end{lstlisting}
 The set of inferred types for $x$ is, as before, $\left\{ {int, float}\right\}$ and the set for $z$ is $\left\{ {str, bool}\right\}$. The possible types of the inputs to the function $f$ are: $\left\{ {int, float}\right\} \times \left\{ {str, bool}\right\} = \left\{ {(int, str), (int, bool), (float, str), (float, bool)}\right\}$, where each tuple represents the possible types of the variables given to $f$. \\
-The biggest fault of the Palsberg and Schwartzbach algorithm, the expansions, was remedied by the CPA algorithm. This was done by duplicating function bodies such that they contain an argument list with monomorphic types which Agesen calls templates. Each argument list generated by taking the cartesian product at calls sites is connected with constraints to the corresponding template. The types of the values returned by each template is connected to the result of the function call.
+The biggest shortcoming of the Palsberg and Schwartzbach algorithm, the expansions, was remedied by the CPA algorithm. This was done by duplicating function bodies such that they contain an argument list with monomorphic types which Agesen calls templates. Each argument list generated by taking the cartesian product at calls sites is connected with constraints to the corresponding template. The types of the values returned by each template are connected to the result of the function call.
 \paragraph*{Limitations}\mbox{}\\
 The size of the Cartesian products grows exponentially with the number of arguments given to the function call. However the size is bounded by the number of types available. \\
-The difficulty of implementation is greater than that of the Hindley-Milner algorithm which is known as being a fairly simple algorithm to code~\cite{jones95}. \\
-Taking the cartesian product of the possible types given to a function call is unnecessary the possible types the function can take are already known. \\
+The difficulty of implementation is greater than that of the Hindley-Milner algorithm which is known as being a fairly simple algorithm to implement~\cite{jones95}. \\
+Taking the cartesian product of the possible types given to a function call is unnecessary if the possible types the function can take are already known. \\
 While duplication has been reduced in comparison to the Palsberg and Schwartzbach algorithm, each function body is still duplicated to generate all possible templates.
 
 \subsubsection{Starkiller}
@@ -426,7 +426,7 @@ The programs consumed by Shed Skin are required to be implicitly statically type
 For his masters thesis, Brett Cannon attempted to infer the types for local, atomic (built-in) variables are inferred in an attempt to improve the performance of Python~\cite{cannonlocalizedtype}. The type inference is performed by intercepting bytecode from the interpreter and modifying it by injecting additional bytecode relating the the types of variables. The idea was the processor the interpreter is running on could utilise this information to improve performance. Cannon's work differs to Psyco in that the work is done inside of Python's compiler, rather than the interpreter.
 \paragraph{Limitations}\mbox{}\\
 The inference is limited to built-in types: integrals, \textit{float}, \textit{complex}, \textit{basestring}, \textit{list}, \textit{tuple} and \textit{dict} so any user-defined types are ignored. \\
-The limitations involve only in inferring types for local variables, meaning that the implementation is largely useless when used on programs designed with Object Oriented Programming (OOP) in mind, as noted by Cannon. While not a real limitation, Cannon's solution intercepts the compiler in order to improve performance. This is not our aim and we need not complicate things by working with bytecode.
+The limitations involve only inferring types for local variables, meaning that the implementation is largely useless when used on programs designed with Object Oriented Programming (OOP) in mind, as noted by Cannon. While not a real limitation, Cannon's solution intercepts the compiler in order to improve performance. This is not our aim and we need not complicate things by working with bytecode.
 
 %\subsection{Gradual Typing}
 
@@ -439,12 +439,11 @@ The phrase `success typings' was coined by Lindhal and Sagonas in the 2006 paper
 	and(_, false) $\rightarrow$ false;
 \end{lstlisting}
 where the symbol `\_' represents a \textit{don't care} option for pattern matching, meaning it will match any value for the corresponding parameter. \\
-An acceptable success typing for this function, and, indeed, for any function with two arguments, would be: $(any(), any()) \rightarrow any()$ where $any()$ denotes the set of all Erlang types. Such a typing would raise no warnings about the any use of the function and so can be used when no typing information can be inferred about a function. However, a more useful typing for the function in question is $(any(), any()) \rightarrow bool()$ where the return type of the function is restricted to all subtypes of $bool()$. Since we have the \textit{don't cares} any parameter paired with an instance of $false$, such as $(42, false)$, is a valid use of the function. This optimistic approach avoids any possible false positives and so will never reject a well-formed program. This typing does allow for warnings to be issued as a result of type clashes in matching a value which is not a subtype of $bool()$ with the result of the function. \\
+An acceptable success typing for this function, and, indeed, for any function with two arguments, would be: $(any(), any()) \rightarrow any()$ where $any()$ denotes the set of all Erlang types. Such a typing would raise no warnings about any use of the function and so can be used when no typing information can be inferred about a function. However, a more useful typing for the function in question is $(any(), any()) \rightarrow bool()$ where the return type of the function is restricted to all subtypes of $bool()$. Since we have the \textit{don't cares} any parameter paired with an instance of $false$, such as $(42, false)$, constitutes a valid use of the function. This optimistic approach avoids any possible false positives and so will never reject a well-formed program. This typing does allow for warnings to be issued as a result of type clashes in matching a value which is not a subtype of $bool()$ with the result of the function. \\
 A success typing is inferred by building constraints by traversing the code and then solving them. \\
-Constraints are built by providing a list of derivation rule. Assume the following definitions:
-$e$ is any expression which can be built in a language, \\
-$\tau$ is a type, such as a boolean or integer, \\
-$A$ represents an environment with bindings of variables of the form $\{\ldots, x \mapsto \tau_x, \ldots\}$, \\
+Constraints are built based on a number of derivation rules. Assume the following definitions:
+$e$ is any expression which can be defined in the language under consideration, \\
+$\tau$ is a type, such as a boolean or integer, $A$ represents an environment with bindings of variables of the form $\{\ldots, x \mapsto \tau_x, \ldots\}$, \\
 $C$ represents nested conjunctions and disjunction of subtype constraints:
 \begin{align*} 
 	C \coloncolonequals (T_1 \subseteq T_2) \mid (C_1 \land \ldots \land C_n) \mid (C_1 \lor \ldots \lor C_n)
@@ -464,7 +463,7 @@ Then one such derivation rule is the rule for a struct:
 \inference*[STRUCT]{  A \vdash  e_1 : \tau_1, C_1 \ldots e_n : \tau_n, C_n}
                                         {A \vdash  c(e_1, \ldots, e_n) : c(\tau_1, \ldots, \tau_n), C_1 \land \ldots \land C_n}
                 \]
-The struct rule states that given a number of elements, each with its own type, then they can be grouped into a tuple structure in the environment with each individual element retaining their type. The constraints for each element are added to the environment in a conjunction. \\
+The rule states that given a number of elements, each with its own type, can be grouped into a tuple structure in the environment with each individual element retaining their type. The constraints for each element are added to the environment in a conjunction. \\
 $Sol$ is a mapping from type expressions and type variables to concrete types. $Sol$ is a solution to a constraint set $C$ if:
 \begin{align*} 
 	Sol \models T_1 \subseteq T_2 \iff none() \subset Sol(T_1) \subseteq Sol(T_2)
@@ -489,10 +488,10 @@ Aggressive type inference (ATI) is a technique developed by John Aycock~\cite{ag
 	\emph{``Giving people a dynamically-typed language does not mean that they write dynamically-typed programs.''}
 \end{quote}
 Aycock backs up this hypothesis by citing a study~\cite{typeInferenceIcon} which reveals that around 80\% of operators in a set of \textit{Icon} programs maintain the same type throughout their lifetime. \\
-He exploits this by using a flow-insensitive method and does not use union types. Meaning the algorithm does not look through all routes to determine all possible types for a variable and only labels a variable with a single not type, not a union of multiple types. The algorithm works by iteratively analysing the code to infer the types of variables and by propagating the types on each iteration.
+He exploits this by using a flow-insensitive method and does not use union types. Meaning the algorithm does not look through all routes to determine all possible types for a variable and only labels a variable with a single type, not a union of multiple types. The algorithm works by iteratively analysing the code to infer the types of variables and by propagating the types on each iteration.
 \paragraph{Limitations}\mbox{}\\
-The limitations of Aycock's approach are quite clear; the types involved in dynamic behaviour are not reliably extracted. How much of an issue this poses is up for debate;
-A study on this, more recent and relevant to our interests than the \textit{Icon} analysis put forward by Aycock, has been conducted by Alex Holkner and James Harland~\cite{evaluatingDynamicBehaviour}. This study details the evaluation of twenty four open source Python systems. Their results argue that dynamic features are actually widely used. For instance, they find that all systems studied employ dynamic code execution. Holkner and Harland concede that there study is small in comparison to the amount of Python code available, however if their results are to be extrapolated then Aycock's assumption is not so reasonable.
+The limitations of Aycock's approach are quite clear: the types involved in dynamic behaviour are not reliably extracted. How much of an issue this poses is up for debate;
+A study on this, more recent and relevant to our interests than the \textit{Icon} analysis put forward by Aycock, has been conducted by Alex Holkner and James Harland~\cite{evaluatingDynamicBehaviour}. This study details the evaluation of twenty four open source Python systems. Their results argue that dynamic features are actually widely used. For instance, they find that all systems studied employ dynamic code execution. Holkner and Harland concede that their study is small in comparison to the amount of Python code available, however if their results are to be extrapolated then Aycock's assumption is not so reasonable.
 
 \subsection{RPython}
 RPython is an intermediate language, a subset of Python which is entirely statically typed and which acts as a link in the PyPy toolchain. PyPy's goal is to develop a Just-In-Time (JIT) compiler for Python. PyPy's interpreter is written in RPython which removes dynamic features in order to reduce the complexity of type inference.
@@ -508,7 +507,7 @@ To the best of my knowledge, there is currently no bug finder for type errors in
 
 \subsubsection{Pylint}
 Pylint is an error checking tool for Python which statically analyses Python source code to look for errors, including type errors, and to assess the coding style. Pylint is a static analyser and so it looks for errors without importing/running the source code. \\
-Documentation on Pylint is almost non-existent and the source code is also quite difficult to understand so, unfortunately, the author currently does not know how the type inference works in Pylint.
+Documentation on Pylint is almost non-existent and the source code is also quite difficult to understand so, unfortunately, we currently do not understand the type inference algorithm of Pylint.
 \paragraph{Limitations}\mbox{}\\
 Can often return a lot of false positives and offers a large number of command-line options in an attempt to allow users to manually suppress them.
 
@@ -519,7 +518,7 @@ The type inference is quite limited. PyChecker focuses on 'softer' type errors, 
 PyChecker can return spurious errors and warnings. PyChecker imports the code it is analysing which can have undesirable side effects, such as execute a database query in the code.
 
 \subsubsection{PySonar}
-PySonar was developed by Yin Wang while an intern at Google between 2009 and 2010 and was intended for the internal use within Google's Grok project~\cite{pySonar}. PySonar was primarily developed as a tool to allow the user to better search and understand Python code. It includes a type inferencer in order for the type of variables to be displayed in a tooltip. It also includes an indexer to allow quick search through code. PySonar uses abstract interpretation to infer the types of the variables. PySonar claims to be able to resolve the names of 97\% of the Python standard library.
+PySonar was developed by Yin Wang while an intern at Google between 2009 and 2010 and was intended for the internal use within Google's Grok project~\cite{pySonar}. PySonar was primarily developed as a tool to allow the user to better search and understand Python code. It includes a type inferer in order for the types of variables to be displayed in a tooltip. It also includes an indexer to allow quick search through code. PySonar uses abstract interpretation to infer the types of the variables. PySonar claims to be able to resolve the names of 97\% of the Python standard library.
 \paragraph{Limitations}\mbox{}\\
 PySonar is focused on indexing the code it analyses and so it does not report any possible type errors. The program focuses mainly on a less dynamic subset of Python which is `easier' to analyse.
 
@@ -543,16 +542,16 @@ As well as the inaccuracies listed, the Pyntch author states that ``sometimes Py
 
 \subsubsection{Ruby}
 Ruby is a dynamically typed scripting language, similar to Python. \\
-Furr et al. developed Diamondback Ruby (DRuby)~\cite{furr09} in order to discover type errors. DRuby works by using type annotations to library functions in order to generate constraints to infer the types for user defined functions. \\
+Furr et al. developed Diamondback Ruby (DRuby)~\cite{furr09} in order to discover type errors. DRuby works by using type annotations of library functions in order to generate constraints to infer the types for user defined functions. \\
 DRuby is not sound as it accepts programs which are dynamically incorrect. DRuby also reports false positives. \\
-An extension to Diamondback Ruby, $\mathcal{P}$Ruby, was created in order to handle difficult dynamic language constructs such as the \textit{eval} method which converts a string into executable program code.~\cite{pRuby} This is done by instrumenting the code such that, when the program is then run, all uses of the troublesome constructs are documented. This allows a \textit{profile} to be built which fully describes how they were used. With this profile the dynamic code can be inserted into the program in place of the dynamic constructs. The modified program can then be statically analysed just like any other. Furr et al. use DRuby for the analysis.
+An extension to Diamondback Ruby, $\mathcal{P}$Ruby, was created in order to handle difficult dynamic language constructs such as the \textit{eval} method which converts a string into executable program code.~\cite{pRuby} This is done by instrumenting the code such that, when the program is run, all uses of the dynamic constructs are recorded. This allows a \textit{profile} to be built which fully describes how they were used. With this profile the dynamic code can be inserted into the program in place of the dynamic constructs. The modified program can then be statically analysed just like any other. Furr et al. use DRuby for the analysis.
 
 \newpage
 \section{Implementation}
 This project was built on top of the work by Edward K. Ream's \textit{stc}~\footnote{\url{https://code.launchpad.net/~edreamleo/python-static-type-checking/trunk} Revision \#448 was used for this project.}. The primary contribution taken from stc, which was left largely unchanged, was the traversers which are used to navigate the the abstract syntax tree.
 
 \subsection{Generating the Control Flow Graph}
-Due to the limitations of the CFG generators for Python as previously described, the decision was made to create our own. It was felt that no current generator provided a platform to extract a CFG containing the intact information about each statement which wouldn't require time consuming modification. By the time the decision was taken to implement a CFG generator the implementation of the type inferencer was well underway. The benefit of writing our own generator was it could be written in a manner which will make it easy to integrate with currently written type inferencer. \\
+Due to the limitations of the CFG generators for Python as previously described, the decision was made to create our own. It was felt that no current generator provided a platform to extract a CFG containing the necessary information about each statement which wouldn't require time consuming modification. By the time the decision was taken to implement a CFG generator the implementation of the type inferencer was well underway. The benefit of writing our own generator was that it could be written in a manner which will make it easy to integrate with currently written type inferencer. \\
 
 \subsubsection{Ifs and Elses}
 
@@ -563,7 +562,7 @@ Taking inspiration from the PyPy implementation, a stack was implemented on whic
 \subsubsection{Try, Excepts and Finallys} 
 
 \subsection{SSA Form}
-The implementation of SSA was performed precisely as described in the background section. A few additional allowances were required for the system to function correctly. These will be explained here.
+The implementation of SSA renaming was performed precisely as described in the background section. A few additional allowances were required for the system to function correctly. These will be explained here.
 
 \subsubsection{Global and Local Variables}
 Consider the following snippet of Python code:
@@ -578,7 +577,7 @@ Consider the following snippet of Python code:
       def h(self):
         a + self.x 
 \end{lstlisting}
-The references to $self.x$ refer to the same variable. The principles of SSA naming state that a variable should only be assigned to once. But which $x$ should be labelled $x_1$ and which should be labelled $x_2$? Or, rather, which of the assignments to $x$ in function \textit{f} and function \textit{g} will be called first? Without any analysis of the call sites or typical run-time behaviour it is impossible to determine statically. A similar problem arises when we attempt to decide which reference to give to the instance of \textit{self.x} in function \textit{h}. Without knowledge of the order the functions are called (if a consistent ordering even exists) we cannot predict which is the correct label. For this reason SSA naming is only performed on local variables.
+The references to $self.x$ refer to the same variable. The principles of SSA naming state that a variable should only be assigned to once. But which $x$ should be labelled $x_1$ and which should be labelled $x_2$? Or, rather, which of the assignments to $x$ in function \textit{f} and function \textit{g} will be called first? Without any analysis of the call sites or typical run-time behaviour it is impossible to determine this statically. A similar problem arises when we attempt to decide which reference to give to the instance of \textit{self.x} in function \textit{h}. Without knowledge of the order the functions are called (if a consistent ordering even exists) we cannot predict which is the correct label. For this reason SSA naming is only performed on local variables.
 
 
 \subsection{Type Inference}
@@ -593,7 +592,7 @@ All changes to the types of variables involve assignment. For each assignment th
 	x = "Hi"
 	x = f()
 \end{lstlisting}
-Assignments with a simple numeric or string value can be type inferred very easily and we can assign the variable a single possible type with complete confidence. If the RHS is a function then we assign all of the types the function can possibly return.
+Assignments with a simple numeric or string value can be inferred very easily and we can assign the variable a single possible type with complete confidence. If the RHS is a function then we assign all of the types the function can possibly return.
 
 \subsubsection{Inferring the Types of Binary Operations}
 
@@ -606,14 +605,14 @@ Assignments with a simple numeric or string value can be type inferred very easi
 % [x, y] = [5, 2]
 
 \subsubsection{Inferring the Types in Del statements}
-The \textit{Del} statement is used to remove an identifier binding. If the target of the Del statement is a variable then the type of that variable is then set to \textit{None\_Type}. Otherwise, if the target is an element in a list or dict then that single element is removed. In the case that is a variable then we can change the set of types assigned to this variable. However, it is more complicated if the target is an element of a list or dict. In theory we could simply remove the type(s) associated with that element from the types contained in the list/dict but this would only be correct if the element being removed was the \textit{only} element in the list/dict with that type. This may prove difficult to track. For instance, consider the following trivial example:
+The \textit{Del} statement is used to remove an identifier binding. If the target of the Del statement is a variable then the type of that variable is set to \textit{None\_Type}. Otherwise, if the target is an element in a list or dict then that single element is removed. In the case of a variable we can change the set of types assigned to this variable. However, it is more complicated in the case the target is an element of a list or dict. In theory we could simply remove the type(s) associated with that element from the types contained in the list/dict but this would only be correct if the element being removed was the \textit{only} element in the list/dict with that type. This may prove difficult to track. For instance, consider the following trivial example:
 \begin{lstlisting}[mathescape]
     from random import randomint
     l = ["Hi", 5, 5.0]
     del l[randint(0, 2)]
 \end{lstlisting}
-This example will delete a random element from the list. It impossible to statically predict which element, and therefore type, that will be. A similar problem arises when dynamic number of elements are added, such as looping over a file and adding elements found until the end of the file is reached. In this case we cannot determine how many elements need to removed before we can safely remove the type from the set of types contained in the list/dict. \\
-For these reasons we do not manipulate the set of types contained in the list/dict after a \textit{del} operation.
+This example will delete a random element from the list. It impossible to statically predict which element, and therefore type, that will be removed. A similar problem arises when a dynamic number of elements is added, such as when looping over a file and adding elements found until the end of the file is reached. In this case we cannot determine how many elements need to removed before we can safely remove the type from the set of types contained in the list/dict. \\
+For these reasons we do not change the set of types contained in the list/dict after a \textit{del} operation.
 
 \subsubsection{Inferring the Types in For/While Loops}
 
@@ -634,12 +633,12 @@ The following shows a `raw' while loop and the same while loop in SSA form:
     x4 = $\phi$(x1, x3)
     y2 = $\phi$(y1, None)
 \end{lstlisting}
-A problem raised by this is that the $\phi$ functions which exist at the beginning of the loop depend of types which can not be determined until the end of the loop body. In between then there may be other variables which use the result of the $\phi$ function in their own assignment, like $y1$ above. To overcome this we use a \textit{Awaiting\_Type} value which is assigned to any variable which is awaiting the type of another variable, the \textit{waiter} along with the name of the variable they are waiting for, the \textit{waitee}. In the case above we have $x2$ waiting for $x3$ and $y1$ waiting for $x2$. When a waitee is assigned its types then attempts are made to type all of that variable's waiters. If it is found they also need to wait for another variable then the same process occurs again otherwise they are successfully typed. Currently this approach collapses if there is a circular assignment involving a waiter and waitee, e.g.\ $x2 = x1 + 1$ where $x1$ which can cause the waiter of each to be each other. Currently if this circular assignment is detected then both variables are assigned the Any\_Type.
+A problem raised by this is that the $\phi$ function at the beginning of the loop depends on the types which can not be determined until the end of the loop body. In between there may be other variables which use the result of the $\phi$ function in their own assignment, like $y1$ above. To overcome this we use a \textit{Awaiting\_Type} value which is assigned to any variable which is awaiting the type of another variable, the \textit{waiter} along with the name of the variable they are waiting for, the \textit{waitee}. In the case above we have $x2$ waiting for $x3$ and $y1$ waiting for $x2$. When a waitee is assigned its types then attempts are made to type all of that variable's waiters. If it is found they also need to wait for another variable then the same process occurs again otherwise they are successfully typed. Currently this approach collapses if there is a circular assignment involving a waiter and waitee, e.g.\ $x2 = x1 + 1$ where $x1$ which can cause the waiter of each to be each other. Currently if this circular assignment is detected then both variables are assigned the Any\_Type.
 
 
 \subsubsection{Inferring the Possible Types of Function Arguments}
-There are number of ways we can go about inferring the types of function arguments. We could use either a \textit{top-down} approach or a \textit{bottom-up} approach. A top-down approach involves finding all of the calls to a function and determining the types the function accepts by the inferring the types of values given. On the other hand a bottom-up approach involves determining the types of arguments solely by how they are used within the function body. Initially our approach was to use the bottom-up approach. It was felt that more to be gained using this approach since we would be able to detect errors caused by incorrect types being passed to a function. However it is important to note that useful information can be extracted from the calls. There is a possibility of using this information when we are unable to infer the types of the parameters using the function body in isolation. \\
-To do this we will generate a number of constraints and attempt to solve them. In order to solve the constraints we will make use of a pre-existing constraint solver for Python, \textit{python-constraint}~\footnote{\url{http://labix.org/python-constraint}}. When our generated constraints can not be solved then we resort to labelling the parameter as having any possible type (AnyType / Top).
+There are number of ways we can go about inferring the types of function arguments. We could use either a \textit{top-down} approach or a \textit{bottom-up} approach. A top-down approach involves finding all of the calls to a function and determining the types the function accepts by the inferring the types of values given. On the other hand a bottom-up approach involves determining the types of arguments solely by how they are used within the function body. Initially our approach was to use the bottom-up approach. It was felt that more was to be gained using this approach since we would be able to detect errors caused by incorrect types being passed to a function. However it is important to note that useful information can be extracted from the calls. There is a possibility of using this information when we are unable to infer the types of the parameters using the function body in isolation. \\
+To do this we will generate a number of constraints and attempt to solve them. In order to solve the constraints we will make use of a pre-existing constraint solver for Python, \textit{python-constraint}~\footnote{\url{http://labix.org/python-constraint}}. When our generated constraints cannot be solved, we resort to labelling the parameter as having any possible type (AnyType / Top).
 It is important to do this before we attempt to infer the return types of a function as it is likely that the possible return types will depend upon the types of the function arguments. \\\\
 \textbf{Constraint Generation} \\
 Consider the following two functions:
@@ -651,7 +650,7 @@ Consider the following two functions:
 	  if (p1):
 	    return x + y
 \end{lstlisting}
-Both functions apply the $+$ operator to the parameters. However, due to the \textit{if} statement the constraint this imposes on the types they can take is quite different. In function \textit{f} the operation is unconditional and so we know that both parameters are required to be of a type (or a sub-type of a type) which can used in this operation. On the other hand, in the function \textit{g} this statement may not be executed in which case we can see that no type errors can occur. This leads us to the conclusion that we must take the context of the statement into account before we issue a constraint.
+Both functions apply the $+$ operator to the parameters. However, due to the \textit{if} statement the constraint this imposes on the types they can take is quite different. In function \textit{f} the operation is unconditional and so we know that both parameters are required to be of a type (or a sub-type of a type) which can used in this operation. On the other hand, in the function \textit{g} this statement may not be executed in which case we can see that no type errors can occur. This leads us to conclude that we must take the context of the statement into account before we issue a constraint.
 \\\\
 \textbf{Constraint Solving} \\
 Our constraint solver returns all possible sets which satisfy the constraints we feed into it. We are interested in \textit{all} of the possible types a parameter can legally take. Because of this we take the largest set returned for each parameter.
@@ -676,18 +675,18 @@ There is a the possibility of a relationship between the types of the parameters
 
 
 \subsubsection{Inferring Context}
-Unlike many static languages such as Java and C++ Python is heavily dependent on context. This leads to the same function and class having very different values at different times in the program. Consider the following class:
+Unlike many static languages such as Java and C++, Python is heavily dependent on context. This may lead to the same function and class having very different values at different times in the program. Consider the following class:
 \begin{lstlisting}[mathescape]
 	class C():
 		def __init__(self):
 			self.x = 3
 			
 		def f(self):
-			self.
+			self.x = 3.0
 \end{lstlisting}
 
 \subsubsection{Inferring the Classes}
-In statically typed languages such as Java and C++ the global variables are required to be specifically defined outside of the function and in the main body of the program. In Python this is not required. The global variables which can accessed outside of the class can be declared in a function within that class, and even outside of the class entirely. If a variable has been declared inside of a function then the function is required to be called before the variable is referenced. An example of this is as follows:
+In statically typed languages such as Java and C++ the global variables are required to be specifically defined outside of the function and in the main body of the program. In Python this is not required. The global variables which can be accessed outside of a class can be declared in a function within that class, and even outside of the class entirely. If a variable has been declared inside of a function, then the function is required to be called before the variable is referenced. An example of this is as follows:
 \begin{lstlisting}[mathescape]
 	class C():
 	  def f():
@@ -701,13 +700,13 @@ In statically typed languages such as Java and C++ the global variables are requ
 	c.f()
 	print(c.x)    # Okay - prints 5
 \end{lstlisting}
-You may also notice that the global variable held by C can be different types - \textit{int} or \textit{float} depending on which of the functions \textit{f} and \textit{g} were last called. To infer the types of these variables we can use a few different methods.
+You may also notice that the global variable held by C can be different types - \textit{int} or \textit{float} depending on which of the functions \textit{f} and \textit{g} was called last. To infer the types of these variables we can use a few different methods.
 
 \paragraph{Method One: Any Possible Type at Any Time}\mbox{}\\
-Whilst analysing the functions of the class we can keep track of all of the possible types of each global variable. We do this on a function-by-function basis. So once we have analysed function \textit{f} we believe that the variable \textit{x} can be the set of types $\left\{ {int}\right\}$. We update this to $\left\{ {int, float}\right\}$ after the analyse of the function \textit{g}. Once the entire class has been analysed and the variable has been accessed we return all of the possible types the variable can be. This method is not very accurate, and does not react the changes that the function calls obviously make the object.
+Whilst analysing the functions of the class we can keep track of all of the possible types of each global variable. We do this on a function-by-function basis. So once we have analysed function \textit{f} we believe that the variable \textit{x} can be the set of types $\left\{ {int}\right\}$. We update this to $\left\{ {int, float}\right\}$ after the analysis of the function \textit{g}. Once the entire class has been analysed and the variable has been accessed we return all of the possible types the variable can be. This method is not very accurate, and does not take into account the changes that the function calls obviously make the object.
 
 \paragraph{Method Two: Treat Function Calls as Object Modifiers}\mbox{}\\
-Whilst analysing the functions of a class, instead of recording all of the types a variable can take we can tag the function with the variable modifications it makes. So for the example given above we would tag for the function \textit{f} as modifying the variable \textit{x} to $\left\{ {int}\right\}$ and function \textit{g} to $\left\{ {float}\right\}$. However to take advantage of this information we are required to manipulate the calling code somewhat. If we are stating that the functions change the state of the object then we need to explicitly indicate this as we did with `normal' variables with SSA naming. For example, consider the calling code for the class C example we gave above. We would edit this to the following:
+Whilst analysing the functions of a class, instead of recording all of the types a variable can take we can tag the function with the variable modifications it makes. So for the example given above we would tag for the function \textit{f} as modifying the variable \textit{x} to $\left\{ {int}\right\}$ and function \textit{g} to $\left\{ {float}\right\}$. However to take advantage of this information we are required to manipulate the calling code somewhat. If we are stating that the functions change the state of the object then we need to explicitly indicate this as we did with `normal' variables with SSA naming. For example, consider the calling code for the class C example we gave above. We would edit this to be the following:
 \begin{lstlisting}[mathescape]
 	# Using the class C
 	c1 = C()
@@ -719,10 +718,10 @@ We assume that the function creates a special kind of assignment to the object w
 This method is much more accurate than the first as we keep track of how a object instance grows and changes with each function call made upon it. However the price we pay for this accuracy is a much complex implementation process.
 
 \paragraph{Small Improvement: Analyse the \textit{\_\_init\_\_} Function First}\mbox{}\\
-The equivalent of a Java/C++ constructor in Python is the \textit{\_\_init\_\_} function. While Python in no way forces you to declare your \textit{self} variables in the \_\_init\_\_ function, it makes sense to and we can reasonably assume that large percentage are declared there. The advantage of analysing this function before the others is that if a global variable is referenced (not assigned to) in a function then to acquire the most accurate typing of that function we want to already having typing information available for that variable. To do this we simply look for the \_\_init\_\_ function in the list of the functions contained in the class and move it to the top of the list if it is found.
+The equivalent of a Java/C++ constructor in Python is the \textit{\_\_init\_\_} function. While Python in no way forces you to declare your \textit{self} variables in the \_\_init\_\_ function, it makes sense to do so and we can reasonably assume that large percentage is declared there. The advantage of analysing this function before the others is that if a global variable is referenced (not assigned to) in a function then to acquire the most accurate typing of that function we want to already having typing information available for that variable. To do this we simply look for the \_\_init\_\_ function in the list of the functions contained in the class and move it to the top of the list if it is found.
 
 \paragraph{`Magic' Functions}\mbox{}\\
-Python is a large number of special functions which can be implemented by the programmed which will then be used in a unorthodox way. All of these functions are characterised by having a double leading and trailing underscores. The most frequently used of these is \textit{\_\_init\_\_}
+Python has a large number of special functions which can be implemented by the programmer which will then be used in a unorthodox way. All of these functions are characterised by having a double leading and trailing underscores. The most frequently used of these is \textit{\_\_init\_\_}
 
 \subsubsection{Inheritance}\mbox{}\\
 In Python inheritance works by inserting the name of the base class within the parenthesis of the class declaration. Multiple inheritance is supported by separating the base classes with commas. The multiple inheritance by looking through the base classes, in order, until the referenced variable/function is found. Therefore preference is given to the base classes listed first.
@@ -744,7 +743,7 @@ In Python inheritance works by inserting the name of the base class within the p
 In the example above the class \textit{D} inherits from the base class \textit{C}. The function \textit{g} is inherited along with the variable \textit{x} (if we are using Method One.) However the function \textit{f} is overridden by \textit{C}. Initially the function is given the to \textit{C} but is replaced by its own version once our analysis reaches the function.
 
 \subsubsection{Inferring types involved in \textit{with} statements}
-When dealing with objects which need to be built up before their use and clean up after they have been used, such as file manipulation, engineers using Python had to follow a process similar to the following:
+When dealing with objects which need to be built up before their use and clean up after they have been used, such as file manipulation, engineers using Python had to follow a process similar to the following in the past:
 \begin{lstlisting}[mathescape]
 	# Set up object
 	file = open("file.txt")
@@ -760,7 +759,7 @@ The code ensures the the object is constructed before use, due to flow restricti
 	with open("file.txt") as file:
 		data = file.read()
 \end{lstlisting}
-\textit{with} works by calling the \textit{\_\_enter\_\_} function on the object provided immediately after the \textit{with} keyword (\textit{open} returns a file) and calling the \textit{\_\_exit\_\_} function when the body has exited. An engineer can build their on class to work with the \textit{with} keyword by implementing these functions with their construction and destruction code. For example:
+\textit{with} works by calling the \textit{\_\_enter\_\_} function on the object provided immediately after the \textit{with} keyword (\textit{open} returns a file) and calling the \textit{\_\_exit\_\_} function when the body has exited. An engineer can build their class to work with the \textit{with} keyword by implementing these functions with their construction and destruction code. For example:
 \begin{lstlisting}[mathescape]
 	class Example():
 		def __enter__(self):
@@ -776,7 +775,7 @@ The code ensures the the object is constructed before use, due to flow restricti
 		ex.do_something()
 \end{lstlisting}
 The \textit{type}, \textit{value} and \textit{trace} parameters provide information which can used to handle exceptions. \\
-We can handle the\textit{with} keyword by de-sugaring it back into it's equivalent try-finally. The set-up code will involve assignment to the specified variable and a call to the \textit{\_\_enter\_\_} function. The finally block will simply consist of a call the \textit{\_\_exit\_\_} function. Our transformed \textit{with} using the \textit{Example} class will look like so:
+We can handle the \textit{with} keyword by de-sugaring it back into its equivalent try-finally. The set-up code will involve assignment to the specified variable and a call to the \textit{\_\_enter\_\_} function. The finally block will simply consist of a call the \textit{\_\_exit\_\_} function. Our transformed \textit{with} using the \textit{Example} class will look like so:
 \begin{lstlisting}[mathescape]
 	ex = Example()
 	ex.__enter__()
@@ -791,6 +790,7 @@ The main difficulty involved with this transformation is simulating the variable
 
 \subsubsection{Python Standard Library}
 One possible reason for Python's popularity is its extensive standard library. 3rd party library are also popular, with millions of downloads (source). There are two ways these can used. Included it in the project directory, or by installing it on the machine the code is running on.
+\newpage
 
 \end{document}
 
