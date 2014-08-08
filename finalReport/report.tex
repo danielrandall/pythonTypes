@@ -44,6 +44,7 @@
 \date{}
 
 \begin{document}
+
 \maketitle
 
 \tableofcontents
@@ -615,6 +616,7 @@ This example will delete a random element from the list. It impossible to static
 For these reasons we do not manipulate the set of types contained in the list/dict after a \textit{del} operation.
 
 \subsubsection{Inferring the Types in For/While Loops}
+
 The following shows a `raw' while loop and the same while loop in SSA form:
 \begin{lstlisting}[mathescape]
     # Raw form
@@ -633,6 +635,7 @@ The following shows a `raw' while loop and the same while loop in SSA form:
     y2 = $\phi$(y1, None)
 \end{lstlisting}
 A problem raised by this is that the $\phi$ functions which exist at the beginning of the loop depend of types which can not be determined until the end of the loop body. In between then there may be other variables which use the result of the $\phi$ function in their own assignment, like $y1$ above. To overcome this we use a \textit{Awaiting\_Type} value which is assigned to any variable which is awaiting the type of another variable, the \textit{waiter} along with the name of the variable they are waiting for, the \textit{waitee}. In the case above we have $x2$ waiting for $x3$ and $y1$ waiting for $x2$. When a waitee is assigned its types then attempts are made to type all of that variable's waiters. If it is found they also need to wait for another variable then the same process occurs again otherwise they are successfully typed. Currently this approach collapses if there is a circular assignment involving a waiter and waitee, e.g.\ $x2 = x1 + 1$ where $x1$ which can cause the waiter of each to be each other. Currently if this circular assignment is detected then both variables are assigned the Any\_Type.
+
 
 \subsubsection{Inferring the Possible Types of Function Arguments}
 There are number of ways we can go about inferring the types of function arguments. We could use either a \textit{top-down} approach or a \textit{bottom-up} approach. A top-down approach involves finding all of the calls to a function and determining the types the function accepts by the inferring the types of values given. On the other hand a bottom-up approach involves determining the types of arguments solely by how they are used within the function body. Initially our approach was to use the bottom-up approach. It was felt that more to be gained using this approach since we would be able to detect errors caused by incorrect types being passed to a function. However it is important to note that useful information can be extracted from the calls. There is a possibility of using this information when we are unable to infer the types of the parameters using the function body in isolation. \\
@@ -785,6 +788,9 @@ We can handle the\textit{with} keyword by de-sugaring it back into it's equivale
 The main difficulty involved with this transformation is simulating the variables passed to the \textit{\_\_exit\_\_} function. The simplest way to deal with this is to pass temporary variable which have an \textit{Any\_Type}.
 \bibliography{mybib}{}
 \bibliographystyle{plain}
+
+\subsubsection{Python Standard Library}
+One possible reason for Python's popularity is its extensive standard library. 3rd party library are also popular, with millions of downloads (source). There are two ways these can used. Included it in the project directory, or by installing it on the machine the code is running on.
 
 \end{document}
 
