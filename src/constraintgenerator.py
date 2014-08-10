@@ -1,6 +1,7 @@
 from pprint import pprint
 import src.constraint as python_constraint
 import src.binopconstraints as binopcons
+import ast
 from src.typeclasses import *
 
 class ConstraintGenerator:
@@ -152,4 +153,13 @@ class ConstraintGenerator:
         if any_type in accepted_types:
             return
         self.csp_problem.addConstraint(self.limit_to_set(accepted_types), [param_to_constrain])
+        
+    def do_Subscript(self, index_or_slice, param_to_constrain):
+        if isinstance(index_or_slice, ast.Slice):
+            possible_types = set(SLICE_TYPES)
+        if isinstance(index_or_slice, ast.Index):
+            possible_types = set(INDEX_TYPES)
+        self.csp_problem.addConstraint(self.limit_to_set(possible_types), [param_to_constrain])
+        return possible_types
+        
         

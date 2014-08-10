@@ -8,11 +8,17 @@ import src.stcglobals as stcglobals
 class PyFile(object):
 
     def __init__(self, name, relative_path, root):
+        print("ast-ing " + name)
         ast_source = PyFile.parse_file(root)
+        print("Finished ast " + name)
         utils = Utils()
         print(utils.dump_ast(ast_source))
+        print("preprocessing " + name)
         pp_source = PyFile.apply_preprocessing(root, ast_source)
+        print("Finished preprocessing " + name)
+        print("ssa-ing " + name)
         ssa_source = PyFile.apply_ssa(pp_source)
+        print("Finished ssa-ing " + name)
         
         self.source = ssa_source
         self.name = name

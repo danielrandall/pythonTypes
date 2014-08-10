@@ -96,6 +96,8 @@ class SSA_Traverser(AstFullTraverser):
         self.loop_helper(node)
         
     def loop_helper(self, node):
+        print("Begin ssa loop")
+        
         node.beforePhis = []
         node.afterPhis = []
         
@@ -106,7 +108,6 @@ class SSA_Traverser(AstFullTraverser):
         
         for z in node.body:
             self.visit(z)
-        pprint(self.breaks)
         # Check for variable values after loop
         ifD = self.d.copy()
         ifChanged = self.changed_dicts(ifD, beforeD)
@@ -143,15 +144,17 @@ class SSA_Traverser(AstFullTraverser):
         # Restore the breaks and continues for outer loops
         self.breaks = old_breaks
         self.continues = old_continues
+    
+      #  print("Before")
+      #  for phi in node.beforePhis:
+      #      pprint(phi.var)
+      #      pprint(phi.targets)
+      #  print("After")
+      #  for phi in node.afterPhis:
+      #      pprint(phi.var)
+      #      pprint(phi.targets)
         
-        print("Before")
-        for phi in node.beforePhis:
-            pprint(phi.var)
-            pprint(phi.targets)
-        print("After")
-        for phi in node.afterPhis:
-            pprint(phi.var)
-            pprint(phi.targets)
+        print("End ssa loop")
     
     def increment_dict(self, dict):
         for key in dict.keys():
@@ -172,6 +175,7 @@ class SSA_Traverser(AstFullTraverser):
             then we must create a phi node which uses both.
             TODO: Optimise this function. 
             TODO: Functions defined inside of an if '''
+        print("Begin ssa if")
         node.afterPhis = [] # All ifs have an empty list.
         
         self.visit(node.test)
@@ -195,9 +199,10 @@ class SSA_Traverser(AstFullTraverser):
         else:
             ifChangedOnly = ifChanged
         self.editAfterPhiList(ifChangedOnly, [ifD, beforeD], node)
-        for phi in node.afterPhis:
-            pprint(phi.var)
-            pprint(phi.targets)
+    #    for phi in node.afterPhis:
+    #        pprint(phi.var)
+    #        pprint(phi.targets)
+        print("End ssa if")
             
     def editAfterPhiList(self, nameList, dictList, node):
         phiList = self.buildPhiList(nameList, dictList, node, False)
@@ -400,7 +405,7 @@ class SSA_Traverser(AstFullTraverser):
     def do_Name(self, node):
         ''' If the id is True or false then ignore. WHY ARE TRUE AND FALSE
             IDENTIFIED THE SAME WAY AS VARIABLES. GAH. '''
-        print(node.id)
+      #  print(node.id)
         # We don't SSA a global variable
         if isinstance(node.stc_context, ast.Module):
             return

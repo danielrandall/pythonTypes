@@ -354,9 +354,25 @@ class Int_Type(Num_Type):
     def __init__(self):
         Num_Type.__init__(self, int)
         
-class String_Type(BaseType):
+class String_Type(Container_Type):
     def __init__(self):
-        BaseType.__init__(self,'String')
+        BaseType.__init__(self, 'String')
+        self.content_types = set([self])
+        
+    def infer_types(self):
+        return
+        
+    def get_content_types(self):
+        return self.content_types
+        
+    def update_content_types(self, new_types):
+        return
+        
+    def contains_waiting_type(self):
+        return False
+    
+    def define_kind(self):
+        self.kind = 'String'
         
 class Awaiting_Type(BaseType):
     def __init__(self, waitee, waiting_for):
@@ -414,4 +430,6 @@ none_type = None_Type()
 string_type = String_Type()
 any_type = Any_Type()
 
+SLICE_TYPES = [List_Type(None, [], set()), string_type]
+INDEX_TYPES = [List_Type(None, [], set()), Dict_Type(None, [], set()), string_type]
 ALL_TYPES = [List_Type(None, [], set()), Dict_Type(None, [], set()), int_type, float_type, bool_type, string_type, bytes_type, builtin_type]

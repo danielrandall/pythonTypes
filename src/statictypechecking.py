@@ -154,9 +154,12 @@ class TypeInferrer(AstFullTraverser):
             'int': set([Def_Type([set([string_type, int_type, float_type, bytes_type]), set([int_type])],
                                   set([int_type]),
                                   2)]),
-            'str':  set([Def_Type([set([any_type])],
+            'str':  set([Def_Type([set([any_type]), set([string_type]), set([string_type])],
                                   set([string_type]),
-                                  0)]),
+                                  2)]),
+            'list':  set([Def_Type([set([any_type])],
+                                  set([List_Type(None, [], set())]),
+                                  0)]),                
             'len':  set([Def_Type([set([any_type])],
                                   set([int_type]),
                                   0)]),
@@ -195,6 +198,9 @@ class TypeInferrer(AstFullTraverser):
             'dir': set([Def_Type([set([any_type])],
                                   set([List_Type(None, [], set())]),
                                   1)]),
+            'zip': set([Def_Type([set([any_type]), set([any_type]), set([any_type]), set([any_type])],
+                                  set([any_type]),
+                                  3)]),
             # TODO: Get this to return a file-object
             'open': set([Def_Type([set([string_type]), set([string_type]), set([int_type]), set([string_type]), set([string_type]), set([string_type]), set([bool_type]), set([any_type])],
                                   set([any_type]),
@@ -202,6 +208,9 @@ class TypeInferrer(AstFullTraverser):
             # Should this be a function or class?
             'set': set([Def_Type([set([List_Type(None, [], set())])],
                                   set([Set_Type(None, [], set())]),
+                                  1)]),
+            'dict': set([Def_Type([set([any_type])],
+                                  set([any_type]),
                                   1)]),
             # Classes
             'object' : set([Class_Type("object", {}, False)])
@@ -264,7 +273,7 @@ class TypeInferrer(AstFullTraverser):
     def type_file(self, file, dependents):   
         ''' Runs the type_checking on an individual file. '''
         root = file.get_source()     
-        print("Printing module " + file.get_name() + " ------------------------------")   
+        print("Printing module: ----------------------------- " + file.get_name() + " ------------------------------")   
         self.variableTypes = root.variableTypes
         self.init()
         print("-DEPENDENTS-")
@@ -311,7 +320,8 @@ class TypeInferrer(AstFullTraverser):
                     if node.attr in n.global_vars:
                         result_types |= n.global_vars[node.attr]
                         # Add the context - change this to work with others
-                        n.update_dependents(node.attr, node.stc_context)
+                        if isinstance(n, Class_Base):
+                            n.update_dependents(node.attr, node.stc_context)
                     else:
                         result_types.add(any_type)
                 return [result_types]
@@ -372,7 +382,7 @@ class TypeInferrer(AstFullTraverser):
     def conduct_assignment(self, targets, value_types, node):
         ''' TODO: Stop comparisons with instantiation of Container_Type.
             TODO: Deal with fun params better '''
-        assert(len(value_types) == len(targets)) 
+        assert(len(value_types) == len(targets)), "Line " + str(node.lineno)
         for i in range(len(targets)):
             # Switch fun param to types
             if value_types[i] in self.fun_params:
@@ -390,7 +400,7 @@ class TypeInferrer(AstFullTraverser):
                         del value_types[i]
                         del targets[i]
                         break
-                    self.variableTypes[targets[i]] = [set([Awaiting_Type(targets[i], result.waitee)])]
+                    self.variableTypes[targets[i]] = set([Awaiting_Type(targets[i], result.waitee)])
                     self.awaiting_Typing.append((node, result.waitee))
                     # Remove the culprits from the list so we can continue processing
                     del value_types[i]
@@ -531,14 +541,15 @@ class TypeInferrer(AstFullTraverser):
         for left in left_types:
             for right in right_types:
                 # Any_Type checks
-                ''' TODO: do this better | check the type is acceptable'''
+                ''' TODO: do this better | check the type is acceptable
+                    TODO: List types less explicitly'''
                 if isinstance(left, Any_Type) and isinstance(right, Any_Type):
                     return [set([any_type])]
                 if isinstance(left, Any_Type):
-                    result_types |= set(binopcons.BIN_OP_CONSTRAINTS[op_kind][right])
+                    result_types |= set(binopcons.BIN_OP_CONSTRAINTS[op_kind][List_Type if isinstance(right, List_Type) else right])
                     continue
                 if isinstance(right, Any_Type):
-                    result_types |= set(binopcons.BIN_OP_CONSTRAINTS[op_kind][left])
+                    result_types |= set(binopcons.BIN_OP_CONSTRAINTS[op_kind][List_Type if isinstance(left, List_Type) else left])
                     continue
 
                 if isinstance(left, Num_Type) and isinstance(right, Num_Type):
@@ -571,6 +582,8 @@ class TypeInferrer(AstFullTraverser):
                         (left <= int_type and right <= string_type)):
                     result_types.add(string_type)
                     continue
+        pprint(left_types)
+        pprint(right_types)
         assert result_types, "Line " + str(node.lineno) + ": " + "No acceptable BinOp operation. "
         return [result_types]
     
@@ -705,7 +718,12 @@ class TypeInferrer(AstFullTraverser):
         result_types = set()
         for z in node.args:
             given_arg_types.extend(self.visit(z))
+        pprint(given_arg_types)
+        pprint(self.variableTypes)
         possible_funcs = self.visit(node.func)[0]
+        print("node.func")
+        if isinstance(node.func, ast.Name):
+            print(node.func.id)
         print("Function possible types")
         pprint(possible_funcs)
         # If the function could not be found then just return any_type
@@ -739,7 +757,8 @@ class TypeInferrer(AstFullTraverser):
                     for t2 in accepted_types[i]:
                         if (t1 <= t2):
                             type_allowed = True
-                    assert type_allowed, "Incorrect type given to function"
+                    print(i)
+                    assert type_allowed, "Line " + str(node.lineno) + ": Incorrect type given to function. Got: " + str(given_arg_types[i]) + ". Expected: " + str(accepted_types[i])
             result_types |= func_return_types
         return [result_types]
             
@@ -770,6 +789,7 @@ class TypeInferrer(AstFullTraverser):
         ''' Find all args and return values.
         
             TODO: Find out possible types in *karg dict. '''
+        print(node.lineno)
         self.variableTypes = node.variableTypes
         self.variableTypes.update(node.stc_context.variableTypes)
 
@@ -937,6 +957,8 @@ class TypeInferrer(AstFullTraverser):
         if not node.value:
             self.fun_return_types |= set([none_type])
             return            
+        print("value")
+        print(node.value)
         possible_return_type = self.visit(node.value)[0] # Can only be len 1
         # If the a parameter is being returned then use the default value set
         # Its probably any_type.
@@ -976,19 +998,21 @@ class TypeInferrer(AstFullTraverser):
         return
 
     def do_Slice(self, node):
-        ''' No need to return anything here. '''
+        ''' No need to return anything here.
+            TODO: Do better with awaiting_type '''
         if node.upper:
             upper_types = self.visit(node.upper)[0]
-            int_like_types = [x for x in upper_types if x <= int_type]
-            assert int_like_types, "upper in slice must be an integer"
+            int_like_types = [x for x in upper_types if x <= int_type or isinstance(x, Awaiting_Type)]
+            assert int_like_types, "Line " + str(node.lineno) + ": upper in slice must be an integer"
         if node.lower:
             lower_types = self.visit(node.lower)[0]
-            int_like_types = [x for x in lower_types if x <= int_type]
-            assert int_like_types, "lower in slice must be an integer"
+            pprint(lower_types)
+            int_like_types = [x for x in lower_types if x <= int_type or isinstance(x, Awaiting_Type)]
+            assert int_like_types, "Line " + str(node.lineno) + ": lower in slice must be an integer"
         if node.step:
             step_types = self.visit(node.step)[0]
-            int_like_types = [x for x in step_types if x <= int_type]
-            assert int_like_types, "step in slice must be an integer"
+            int_like_types = [x for x in step_types if x <= int_type or isinstance(x, Awaiting_Type)]
+            assert int_like_types, "Line " + str(node.lineno) + ": step in slice must be an integer"
         return
 
     def do_Subscript(self, node):
@@ -999,7 +1023,10 @@ class TypeInferrer(AstFullTraverser):
         if self.currently_assigning:
             # Check whether variable can be a container
             value_types = self.variableTypes[value_types]
+        if value_types in self.fun_params:
+            value_types = self.constraint_gen.do_Subscript(node.slice, value_types)
         container_like_types = [x for x in value_types if x <= Container_Type(None, None, None, None)]
+        pprint(value_types)
         pprint(container_like_types)
         assert container_like_types, "Line " + str(node.lineno) + ": cannot index/slice in non-container types. "
         
@@ -1030,7 +1057,7 @@ class TypeInferrer(AstFullTraverser):
         ti = self
         return [ti.builtin_type]
         
-    def do_Yield(self,node):
+    def do_Yield(self, node):
         return
 
     def do_With (self, node):

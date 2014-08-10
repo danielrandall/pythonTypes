@@ -163,15 +163,15 @@ class Preprocessor(AstFullTraverser):
         for z in node.decorator_list:
             self.visit(z)
         self.context = parent_cx
-        print("CLASS CONTENTS")
-        pprint(node.contents_dict)
+       # print("CLASS CONTENTS")
+       # pprint(node.contents_dict)
         
         # Add self variables to the starting list. Initially empty
-        print("SELF VARS")
-        for self_var in node.self_variables:
-            print(self_var)
+       # print("SELF VARS")
+       # for self_var in node.self_variables:
+       #     print(self_var)
 
-    def do_FunctionDef (self, node):     
+    def do_FunctionDef(self, node):     
         node.variableTypes = {}
         
         self.n_contexts += 1
@@ -195,7 +195,6 @@ class Preprocessor(AstFullTraverser):
         self.define_name(parent_cx,node.name)
         # Visit the children in a new context.
         self.context = node
-        pprint(self.context.stc_symbol_table.returns)
         
         node.args.lineno = node.lineno
         self.visit(node.args)
@@ -212,6 +211,10 @@ class Preprocessor(AstFullTraverser):
             self.visit(z)
         for z in node.keywords:
             self.visit(z)
+        if getattr(node,'starargs',None):
+            self.visit(node.starargs)
+        if getattr(node,'kwargs',None):
+            self.visit(node.kwargs)
         
     def do_Return(self,node):
         assert hasattr(self.context.stc_symbol_table, 'returns'), "Return outside of function"
@@ -328,3 +331,5 @@ class Preprocessor(AstFullTraverser):
             function. '''
         assert isinstance(self.context, ast.FunctionDef)
         self.context.generator_function = True
+        #self.visit(node.expr)
+        self.visit(node.value)
