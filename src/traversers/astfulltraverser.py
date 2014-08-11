@@ -24,8 +24,6 @@ class AstFullTraverser(AstBaseTraverser):
         # AstBaseTraverser.__init__(self)
 
     def run(self,root):    
-        # py==lint: disable=W0221
-            # Arguments number differs from overridden method.
         self.visit(root)
 
     def do_Bytes(self,node): 
@@ -73,7 +71,6 @@ class AstFullTraverser(AstBaseTraverser):
             self.visit(z)
 
     def do_Call(self,node):
-        
         self.visit(node.func)
         for z in node.args:
             self.visit(z)
@@ -127,7 +124,6 @@ class AstFullTraverser(AstBaseTraverser):
 
     def do_keyword(self,node):
         self.visit(node.value)
-
 
     def do_List(self,node):
         for z in node.elts:
@@ -264,7 +260,6 @@ class AstFullTraverser(AstBaseTraverser):
         pass
 
     def do_Lambda(self,node):
-        
         self.visit(node.args)
         self.visit(node.body)
 

@@ -1,6 +1,7 @@
 import ast
 
 from src.preprocessing import Preprocessor
+from src.controlflowgraph import ControlFlowGraph, PrintCFG
 from src.traversers.ssatraverser import SSA_Traverser
 from src.utils import Utils
 import src.stcglobals as stcglobals
@@ -11,11 +12,19 @@ class PyFile(object):
         print("ast-ing " + name)
         ast_source = PyFile.parse_file(root)
         print("Finished ast " + name)
+        
         utils = Utils()
         print(utils.dump_ast(ast_source))
+        
         print("preprocessing " + name)
         pp_source = PyFile.apply_preprocessing(root, ast_source)
         print("Finished preprocessing " + name)
+        
+        print("Generating CFG for: " + name)
+        cfg_source = self.apply_cfg(pp_source)
+        PrintCFG(cfg_source)
+        print("Finished CFG for: " + name)
+
         print("ssa-ing " + name)
         ssa_source = PyFile.apply_ssa(pp_source)
         print("Finished ssa-ing " + name)
@@ -67,3 +76,8 @@ class PyFile(object):
     def apply_preprocessing(root, source):
         pp = Preprocessor()
         return pp.run(root, source)
+    
+    @staticmethod
+    def apply_cfg(source):
+        cfg = ControlFlowGraph()
+        return cfg.run(source)

@@ -170,7 +170,7 @@ class SSA_Traverser(AstFullTraverser):
             iterations. Needs to be included in before-phis. '''
         self.continues.append(self.d.copy())
 
-    def do_If (self,node):
+    def do_If (self, node):
         ''' Checks whether if and else branches use the same name. If they do
             then we must create a phi node which uses both.
             TODO: Optimise this function. 

@@ -210,6 +210,7 @@ class Preprocessor(AstFullTraverser):
             z.lineno = node.lineno
             self.visit(z)
         for z in node.keywords:
+            z.lineno = node.lineno
             self.visit(z)
         if getattr(node,'starargs',None):
             self.visit(node.starargs)
@@ -249,7 +250,7 @@ class Preprocessor(AstFullTraverser):
             import_dependent = ImportDependent(alias.name, import_from, as_name)
             self.import_dependents.append(import_dependent)
 
-    def do_Lambda(self,node):
+    def do_Lambda(self, node):
         self.n_contexts += 1
         parent_cx = self.context
         assert parent_cx == node.stc_context
@@ -271,7 +272,9 @@ class Preprocessor(AstFullTraverser):
             arg.stc_scope = node
         # Visit the children in the new context.
         self.context = node
-        # self.visit(node.args)
+        
+        node.args.lineno = node.lineno
+        self.visit(node.args)
         self.visit(node.body)
         self.context = parent_cx
 
@@ -305,6 +308,39 @@ class Preprocessor(AstFullTraverser):
         node.slice.lineno = node.lineno
         self.visit(node.slice)
         self.visit(node.value)
+        
+    def do_ListComp(self, node):
+        self.visit(node.elt)
+        for z in node.generators:
+            z.lineno = node.lineno
+            self.visit(z)
+            
+    def do_SetComp(self, node):
+        self.visit(node.elt)
+        for z in node.generators:
+            z.lineno = node.lineno
+            self.visit(z)
+            
+    def do_GeneratorExp(self, node):
+        self.visit(node.elt)
+        for z in node.generators:
+            z.lineno = node.lineno
+            self.visit(z)
+            
+    def do_DictComp(self, node):
+        self.visit(node.key)
+        self.visit(node.value)
+        for z in node.generators:
+            z.lineno = node.lineno
+            self.visit(z)
+            
+    def do_With (self, node):
+        for z in node.items:
+            z.lineno = node.lineno
+            self.visit(z)
+        for z in node.body:
+            z.lineno = node.lineno
+            self.visit(z)
 
     def do_Name(self, node):
         # If node is a global variable, add it to the module list.
