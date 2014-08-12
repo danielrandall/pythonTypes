@@ -25,20 +25,32 @@ class Block():
         self.start_line_no = 0
         self.statements = []
         self.exit_blocks = []
+        self.predecessors = []
         # Use to indicate whether the block has been visited. Used for printing
         self.marked = False
+        self.ssa_mark = False
+        self.ssa_prepro_mark = False
         # Used to describe special blocks
         self.tag = Block.NORMAL
         # Block which have been absorbed into this one
         self.dependents = []
         
+        self.referenced_vars = set()
+        self.block_dict = {}
+        # Used in SSA - Holds dicts on entry to block
+        self.entry_dicts = []
+        
     def copy_dict(self, copy_to):
         ''' Keep the name bindings but copy the class instances.
             Both bindings now point to the same variables.
             This function is used to simulate C pointers.
+            The predecessor information is overwritten so we need to carry
+            this over.
             TODO: Find a more elegant way of achieving this. '''
         for dependent in self.dependents:
+            copy_to.predecessors += dependent.predecessors
             dependent.__dict__ = copy_to.__dict__
+        copy_to.predecessors += self.predecessors
         self.__dict__ = copy_to.__dict__
         copy_to.dependents = self.dependents + [self]
         
@@ -109,7 +121,7 @@ class ControlFlowGraph(AstFullTraverser):
         # This is needed to avoid two "Exits" appearing for the return or yield
         # at the end of a function.
         if not after_control_block in candidate_block.exit_blocks:
-            candidate_block.exit_blocks.append(after_control_block)
+            self.add_to_exits(candidate_block, after_control_block)
             
     def add_to_block(self, node):
         ''' We want every try statement to be in its own block. '''
@@ -122,7 +134,7 @@ class ControlFlowGraph(AstFullTraverser):
         if isinstance(node, ast.While) or isinstance(node, ast.For):
             if not self.is_empty_block(self.current_block):
                 test_block = self.new_block()
-                self.current_block.exit_blocks.append(test_block)
+                self.add_to_exits(self.current_block, test_block)
                 self.use_next_block(test_block)
                 self.check_block_num(node)
         self.current_line_num = node.lineno
@@ -132,12 +144,12 @@ class ControlFlowGraph(AstFullTraverser):
                 # excepts
                 self.current_block.statements.append(node)
                 for handler in f_block:
-                    self.current_block.exit_blocks.append(handler)
+                    self.add_to_exits(current_block, handler)
                 # Special case
                 if isinstance(node, ast.While) or isinstance(node, ast.For):
                     break
                 next_statement_block = self.new_block()
-                self.current_block.exit_blocks.append(next_statement_block)
+                self.add_to_exits(self.current_block, next_statement_block)
                 self.use_next_block(next_statement_block)
                 break
         else:
@@ -169,6 +181,7 @@ class ControlFlowGraph(AstFullTraverser):
     
     def add_to_exits(self, source, dest):
         source.exit_blocks.append(dest)
+        dest.predecessors.append(source)
         
     def visit(self, node):
         '''Visit a single node. Callers are responsible for visiting children.'''
@@ -305,7 +318,7 @@ class ControlFlowGraph(AstFullTraverser):
                 break
         else:
             return_exit = self.exit_block
-        self.current_block.exit_blocks.append(return_exit)
+        self.add_to_exits(self.current_block, return_exit)
         self.current_block.has_return = True
         
     def do_Continue(self, node):
@@ -315,14 +328,14 @@ class ControlFlowGraph(AstFullTraverser):
             self.error("'continue' not properly in loop", node)
         current_block, block = self.frame_blocks[-1]
         if current_block == F_BLOCK_LOOP:
-            self.current_block.exit_blocks.append(block)
+            self.add_to_exits(current_block, block)
         elif current_block == F_BLOCK_EXCEPT or \
                 current_block == F_BLOCK_FINALLY:
             # Find the loop
             for i in range(len(self.frame_blocks) - 2, -1, -1):
                 f_type, block = self.frame_blocks[i]
                 if f_type == F_BLOCK_LOOP:
-                    self.current_block.exit_blocks.append(block)
+                    self.add_to_exits(current_block, block)
                     break
                 if f_type == F_BLOCK_FINALLY_END:
                     self.error("'continue' not supported inside 'finally' "
@@ -341,7 +354,7 @@ class ControlFlowGraph(AstFullTraverser):
         # Find first loop in stack
         for f_block_type, f_block in reversed(self.frame_blocks):
             if f_block_type == F_BLOCK_LOOP:
-                self.current_block.exit_blocks.append(f_block.next)
+                self.add_to_exits(self.current_block, f_block.next)
                 break
         else:
             self.error("'break' outside loop", node)
@@ -352,9 +365,9 @@ class ControlFlowGraph(AstFullTraverser):
             the function.
             We don't set has_return to true since, in theory, it can either
             exit or continue from here. '''
-        self.current_block.exit_blocks.append(self.exit_block)
+        self.add_to_exits(current_block, self.exit_block)
         next_block = self.new_block()
-        self.current_block.exit_blocks.append(next_block)
+        self.add_to_exits(current_block, next_block)
         self.use_next_block(next_block)
         
     def do_Try(self, node):
@@ -457,8 +470,10 @@ class PrintCFG(AstFullTraverser):
             return
         if block.start_line_no == "Exit":
             return
+        pred_nos = [block.start_line_no for block in block.predecessors]
         exit_nos = [block.start_line_no for block in block.exit_blocks]
         pprint("Block starting at: " + str(block.start_line_no) + " to " + str(exit_nos))
+        pprint("Block starting at: " + str(block.start_line_no) + " preceded by " + str(pred_nos))
         print(block.statements)
         block.marked = True
         for an_exit in block.exit_blocks:
