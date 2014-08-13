@@ -309,15 +309,16 @@ The usefulness of SSA naming is immediately obvious. We need not track how the t
 Dead Code Elimination, also known as Tree Shaking, is the process of detecting that a section of code is dead (unreachable) and completely eliminating it from the program. Code may be unreachable if it is placed after a \textit{break}, \textit{continue} or \textit{return} statement or if the code has the effect of only modifying variables which will never be used again (`dead' variables.) The advantages of this is that we need not type check it, thus improving the speed of our program.
 An example of this is: (adapted from Wikipedia)
 \begin{lstlisting}
-   def foo ():
+   def foo():
    	a = 24
    	b = 25    # Assignment to dead variable
    	c = a + 2
    	return c
    	b = 24 	   # Unreachable code
-   	return 0
+   	return "Hi"
 \end{lstlisting}
-Whether flagging an error on unreachable code constitutes a false-positive is one for the philosophers. \\
+We may wish to consider removing dead code from the program in order to type functions more accurately. In the example above, if we did not eliminate dead code we will determine that the return type of the function \textit{foo} as $\{Int, String\}$. Since \textit{Int} is still in the typing, this is not incorrect but a needless overestimate. However, there is an argument to type checking dead code. This code may become important later and flagging the errors may save the engineer time later on. \\
+This also applies to \textit{breaks} and \textit{continues}. \\
 Unfortunately there are no out-of-the-box solutions to this problem for Python programs. \\
 
 \subsection{Constraints and Constraint Solvers}
@@ -559,10 +560,43 @@ Due to the limitations of the CFG generators for Python as previously described,
 \subsubsection{Breaks and Continues} 
 Taking inspiration from the PyPy implementation, a stack was implemented on which labels are pushed (\textit{F\_BLOCK\_LOOP}, \textit{F\_BLOCK\_EXCEPT}, \textit{F\_BLOCK\_FINALLY}, \textit{F\_BLOCK\_FINALLY\_END}) alongside their corresponding nodes. Once we encounter a break or continue statement we cycle through the labels until we encounter a \textit{F\_BLOCK\_LOOP} label. Then for a break statement we add an exit for the current block to the loop's next block and to the loop block itself for a continue statement.
 
-\subsubsection{Try, Excepts and Finallys} 
+\subsubsection{Try, Excepts and Finallys}
+The \textit{try} keyword can be used in a few different ways in Python. Firstly it can be used to catch exceptions to prevent the program crashing, much like in Java. Also like Java, different exceptions in the same try block can be caught and dealt with separately. Consider the following example:
+\begin{lstlisting}
+    try:
+      if some_condition:
+        open("myfile.txt")
+      else:
+        x = 5 / y        
+    except IOError:
+      # Deal with error
+    except ZeroDivisionError:
+      # Deal with error
+\end{lstlisting}
+The statement $open("myfile.txt")$ will lead to the $IOError$ except block if, for instance, the file does not exist. The $x = 5 / y$ will lead to the $ZeroDivisionError$ if $y$ is equal to $0$ at the time of execution. In order to accurately create a control flow graph for try and excepts we need to know which statements can create exceptions and which exceptions they can create. While very time consuming, this knowledge can be gathered for the builtin exceptions and statements in the Python language and standard library and then hardcoded into our CFG generator. But programmers can also create their own exceptions classes by inheriting from the \textit{Exception} class. This would be very hard to track. For this reason the design decision was made to attempt to minimise any false positives. This was done by determining that every statement in a try block can lead to every except block. \\
+Trys can also be used to ensure that Nested \textit{finally}s are all executed no matter where an exception, return or break occurs. For instance if the following is executed:
+\begin{lstlisting}
+    try:
+      x = 1
+      try:
+        return
+      finally:
+        print("finally 1")
+    finally:
+      print("finally 2")
+\end{lstlisting}
+Then ``finally 1'' and ``finally 2'' will be printed in that order. \\
+finallys and excepts can be used together. In this case the relevant except block is executed first and then leads to the finally block. \\
+If only try/finally then exceptions still lead to the finally.
 
 \subsection{SSA Form}
-The implementation of SSA renaming was performed precisely as described in the background section. A few additional allowances were required for the system to function correctly. These will be explained here.
+The implementation of SSA renaming was performed precisely as described in the background section. A few additional allowances were required for the system to function correctly. These will be explained here. \\
+Still uses AST nodes. \\
+CFG helps. If, while and for need not be considered separately but are all handled with precisely the same logic. \\
+Can improve by calculating dominance frontiers/trees which will reduce the number of phi-nodes. \\
+Option 1 - phi-node for every variable referenced in a block with more than one predecessor
+Option 2 - compute dominance frontier \\
+Join points
 
 \subsubsection{Global and Local Variables}
 Consider the following snippet of Python code:
@@ -582,9 +616,6 @@ The references to $self.x$ refer to the same variable. The principles of SSA nam
 
 \subsection{Type Inference}
 
-
-
-
 \subsubsection{Inferring the Types of Simple Assignments}
 All changes to the types of variables involve assignment. For each assignment the variable on the left-hand side (LHS) assumes all of the types which the right-hand side (RHS) can possibly have. The following shows a number of ways in which this can be done.
 \begin{lstlisting}
@@ -597,8 +628,32 @@ Assignments with a simple numeric or string value can be inferred very easily an
 \subsubsection{Inferring the Types of Binary Operations}
 
 \subsubsection{Inferring the Types of Unary Assignments}
+Python allows the programmer to express assignment to variables in odd but intuitive ways
 
 \subsubsection{Inferring the Types of Augmenting Assignments}
+An augmenting assignment performs a binary operation and a store operation on a variable in a single statement. The benefit to using an augmented assignment rather than the two-statement equivalent is three-fold. An increase in clarity of the intentions of the programmer, a reduction in code size and a performance boost. The increase in performance arises from being able to express that ``the left-hand operand in question [\ldots] should operate `on itself', rather than creating a modified copy of itself.''~\cite{pepAugAssign} Assuming the Python interpreter is not able to catch this. \\
+To deal with augmenting assignments in our type inferencer we simply convert the augmenting assignments into regular assignments with the the binary operation equivalent. The different binary operators permitted in augmenting assignments and how they are transformed can be seen in Table~\ref{table:augAssign}. This transformation saves us from having to repeat the same logic for augmenting assignments that is already present in regular assignments and binary operations.
+
+	\begin{table}
+	\centering
+    \begin{tabular}{ | c | c |}
+    \hline
+    \textbf{Original Expression} & \textbf{Transformed Expression}  \\ \hline
+    $x \: +\!= y$ & $x = x + y$   \\ \hline
+    $x \: -\!= y$ & $x = x - y$   \\ \hline
+    $x \: *\!= y$ & $x = x * y$   \\ \hline
+    $x \: /\!= y$ & $x = x / y$   \\ \hline
+    $x \: \%\!= y$ & $x = x \: \% \: y$   \\ \hline
+    $x \: *\!*\!= y$ & $x = x *\!* \: y$   \\ \hline
+    $x \: \ll = y$ & $x = x \ll y$   \\ \hline
+    $x \: \gg = y$ & $x = x \gg y$   \\ \hline
+    $x \: \&\!= y$ & $x = x \: \& \: y$   \\ \hline
+ %   $x \: \^= y$ & $x = x \^ y$   \\ \hline
+    $x \: |= y$ & $x = x \: | \: y$   \\ \hline
+    \end{tabular}
+    \caption{The different transformations made to augmenting assignments}
+	\label{table:augAssign}
+    \end{table}
 
 \subsubsection{Inferring the Types in List/Tuple Assignment}
 % x = [5, 2]
@@ -615,7 +670,6 @@ This example will delete a random element from the list. It impossible to static
 For these reasons we do not change the set of types contained in the list/dict after a \textit{del} operation.
 
 \subsubsection{Inferring the Types in For/While Loops}
-
 The following shows a `raw' while loop and the same while loop in SSA form:
 \begin{lstlisting}[mathescape]
     # Raw form
@@ -804,12 +858,14 @@ We can handle the \textit{with} keyword by de-sugaring it back into its equivale
 		ex.__exit__(p1, p2, p3)
 \end{lstlisting}
 The main difficulty involved with this transformation is simulating the variables passed to the \textit{\_\_exit\_\_} function. The simplest way to deal with this is to pass temporary variable which have an \textit{Any\_Type}.
-\bibliography{mybib}{}
-\bibliographystyle{plain}
 
 \subsubsection{Python Standard Library}
 One possible reason for Python's popularity is its extensive standard library. 3rd party library are also popular, with millions of downloads (source). There are two ways these can used. Included it in the project directory, or by installing it on the machine the code is running on.
 \newpage
+
+
+\bibliography{mybib}{}
+\bibliographystyle{plain}
 
 \end{document}
 
