@@ -435,7 +435,10 @@ class TypeInferrer(AstFullTraverser):
                     value_types[i] = extracted_types
                 for container in targets[i].get_container_list():
                     container.update_content_types(value_types[i])
-                return    
+                return   
+            
+            if isinstance(targets[i], Awaiting_Type):
+                pass  
                 
             # Class globals has a special assignment
             if isinstance(targets[i], Attribute_Type):
@@ -658,7 +661,9 @@ class TypeInferrer(AstFullTraverser):
         for target in node.get_targets():
             if (target == Phi_Node.TARGET_NOT_DECLARED):
                 possibleTypes = set([none_type])
-            elif target in self.variableTypes:
+            # Target can't be awaiting_type
+            
+            elif target in self.variableTypes and not any([isinstance(x, Awaiting_Type) for x in self.variableTypes[target]]):
                 possibleTypes = self.variableTypes[target]
             else:
                 # Variable is used in the future
@@ -831,9 +836,9 @@ class TypeInferrer(AstFullTraverser):
             parameter_types.append(self.variableTypes[arg])
             
         self.fun_params = []
-        if node.name == "__init__":
-            print("INIT------------------")
-            pprint(self.variableTypes)
+        
+        print("Final types")
+        pprint(self.variableTypes)
         
         # Restore variables
         self.variableTypes = node.stc_context.variableTypes
