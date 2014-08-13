@@ -69,8 +69,6 @@ class SSA_Pre_Processor(AstFullTraverser):
             return
         if node.id in self.built_in_classes:
             return
-        if isinstance(node.ctx, ast.Store):
-            return
         if node.id in self.built_in_classes:
             return
         self.current_block.referenced_vars.add(node.id)

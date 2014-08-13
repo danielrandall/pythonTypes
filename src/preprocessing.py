@@ -1,5 +1,7 @@
 import ast
+import copy
 from pprint import pprint
+
 
 from src.symboltable import SymbolTable
 from src.utils import Utils
@@ -127,15 +129,21 @@ class Preprocessor(AstFullTraverser):
             return node
         return self.find_parent_class_def(node.stc_context)
 
-    def do_AugAssign(self,node):
-        # g.trace('FT',self.u.format(node),g.callers())
-        assert not self.in_aug_assign
-        try:
-            self.in_aug_assign = True
-            self.visit(node.target)
-        finally:
-            self.in_aug_assign = False
-        self.visit(node.value)
+    def do_AugAssign(self, node):
+        ''' We need to store the previous iteration of the target variable name
+            so we know what to load in the type inference.
+            TODO: Assign prev_name a bit more elegantly.
+            TODO: Allow this to work with Expressions such as self.x += 4'''
+        if not hasattr(node, "transformed"):
+            op = node.op
+            target = node.target
+            value = node.value
+            node.value = ast.BinOp(copy.deepcopy(target), op, value)
+            node.value.lineno = node.lineno
+            node.targets = [node.target]
+            node.transformed = True
+        self.do_Assign(node)
+            
 
     def do_ClassDef(self, node):
         node.variableTypes = {}

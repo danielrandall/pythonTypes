@@ -69,13 +69,16 @@ class SSA_Traverser(AstFullTraverser):
                 self.d[ref_var] += 1
             else:
                 self.d[ref_var] = 1
-            new_phi = Phi_Node(ref_var, set())
+            new_phi = Phi_Node(ref_var + str(self.d[ref_var]), set())
             block.phi_nodes[ref_var] = new_phi
             block.statements[0].phi_nodes.append(new_phi)
             
     def update_phis(self, block, predecessor_dict):
         for var, num in predecessor_dict.items():
             if var in block.referenced_vars:
+                    # Don't add the var if it is itself!
+                    if var + str(num) == block.phi_nodes[var].get_var():
+                        continue
                     block.phi_nodes[var].update_targets(var + str(num))
                     print(block.start_line_no)
                     print(block.phi_nodes)
@@ -157,23 +160,6 @@ class SSA_Traverser(AstFullTraverser):
     def do_If(self,node):
         self.visit(node.test)
 
-    def do_AugAssign(self, node):
-        ''' We need to store the previous iteration of the target variable name
-            so we know what to load in the type inference.
-            TODO: Assign prev_name a bit more elegantly.
-            TODO: Allow this to work with Expressions such as self.x += 4'''
-        self.visit(node.value)
-   #     pprint(node.target.attr)
-        if isinstance(node.target, ast.Attribute):
-            self.visit(node.target)
-            node.prev_name = node.target
-            return
-        prev_name = copy.deepcopy(node.target)
-        prev_name.ctx = ast.Load()
-        node.prev_name = prev_name
-        self.visit(prev_name)
-        self.visit(node.target)
-            
     def do_Assert(self, node):
         self.visit(node.test)
         if node.msg:
@@ -231,6 +217,12 @@ class Phi_Node():
         
     def __repr__(self):
         return self.var + ": " + str(self.targets)
+    
+    def get_var(self):
+        return self.var
+    
+    def get_targets(self):
+        return self.targets
         
     def update_targets(self, new_target):
         self.targets.add(new_target)

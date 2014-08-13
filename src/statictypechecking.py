@@ -284,8 +284,12 @@ class TypeInferrer(AstFullTraverser):
         file.set_global_vars(self.variableTypes)
         file.typed = True
     
-    def visit(self,node):
+    def visit(self, node):
         '''Visit a single node.  Callers are responsible for visiting children.'''
+        if hasattr(node, "phi_nodes"):
+            phis = node.phi_nodes
+            for phi in phis:
+                self.visit(phi)
         method = getattr(self,'do_' + node.__class__.__name__)
         self.n_nodes += 1
         return method(node)
@@ -642,13 +646,16 @@ class TypeInferrer(AstFullTraverser):
             self.visit(z)
         for z in node.orelse:
             self.visit(z)
-        phis = node.afterPhis
-        for phi in phis:
-            self.visit(phi)
+      #  phis = node.afterPhis
+      #  for phi in phis:
+      #      self.visit(phi)
         
     def do_Phi_Node(self, node):
-        self.variableTypes[node.var] = set()
-        for target in node.targets:
+        if not node.get_targets():
+            return
+        var = node.get_var()
+        self.variableTypes[var] = set()
+        for target in node.get_targets():
             if (target == Phi_Node.TARGET_NOT_DECLARED):
                 possibleTypes = set([none_type])
             elif target in self.variableTypes:
@@ -656,10 +663,10 @@ class TypeInferrer(AstFullTraverser):
             else:
                 # Variable is used in the future
                 self.awaiting_Typing.append((node, target))
-                self.variableTypes[node.var] = set([Awaiting_Type(node.var, target)])
+                self.variableTypes[var] = set([Awaiting_Type(var, target)])
                 return
-            self.variableTypes[node.var] |= possibleTypes
-            self.check_waiting(node.var)
+            self.variableTypes[var] |= possibleTypes
+            self.check_waiting(var)
         
     def do_While (self, node):
         self.visit(node.test) 
@@ -667,18 +674,18 @@ class TypeInferrer(AstFullTraverser):
     
     def loop_helper(self, node):
         # Type the phis before the loop
-        phis = node.beforePhis
-        for phi in phis:
-            self.visit(phi)
+    #    phis = node.beforePhis
+    #    for phi in phis:
+    #        self.visit(phi)
                 
         for z in node.body:
             self.visit(z)
         for z in node.orelse:
             self.visit(z)
         # Type the phis after the loop
-        phis = node.afterPhis
-        for phi in phis:
-            self.visit(phi)
+    #    phis = node.afterPhis
+    #    for phi in phis:
+    #        self.visit(phi)
                 
     def do_For(self, node):
         ''' TODO: Allow for any Iterable object in node.iter instead of just List_Type. '''

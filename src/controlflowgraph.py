@@ -48,9 +48,9 @@ class Block():
             this over.
             TODO: Find a more elegant way of achieving this. '''
         for dependent in self.dependents:
-            copy_to.predecessors += dependent.predecessors
+     #       copy_to.predecessors += dependent.predecessors
             dependent.__dict__ = copy_to.__dict__
-        copy_to.predecessors += self.predecessors
+    #    copy_to.predecessors += self.predecessors
         self.__dict__ = copy_to.__dict__
         copy_to.dependents = self.dependents + [self]
         
@@ -144,7 +144,7 @@ class ControlFlowGraph(AstFullTraverser):
                 # excepts
                 self.current_block.statements.append(node)
                 for handler in f_block:
-                    self.add_to_exits(current_block, handler)
+                    self.add_to_exits(self.current_block, handler)
                 # Special case
                 if isinstance(node, ast.While) or isinstance(node, ast.For):
                     break
@@ -181,7 +181,7 @@ class ControlFlowGraph(AstFullTraverser):
     
     def add_to_exits(self, source, dest):
         source.exit_blocks.append(dest)
-        dest.predecessors.append(source)
+   #     dest.predecessors.append(source)
         
     def visit(self, node):
         '''Visit a single node. Callers are responsible for visiting children.'''
@@ -328,14 +328,14 @@ class ControlFlowGraph(AstFullTraverser):
             self.error("'continue' not properly in loop", node)
         current_block, block = self.frame_blocks[-1]
         if current_block == F_BLOCK_LOOP:
-            self.add_to_exits(current_block, block)
+            self.add_to_exits(self.current_block, block)
         elif current_block == F_BLOCK_EXCEPT or \
                 current_block == F_BLOCK_FINALLY:
             # Find the loop
             for i in range(len(self.frame_blocks) - 2, -1, -1):
                 f_type, block = self.frame_blocks[i]
                 if f_type == F_BLOCK_LOOP:
-                    self.add_to_exits(current_block, block)
+                    self.add_to_exits(self.current_block, block)
                     break
                 if f_type == F_BLOCK_FINALLY_END:
                     self.error("'continue' not supported inside 'finally' "
@@ -365,9 +365,9 @@ class ControlFlowGraph(AstFullTraverser):
             the function.
             We don't set has_return to true since, in theory, it can either
             exit or continue from here. '''
-        self.add_to_exits(current_block, self.exit_block)
+        self.add_to_exits(self.current_block, self.exit_block)
         next_block = self.new_block()
-        self.add_to_exits(current_block, next_block)
+        self.add_to_exits(self.current_block, next_block)
         self.use_next_block(next_block)
         
     def do_Try(self, node):

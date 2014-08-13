@@ -189,9 +189,9 @@ class AstFullTraverser(AstBaseTraverser):
         self.visit(node.value)
 
     def do_AugAssign(self,node):
-        self.visit(node.target)
-        self.visit(node.value)
-
+        ''' Augassign gets transformed into an assign and binop. '''
+        self.do_Assign(node)
+        
     def do_Break(self,tree):
         pass
 
