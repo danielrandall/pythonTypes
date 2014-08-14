@@ -164,6 +164,17 @@ class SSA_Traverser(AstFullTraverser):
         self.visit(node.test)
         if node.msg:
             self.visit(node.msg)
+            
+    def do_Call(self, node):
+        ''' We don't wish to SSA the function name. '''
+        for z in node.args:
+            self.visit(z)
+        for z in node.keywords:
+            self.visit(z)
+        if getattr(node,'starargs',None):
+            self.visit(node.starargs)
+        if getattr(node,'kwargs',None):
+            self.visit(node.kwargs)
     
     def do_Name(self, node):
         ''' If the id is True or false then ignore. WHY ARE TRUE AND FALSE
