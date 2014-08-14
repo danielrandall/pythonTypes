@@ -141,82 +141,8 @@ class TypeInferrer(AstFullTraverser):
         self.call_stack = [] # Detects recursive calls
         self.assign_stack = [] # Detects circular assignments.
 
-        # Create the builtin type dict.
-        ''' TODO: Differing number of parameters. '''
-        builtin_type_dict = {
-            # Functions
-            'eval': set([Def_Type([set([string_type])],
-                                  set([any_type]),
-                                  0)]),
-            'id':   set([Def_Type([set([any_type])],
-                                  set([int_type]),
-                                  0)]),
-            'int': set([Def_Type([set([string_type, int_type, float_type, bytes_type]), set([int_type])],
-                                  set([int_type]),
-                                  2)]),
-            'str':  set([Def_Type([set([any_type]), set([string_type]), set([string_type])],
-                                  set([string_type]),
-                                  2)]),
-            'list':  set([Def_Type([set([any_type])],
-                                  set([List_Type(None, [], set())]),
-                                  0)]),                
-            'len':  set([Def_Type([set([any_type])],
-                                  set([int_type]),
-                                  0)]),
-            'range':  set([Def_Type([set([int_type]), set([int_type]), set([int_type])],
-                                    set([ List_Type(None, [], set([int_type]) ) ]),
-                                    2)]),
-            'ord':  set([Def_Type([set([string_type])],
-                                  set([int_type]),
-                                  0)]),
-            'chr':  set([Def_Type([set([int_type])],
-                                  set([string_type]),
-                                  0)]),
-            # Needs varlength arg and keyword args
-            'print': set([Def_Type([set([any_type])],
-                                  set([none_type]),
-                                  0)]),
-            'reversed': set([Def_Type([set([any_type])],
-                                  set([any_type]),
-                                  0)]),
-            'sorted': set([Def_Type([set([List_Type(None, [], set())]), set([any_type]), set([bool_type])],
-                                  set([List_Type(None, [], set())]),
-                                  2)]),
-            # min and max work on any iterable and have varargs
-            'min' : set([Def_Type([set([any_type]), set([any_type])],
-                                  set([any_type]),
-                                  0)]),
-            'max' : set([Def_Type([set([any_type]), set([any_type])],
-                                  set([any_type]),
-                                  0)]),
-            'getattr' : set([Def_Type([set([any_type]), set([string_type]), set([any_type])],
-                                  set([any_type]),
-                                  1)]),
-            'isinstance': set([Def_Type([set([any_type]), set([any_type])],
-                                  set([bool_type]),
-                                  0)]),
-            'dir': set([Def_Type([set([any_type])],
-                                  set([List_Type(None, [], set())]),
-                                  1)]),
-            'zip': set([Def_Type([set([any_type]), set([any_type]), set([any_type]), set([any_type])],
-                                  set([any_type]),
-                                  3)]),
-            # TODO: Get this to return a file-object
-            'open': set([Def_Type([set([string_type]), set([string_type]), set([int_type]), set([string_type]), set([string_type]), set([string_type]), set([bool_type]), set([any_type])],
-                                  set([any_type]),
-                                  7)]),
-            # Should this be a function or class?
-            'set': set([Def_Type([set([List_Type(None, [], set())])],
-                                  set([Set_Type(None, [], set())]),
-                                  1)]),
-            'dict': set([Def_Type([set([any_type])],
-                                  set([any_type]),
-                                  1)]),
-            # Classes
-            'object' : set([Class_Type("object", {}, False)])
-        }
         # Add the builtin_types to the variable dict
-        self.variableTypes.update(builtin_type_dict)
+        self.variableTypes.update(BUILTIN_TYPE_DICT)
         
        
     def run(self, file_tree):
@@ -604,7 +530,6 @@ class TypeInferrer(AstFullTraverser):
             if a_type == int_type or a_type == float_type:
                 return [set([a_type])]
             else:    # No other possibilities exist.
-                self.stats.n_unop_fail += 1
                 assert(False)
         a_type = [set([Unknown_Type(node)])]
         return a_type

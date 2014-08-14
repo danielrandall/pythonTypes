@@ -1,4 +1,5 @@
 from src.traversers.astfulltraverser import AstFullTraverser
+from src.typeclasses import *
 from src.utils import Utils
 import ast
 import copy
@@ -32,7 +33,6 @@ class SSA_Traverser(AstFullTraverser):
             # where a is an assignment. 
         self.breaks = []
         self.continues = []
-        self.built_in_classes = ["list", "set", "tuple", "float", "int"]  
         assert isinstance(root, ast.Module)
         self.visit(root)
         return root
@@ -165,6 +165,10 @@ class SSA_Traverser(AstFullTraverser):
         if node.msg:
             self.visit(node.msg)
             
+    def do_Try(self, node):
+        ''' body/finally/excepts are in their own blocks. '''
+        pass
+            
     def do_Call(self, node):
         ''' We don't wish to SSA the function name. '''
         for z in node.args:
@@ -189,7 +193,7 @@ class SSA_Traverser(AstFullTraverser):
             return
         if node.id == "self":
             return
-        if node.id in self.built_in_classes:
+        if node.id in BUILTIN_TYPE_DICT:
             return
         if not hasattr(node, 'originalId'):
             node.originalId = node.id

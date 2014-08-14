@@ -2,6 +2,7 @@ from pprint import pprint
 import ast
 
 from src.traversers.astfulltraverser import AstFullTraverser
+from src.typeclasses import *
 
 class SSA_Pre_Processor(AstFullTraverser):
     '''
@@ -9,7 +10,6 @@ class SSA_Pre_Processor(AstFullTraverser):
     '''
 
     def __init__(self):
-        self.built_in_classes = ["list", "set", "tuple", "float", "int"]  
         self.current_block = None
         self.in_loop_test = False
         
@@ -67,9 +67,7 @@ class SSA_Pre_Processor(AstFullTraverser):
             return
         if node.id == "self":
             return
-        if node.id in self.built_in_classes:
-            return
-        if node.id in self.built_in_classes:
+        if node.id in BUILTIN_TYPE_DICT:
             return
         self.current_block.referenced_vars.add(node.id)
         

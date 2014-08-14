@@ -430,6 +430,79 @@ none_type = None_Type()
 string_type = String_Type()
 any_type = Any_Type()
 
+BUILTIN_TYPE_DICT = {
+  # Functions
+  'eval': set([Def_Type([set([string_type])],
+                                  set([any_type]),
+                                  0)]),
+   'id':   set([Def_Type([set([any_type])],
+                                  set([int_type]),
+                                  0)]),
+   'int': set([Def_Type([set([string_type, int_type, float_type, bytes_type]), set([int_type])],
+                                  set([int_type]),
+                                  2)]),
+   'str':  set([Def_Type([set([any_type]), set([string_type]), set([string_type])],
+                                  set([string_type]),
+                                  2)]),
+   'list':  set([Def_Type([set([any_type])],
+                                  set([List_Type(None, [], set())]),
+                                  0)]),                
+   'len':  set([Def_Type([set([any_type])],
+                                  set([int_type]),
+                                  0)]),
+   'range':  set([Def_Type([set([int_type]), set([int_type]), set([int_type])],
+                                    set([ List_Type(None, [], set([int_type]) ) ]),
+                                    2)]),
+   'ord':  set([Def_Type([set([string_type])],
+                                  set([int_type]),
+                                  0)]),
+   'chr':  set([Def_Type([set([int_type])],
+                                  set([string_type]),
+                                  0)]),
+            # Needs varlength arg and keyword args
+   'print': set([Def_Type([set([any_type])],
+                                  set([none_type]),
+                                  0)]),
+   'reversed': set([Def_Type([set([any_type])],
+                                  set([any_type]),
+                                  0)]),
+   'sorted': set([Def_Type([set([List_Type(None, [], set())]), set([any_type]), set([bool_type])],
+                                  set([List_Type(None, [], set())]),
+                                  2)]),
+            # min and max work on any iterable and have varargs
+   'min' : set([Def_Type([set([any_type]), set([any_type])],
+                                  set([any_type]),
+                                  0)]),
+   'max' : set([Def_Type([set([any_type]), set([any_type])],
+                                  set([any_type]),
+                                  0)]),
+   'getattr' : set([Def_Type([set([any_type]), set([string_type]), set([any_type])],
+                                  set([any_type]),
+                                  1)]),
+   'isinstance': set([Def_Type([set([any_type]), set([any_type])],
+                                  set([bool_type]),
+                                  0)]),
+   'dir': set([Def_Type([set([any_type])],
+                                  set([List_Type(None, [], set())]),
+                                  1)]),
+   'zip': set([Def_Type([set([any_type]), set([any_type]), set([any_type]), set([any_type])],
+                                  set([any_type]),
+                                  3)]),
+            # TODO: Get this to return a file-object
+   'open': set([Def_Type([set([string_type]), set([string_type]), set([int_type]), set([string_type]), set([string_type]), set([string_type]), set([bool_type]), set([any_type])],
+                                  set([any_type]),
+                                  7)]),
+            # Should this be a function or class?
+   'set': set([Def_Type([set([List_Type(None, [], set())])],
+                                  set([Set_Type(None, [], set())]),
+                                  1)]),
+   'dict': set([Def_Type([set([any_type])],
+                                  set([any_type]),
+                                  1)]),
+            # Classes
+   'object' : set([Class_Type("object", {}, False)])
+} 
+
 SLICE_TYPES = [List_Type(None, [], set()), string_type]
 INDEX_TYPES = [List_Type(None, [], set()), Dict_Type(None, [], set()), string_type]
 ALL_TYPES = [List_Type(None, [], set()), Dict_Type(None, [], set()), int_type, float_type, bool_type, string_type, bytes_type, builtin_type]
