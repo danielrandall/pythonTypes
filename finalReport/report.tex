@@ -11,6 +11,9 @@
 % Multi-row columns in a table
 \usepackage{multirow}
 
+% Tables longer than a page
+\usepackage{longtable}
+
 % derivations
 \usepackage{semantic}
 
@@ -52,9 +55,9 @@
 
 \section{Introduction}
 \subsection{Motivation}
-High level, dynamically typed languages such as Python have been gaining popularity in recent years. Python is used as a teaching language in 80\% of the top ten Computer Science department in the USA, surpassing previous favourites such as Java~\cite{guoTeaching}. Python has also become a force in industry and has been picked up by important software engineering companies such as Google and Yahoo!~\cite{organisationsPython}. One reason for this is a high level of productivity involved in using such languages, partly due to the programmer being free from having to declare the types of the variables used. However, the benefits gained from this design decision are at the expense of the security provided by a statically typed language. Type errors which are easily caught by a compiler for a statically typed language, such as Java or C++, can be left unnoticed in Python source code into the release stage of a product where its execution may prove fatal. % Specifying types is regarded as superfluous by many in the Python community.
-While there has been significant talk of adding optional static typing to Python~\cite{guido1}~\cite{guido2}~\cite{guido3}, the backlash from such discussions is strong enough that it is very unlikely we shall see this addition to the Python language anytime soon. \\
-Tools attempting to provide the benefits of a statically typed language to Python do exist, such as Pylint\footnote{\url{http://www.pylint.org/}} and PyChecker\footnote{\url{http://pychecker.sourceforge.net/}}, however their usability is hampered by the number of false positives returned and the amount of configuration needed. \\
+High level, dynamically typed languages such as Python have been gaining popularity in recent years. Python is now used as a teaching language in 80\% of the top ten Computer Science department in the USA, surpassing previous favourites such as Java~\cite{guoTeaching}. Python has also become a force in industry and has been picked up by influential software engineering companies such as Google and Yahoo!~\cite{organisationsPython}. One reason for this is a high level of productivity involved in using such languages, partly due to the programmer being free from having to declare the types of the variables used. However, the benefits gained from this design decision are at the expense of the security provided by a statically typed language. Type errors which are easily caught by a compiler for a statically typed language, such as Java or C++, can be left unnoticed in Python source code into the release stage of a product where its execution may prove fatal. \\ % Specifying types is regarded as superfluous by many in the Python community.
+While there has been significant talk of adding optional static typing to Python~\cite{guido1}~\cite{guido2}~\cite{guido3}~\cite{guidoLatest}, it seems that this will be limited to annotations similar to those currently employed in the open source project mypy\footnote{\url{http://mypy-lang.org/}}. This means that even if support is added in the near future it will be some time before this is incorporated into large projects. \\
+Tools attempting to provide the benefits of a statically typed language to unedited Python do exist, such as Pylint\footnote{\url{http://www.pylint.org/}} and PyChecker\footnote{\url{http://pychecker.sourceforge.net/}}, however their usability is hampered by the number of false positives returned and the amount of configuration needed. \\
 This project aims to design and implement a type checker for Python which returns no false positives. The basis for our implementation is a method called success typings. We harness this technique in order to provide a over-approximation of how a function is intended to be used. This allows us to determine that a violation of a function's contract is guaranteed to be a legitimate programming error. We describe success typing as well as the general theory behind type systems in Section 2. We then examine similar products and techniques and show the limitations in their application. \\
 \indent Using the methods and techniques we described, we begin to define our solution and evaluate the best way to solve the problems we shall face. Once we decide upon the best methods we then set about evaluating the best 3\textsuperscript{rd} party software we can use to achieve these tasks and why we should not implement our own solutions. \\
 \indent In Section 3 we describe what we have done and evaluate it. We evaluate our implementation in three ways: speed, ease of use and the number of false positives/negatives it reports. We benchmark our solution against existing type checkers for Python.
@@ -547,14 +550,34 @@ Furr et al. developed Diamondback Ruby (DRuby)~\cite{furr09} in order to discove
 DRuby is not sound as it accepts programs which are dynamically incorrect. DRuby also reports false positives. \\
 An extension to Diamondback Ruby, $\mathcal{P}$Ruby, was created in order to handle difficult dynamic language constructs such as the \textit{eval} method which converts a string into executable program code.~\cite{pRuby} This is done by instrumenting the code such that, when the program is run, all uses of the dynamic constructs are recorded. This allows a \textit{profile} to be built which fully describes how they were used. With this profile the dynamic code can be inserted into the program in place of the dynamic constructs. The modified program can then be statically analysed just like any other. Furr et al. use DRuby for the analysis.
 
+
+
+
+
+
+
+
+
+
+
 \newpage
 \section{Implementation}
-This project was built on top of the work by Edward K. Ream's \textit{stc}~\footnote{\url{https://code.launchpad.net/~edreamleo/python-static-type-checking/trunk} Revision \#448 was used for this project.}. The primary contribution taken from stc, which was left largely unchanged, was the traversers which are used to navigate the the abstract syntax tree.
+This project was built on top of the work by Edward K. Ream's \textit{stc}~\footnote{\url{https://code.launchpad.net/~edreamleo/python-static-type-checking/trunk} Revision \#448 was used for this project.}. The primary contribution taken from stc, which was left largely unchanged, was the traversers which are used to navigate the the abstract syntax tree. \\
+The basic structure of our system can be seen in Figure~\ref{fig:systemStructure}.
+
+\begin{figure}
+\centering
+\includegraphics[scale=0.5]{images/systemStructure.pdf}
+\caption{Each box represents a key component of the system. Arrows represent the flow of information from each component to another.}
+\label{fig:systemStructure}
+\end{figure}
+
 
 \subsection{Generating the Control Flow Graph}
-Due to the limitations of the CFG generators for Python as previously described, the decision was made to create our own. It was felt that no current generator provided a platform to extract a CFG containing the necessary information about each statement which wouldn't require time consuming modification. By the time the decision was taken to implement a CFG generator the implementation of the type inferencer was well underway. The benefit of writing our own generator was that it could be written in a manner which will make it easy to integrate with currently written type inferencer. \\
+Due to the limitations of the CFG generators for Python as previously described, the decision was made to create our own. It was felt that no current generator provided a platform to extract a CFG containing the necessary information about each statement which wouldn't require time consuming modification. The benefit of writing our own generator was that it could be written in a manner which will make it easy to integrate with currently written type inferencer. We create CFGs for functions only.
 
 \subsubsection{Ifs and Elses}
+
 
 
 \subsubsection{Breaks and Continues} 
@@ -587,7 +610,18 @@ Trys can also be used to ensure that Nested \textit{finally}s are all executed n
 \end{lstlisting}
 Then ``finally 1'' and ``finally 2'' will be printed in that order. \\
 finallys and excepts can be used together. In this case the relevant except block is executed first and then leads to the finally block. \\
-If only try/finally then exceptions still lead to the finally.
+If only try/finally then exceptions still lead to the finally. Even if an exception is raised and the finally is within a Try/Except:
+\begin{lstlisting}
+    try:
+      x = 1
+      try:
+        raise Exception
+      finally:
+        print("finally")
+    Except:
+      print("except")
+\end{lstlisting}
+In the above example raise leads to finally and finally to the except block.
 
 \subsection{SSA Form}
 The implementation of SSA renaming was performed precisely as described in the background section. A few additional allowances were required for the system to function correctly. These will be explained here. \\
@@ -596,7 +630,8 @@ CFG helps. If, while and for need not be considered separately but are all handl
 Can improve by calculating dominance frontiers/trees which will reduce the number of phi-nodes. \\
 Option 1 - phi-node for every variable referenced in a block with more than one predecessor
 Option 2 - compute dominance frontier \\
-Join points
+Join points \\
+ssa-ing builtin function names
 
 \subsubsection{Global and Local Variables}
 Consider the following snippet of Python code:
@@ -613,6 +648,9 @@ Consider the following snippet of Python code:
 \end{lstlisting}
 The references to $self.x$ refer to the same variable. The principles of SSA naming state that a variable should only be assigned to once. But which $x$ should be labelled $x_1$ and which should be labelled $x_2$? Or, rather, which of the assignments to $x$ in function \textit{f} and function \textit{g} will be called first? Without any analysis of the call sites or typical run-time behaviour it is impossible to determine this statically. A similar problem arises when we attempt to decide which reference to give to the instance of \textit{self.x} in function \textit{h}. Without knowledge of the order the functions are called (if a consistent ordering even exists) we cannot predict which is the correct label. For this reason SSA naming is only performed on local variables.
 
+\paragraph*{Global Keyword}\mbox{} \\
+The keyword \textit{global} in Python is used to enable the programmer to write to the global namespace within a function. By default the programmer has immediate read access to global and local scope and so the keyword is only necessary when a write to the global scope is to take place. With this keyword global variables and global functions can be defined dynamically at runtime.
+
 
 \subsection{Type Inference}
 
@@ -626,12 +664,72 @@ All changes to the types of variables involve assignment. For each assignment th
 Assignments with a simple numeric or string value can be inferred very easily and we can assign the variable a single possible type with complete confidence. If the RHS is a function then we assign all of the types the function can possibly return.
 
 \subsubsection{Inferring the Types of Binary Operations}
+Binary operators are handled by our type inferencer by first inferring the types of the left and right hand side of the operator. We then determine whether there is at least one combination between the two sets of types which can be legally used with the operator. \\
+A comprehensive list of the binary operators and the types which can be legally used in combination with them can be seen in Table~\ref{table:binaryOperators}.
+
+\begin{longtable}{ |c |c |c |c | }
+	\hline
+	\textbf{Operator} & \textbf{Left Type} & \textbf{Right Type} & \textbf{Result Type} \\ \hline
+	\multirow{4}{*}{$+$} & Int & Int & Int \\
+	                     & Float & Float & Float \\
+	                     & Int & Float & Float \\
+	                     & Float & Int & Float \\
+	                     & String & String & String \\
+	                     & List & List & List \\ \hline
+	\multirow{4}{*}{$-$} & Int & Int & Int \\
+	                     & Float & Float & Float \\
+	                     & Int & Float & Float \\
+	                     & Float & Int & Float \\
+	                     & String & String & String \\
+	                     & List & List & List \\ \hline
+	\multirow{4}{*}{$*$} & Int & Int & Int \\
+	                     & Float & Float & Float \\
+	                     & Int & Float & Float \\
+	                     & Float & Int & Float \\
+	                     & String & String & String \\
+	                     & String & Int & String \\
+	                     & List & List & List \\
+	                     & List & Int & List \\ \hline
+	\multirow{4}{*}{$/$} & Int & Int & Int \\
+	                     & Float & Float & Float \\
+	                     & Int & Float & Float \\
+	                     & Float & Int & Float \\ \hline
+	\multirow{4}{*}{$\%$} & Int & Int & Int \\
+	                     & Float & Float & Float \\
+	                     & Int & Float & Float \\
+	                     & Float & Int & Float \\
+	                     & String & Any\_Type & String \\ \hline
+	\multirow{4}{*}{$\ll$} & Int & Int & Int \\
+	                     & Float & Float & Float \\
+	                     & Int & Float & Float \\
+	                     & Float & Int & Float \\ \hline 
+	\multirow{4}{*}{$\gg$} & Int & Int & Int \\
+	                     & Float & Float & Float \\
+	                     & Int & Float & Float \\
+	                     & Float & Int & Float \\ \hline
+	\multirow{4}{*}{$\&$} & Int & Int & Int \\
+	                     & Float & Float & Float \\
+	                     & Int & Float & Float \\
+	                     & Float & Int & Float \\ \hline
+	\multirow{4}{*}{$|$} & Int & Int & Int \\
+	                     & Float & Float & Float \\
+	                     & Int & Float & Float \\
+	                     & Float & Int & Float \\
+	                     & Set & Set & Set \\
+	\multirow{4}{*}{$\wedge$} & Int & Int & Int \\
+	                     & Float & Float & Float \\
+	                     & Int & Float & Float \\
+	                     & Float & Int & Float \\ \hline     
+
+    \caption{The built-in types which can be used together with binary operators and which type they will return.}
+	\label{table:binaryOperators}
+    \end{longtable}
 
 \subsubsection{Inferring the Types of Unary Assignments}
-Python allows the programmer to express assignment to variables in odd but intuitive ways
+Python has a small number of unary operators. These are all numeric operators, such as the bitwise not, $\sim$, aside from the boolean operator \textit{not}. The numeric operators can only be applied to \textit{ints} and \textit{floats}, however the \textit{not} operator can be legally applied to any type.
 
 \subsubsection{Inferring the Types of Augmenting Assignments}
-An augmenting assignment performs a binary operation and a store operation on a variable in a single statement. The benefit to using an augmented assignment rather than the two-statement equivalent is three-fold. An increase in clarity of the intentions of the programmer, a reduction in code size and a performance boost. The increase in performance arises from being able to express that ``the left-hand operand in question [\ldots] should operate `on itself', rather than creating a modified copy of itself.''~\cite{pepAugAssign} Assuming the Python interpreter is not able to catch this. \\
+An augmenting assignment performs a binary operation and a store operation on a variable in a single statement. The benefit to using an augmented assignment rather than the two-statement equivalent is three-fold. An increase in clarity of the intentions of the programmer, a reduction in code size and a possible performance boost. The increase in performance arises from being able to express that ``the left-hand operand in question [\ldots] should operate `on itself', rather than creating a modified copy of itself.''~\cite{pepAugAssign} Assuming the Python interpreter is not able to catch this. \\
 To deal with augmenting assignments in our type inferencer we simply convert the augmenting assignments into regular assignments with the the binary operation equivalent. The different binary operators permitted in augmenting assignments and how they are transformed can be seen in Table~\ref{table:augAssign}. This transformation saves us from having to repeat the same logic for augmenting assignments that is already present in regular assignments and binary operations.
 
 	\begin{table}
@@ -648,16 +746,20 @@ To deal with augmenting assignments in our type inferencer we simply convert the
     $x \: \ll = y$ & $x = x \ll y$   \\ \hline
     $x \: \gg = y$ & $x = x \gg y$   \\ \hline
     $x \: \&\!= y$ & $x = x \: \& \: y$   \\ \hline
- %   $x \: \^= y$ & $x = x \^ y$   \\ \hline
+    $x \: \wedge\!= y$ & $x = x \wedge y$   \\ \hline
     $x \: |= y$ & $x = x \: | \: y$   \\ \hline
     \end{tabular}
-    \caption{The different transformations made to augmenting assignments}
+    \caption{The different transformations made to augmenting assignments involving two variables, $x$ and $y$.}
 	\label{table:augAssign}
     \end{table}
 
 \subsubsection{Inferring the Types in List/Tuple Assignment}
 % x = [5, 2]
 % [x, y] = [5, 2]
+Python allows the programmer to express assignment to variables in odd but intuitive ways.
+
+\subsubsection{Inferring the Types Within Container Types}
+
 
 \subsubsection{Inferring the Types in Del statements}
 The \textit{Del} statement is used to remove an identifier binding. If the target of the Del statement is a variable then the type of that variable is set to \textit{None\_Type}. Otherwise, if the target is an element in a list or dict then that single element is removed. In the case of a variable we can change the set of types assigned to this variable. However, it is more complicated in the case the target is an element of a list or dict. In theory we could simply remove the type(s) associated with that element from the types contained in the list/dict but this would only be correct if the element being removed was the \textit{only} element in the list/dict with that type. This may prove difficult to track. For instance, consider the following trivial example:
@@ -691,7 +793,15 @@ A problem raised by this is that the $\phi$ function at the beginning of the loo
 
 
 \subsubsection{Inferring the Possible Types of Function Arguments}
-There are number of ways we can go about inferring the types of function arguments. We could use either a \textit{top-down} approach or a \textit{bottom-up} approach. A top-down approach involves finding all of the calls to a function and determining the types the function accepts by the inferring the types of values given. On the other hand a bottom-up approach involves determining the types of arguments solely by how they are used within the function body. Initially our approach was to use the bottom-up approach. It was felt that more was to be gained using this approach since we would be able to detect errors caused by incorrect types being passed to a function. However it is important to note that useful information can be extracted from the calls. There is a possibility of using this information when we are unable to infer the types of the parameters using the function body in isolation. \\
+There are two different ways we can go about inferring the types of function arguments. We could use either a \textit{top-down} approach or a \textit{bottom-up} approach.
+
+\paragraph{Top-Down: Extracting Information From Call Sites}\mbox{} \\
+A top-down approach involves finding all of the calls to a function and determining the types the function accepts by inferring the types of the values given to the function. This means we assume all of the values to be correct. The benefits to this approach are that the return types inferred for the functions should be quire accurate. However the major downside is that we lose a bug-checking opportunity at all call sites.
+
+\paragraph{Bottom-Up: Use Case}\mbox{} \\
+A bottom-up approach involves determining the types of arguments solely by how they are used within the function body. To do this we make use of pre-existing knowledge from the types which other functions and built-in operators accept. If a parameter is used within a context then the types that parameter can take are limited by the types accepted within that context. \\
+
+It was felt that more was to be gained using this approach since we would be able to detect errors caused by incorrect types being passed to a function. However it is important to note that useful information can be extracted from the calls. There is a possibility of using this information when we are unable to infer the types of the parameters using the function body in isolation. \\
 To do this we will generate a number of constraints and attempt to solve them. In order to solve the constraints we will make use of a pre-existing constraint solver for Python, \textit{python-constraint}~\footnote{\url{http://labix.org/python-constraint}}. When our generated constraints cannot be solved, we resort to labelling the parameter as having any possible type (AnyType / Top).
 It is important to do this before we attempt to infer the return types of a function as it is likely that the possible return types will depend upon the types of the function arguments. \\\\
 \textbf{Constraint Generation} \\
@@ -708,8 +818,6 @@ Both functions apply the $+$ operator to the parameters. However, due to the \te
 \\\\
 \textbf{Constraint Solving} \\
 Our constraint solver returns all possible sets which satisfy the constraints we feed into it. We are interested in \textit{all} of the possible types a parameter can legally take. Because of this we take the largest set returned for each parameter.
-
-\subsubsection{Extracting Information From Call Sites}
 
 \subsubsection{Inferring the Possible Return Types of a Function}
 To do this we rely on the $\phi$ function as described in the SSA section. We simply take the union of all of the variables passed. Consider the following, already transformed, example:
@@ -859,7 +967,10 @@ We can handle the \textit{with} keyword by de-sugaring it back into its equivale
 \end{lstlisting}
 The main difficulty involved with this transformation is simulating the variables passed to the \textit{\_\_exit\_\_} function. The simplest way to deal with this is to pass temporary variable which have an \textit{Any\_Type}.
 
-\subsubsection{Python Standard Library}
+\newpage
+\section{Improvements}
+
+\subsection{Python Standard Library}
 One possible reason for Python's popularity is its extensive standard library. 3rd party library are also popular, with millions of downloads (source). There are two ways these can used. Included it in the project directory, or by installing it on the machine the code is running on.
 \newpage
 
