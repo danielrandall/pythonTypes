@@ -453,13 +453,6 @@ class TypeInferrer(AstFullTraverser):
         
         op_kind = self.kind(node.op)
         
-        if left_types in self.fun_params or right_types in self.fun_params:
-            result_types = self.constraint_gen.do_BinOp(left_types, right_types, op_kind, node.lineno)
-            if left_types in self.fun_params:
-                left_types = result_types[0] # Will return a list of 1 element
-            if right_types in self.fun_params:
-                right_types = result_types[0] # ''
-        
         # Check if this operation depends on variable awaiting the type of
         # another
         for a_type in left_types:
@@ -468,6 +461,14 @@ class TypeInferrer(AstFullTraverser):
         for a_type in right_types:
             if (isinstance(a_type, Awaiting_Type)):
                 return [set([a_type])]
+        
+        
+        if left_types in self.fun_params or right_types in self.fun_params:
+            result_types = self.constraint_gen.do_BinOp(left_types, right_types, op_kind, node.lineno)
+            if left_types in self.fun_params:
+                left_types = result_types[0] # Will return a list of 1 element
+            if right_types in self.fun_params:
+                right_types = result_types[0] # ''
         
         result_types = set()
         
@@ -663,6 +664,10 @@ class TypeInferrer(AstFullTraverser):
             print(node.func.id)
         print("Function possible types")
         pprint(possible_funcs)
+        # Check Awaiting_Type
+        for a_type in possible_funcs:
+            if isinstance(a_type, Awaiting_Type):
+                return [set([a_type])]
         # If the function could not be found then just return any_type
         if any_type in possible_funcs:
             return [set([any_type])]
@@ -676,7 +681,7 @@ class TypeInferrer(AstFullTraverser):
             # Check that the correct number of types has been given.
             # If the number is less than the maximum then ensure it falls
             # within the default range and adjust accordingly
-            assert len(given_arg_types) <= len(accepted_types), "Line " + str(node.lineno)
+            assert len(given_arg_types) <= len(accepted_types), "Line: " + str(node.lineno) + " Given: " + str(given_arg_types) + " Accepted: " + str(accepted_types)
             if len(given_arg_types) < len(accepted_types):
                 missing_num = len(accepted_types) - len(given_arg_types)
                 assert missing_num <= func.get_arg_default_length(), "Line " + str(node.lineno) + ": Too few args given"
@@ -685,11 +690,14 @@ class TypeInferrer(AstFullTraverser):
             for i in range(len(given_arg_types)):
                 # If the arg is a function parameter then we can not type check
                 # generate a constraint and then move on.
+                
                 if given_arg_types[i] in self.fun_params:
                     self.constraint_gen.do_Call(accepted_types[i], given_arg_types[i])
                     continue
                 # ... otherwise type check. At least one type must match up.
                 for t1 in given_arg_types[i]:
+                    if isinstance(t1, Awaiting_Type):
+                        return [set([t1])]
                     type_allowed = False
                     for t2 in accepted_types[i]:
                         if (t1 <= t2):
@@ -962,7 +970,13 @@ class TypeInferrer(AstFullTraverser):
             value_types = self.variableTypes[value_types]
         if value_types in self.fun_params:
             value_types = self.constraint_gen.do_Subscript(node.slice, value_types)
+        # Check awaiting_type
+        for a_type in value_types:
+            if isinstance(a_type, Awaiting_Type):
+                return [set([a_type])]
+        # Check container type
         container_like_types = [x for x in value_types if x <= Container_Type(None, None, None, None)]
+        pprint(self.variableTypes)
         pprint(value_types)
         pprint(container_like_types)
         assert container_like_types, "Line " + str(node.lineno) + ": cannot index/slice in non-container types. "

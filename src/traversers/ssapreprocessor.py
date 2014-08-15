@@ -12,6 +12,7 @@ class SSA_Pre_Processor(AstFullTraverser):
     def __init__(self):
         self.current_block = None
         self.in_loop_test = False
+        self.ssa_exempts = set()
         
     def run(self, source):
         self.visit(source)
@@ -24,6 +25,8 @@ class SSA_Pre_Processor(AstFullTraverser):
     
     def do_Module(self, node):
         print("CFG for Module code")
+        for dependent in node.import_dependents:
+            self.ssa_exempts.add(dependent.get_as_name())
         self.process_blocks(node.initial_block)
         for z in node.body:
             self.visit(z)
@@ -31,7 +34,14 @@ class SSA_Pre_Processor(AstFullTraverser):
     def do_FunctionDef(self, node):
         print("CFG for " + node.name)
         print(node.lineno)
+        old_ssa_exempts = self.ssa_exempts.copy()
+        # Visit args to exempts them
+        self.visit(node.args)
         self.process_blocks(node.initial_block)
+        self.ssa_exempts = old_ssa_exempts 
+        
+    def do_arg(self, node):
+        self.ssa_exempts.add(node.arg)
         
     def do_While(self, node):
         self.visit(node.test)
@@ -59,6 +69,9 @@ class SSA_Pre_Processor(AstFullTraverser):
                 self.visit(z)
         
     def do_Name(self, node):
+        # Global variable
+        if isinstance(node.ctx, ast.Store) and isinstance(node.stc_context, ast.Module):
+            self.ssa_exempts.add(node.id)
         if isinstance(node.stc_context, ast.Module):
             return
         if node.id == "True" or node.id == "False":
@@ -68,6 +81,8 @@ class SSA_Pre_Processor(AstFullTraverser):
         if node.id == "self":
             return
         if node.id in BUILTIN_TYPE_DICT:
+            return
+        if node.id in self.ssa_exempts:
             return
         self.current_block.referenced_vars.add(node.id)
         

@@ -257,6 +257,7 @@ class Preprocessor(AstFullTraverser):
             as_name = alias.asname if alias.asname else None
             import_dependent = ImportDependent(alias.name, import_from, as_name)
             self.import_dependents.append(import_dependent)
+            
 
     def do_Lambda(self, node):
         self.n_contexts += 1
@@ -342,7 +343,7 @@ class Preprocessor(AstFullTraverser):
             z.lineno = node.lineno
             self.visit(z)
             
-    def do_With (self, node):
+    def do_With(self, node):
         for z in node.items:
             z.lineno = node.lineno
             self.visit(z)
@@ -352,8 +353,8 @@ class Preprocessor(AstFullTraverser):
 
     def do_Name(self, node):
         # If node is a global variable, add it to the module list.
-    #    if isinstance(node.ctx, ast.Store) and isinstance(node.stc_context, ast.Module):
-    #        node.stc_context.node_contents.append(node.id)
+        #if isinstance(node.ctx, ast.Store) and isinstance(node.stc_context, ast.Module):
+        #    node.stc_context.variableTypes[node.id] = set()
         
         cx = node.stc_context
         if isinstance(node.ctx,(ast.Param,ast.Store)):

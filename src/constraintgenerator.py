@@ -92,8 +92,7 @@ class ConstraintGenerator:
             return [node.id]
     
     def do_BinOp(self, left_types, right_types, op_kind, lineno):
-        ''' Function must still return types.
-            TODO: sub / mult '''
+        ''' Function must still return types. '''
         #pprint(left_types)
         #pprint(right_types)
         if left_types not in self.parameters and right_types not in self.parameters:
