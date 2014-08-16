@@ -150,6 +150,8 @@ class SSA_Traverser(AstFullTraverser):
        # print(node.name)
        # self.visit(node.args)
         print("ssa-ing function: " + node.name)
+        if node.name == "str2int":
+            pass
         self.blocks_to_process.append((node.initial_block, None))
         self.process_block_list()
         self.d = old_d
@@ -207,6 +209,8 @@ class SSA_Traverser(AstFullTraverser):
             IDENTIFIED THE SAME WAY AS VARIABLES. GAH. '''
       #  print(node.id)
         # We don't SSA a global variable
+        if node.id == "num":
+            pass
         if isinstance(node.stc_context, ast.Module):
             return
         if node.id == "True" or node.id == "False":

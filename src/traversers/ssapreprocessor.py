@@ -106,5 +106,5 @@ class SSA_Pre_Processor(AstFullTraverser):
         print("Variables referenced: " + str(block.referenced_vars))
         for an_exit in block.exit_blocks:
             self.process_blocks(an_exit)
-        if block.next_block:
-            self.process_blocks(block.next_block)
+      #  if block.next_block:
+      #      self.process_blocks(block.next_block)

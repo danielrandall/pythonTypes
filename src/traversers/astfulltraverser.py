@@ -58,7 +58,9 @@ class AstFullTraverser(AstBaseTraverser):
             self.visit(node.annotation)
 
     def do_Attribute(self,node):
+        ''' No case in which we would want to be visit node.attr implicitly. '''
         self.visit(node.value)
+        # self.visit(node.attr)
         # self.visit(node.ctx)
 
     def do_BinOp (self,node):
@@ -320,7 +322,6 @@ class AstFullTraverser(AstBaseTraverser):
             self.visit(z)
             
     def do_With(self, node):
-        print(node.__dict__)
         for z in node.items:
             self.visit(z)
         for z in node.body:
