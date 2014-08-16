@@ -21,7 +21,3 @@ def get_pys(top_level):
             py_file = PyFile(py_name, relative_root, root + "/" + py_name + ".py")
             py_files[relative_root][py_name] = py_file
     return py_files
-    
-    
-
-#get_pys("/homes/dr1810/4thYear/individualProject/pythonTypes/testFiles/realFiles/a")

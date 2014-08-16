@@ -131,6 +131,9 @@ class ControlFlowGraph(AstFullTraverser):
             If the first encountered block is an except then '''
         if not self.current_block:
             return
+        # We don't want to add these.
+        if isinstance(node, ast.FunctionDef) or isinstance(node, ast.ClassDef):
+            return
         # We only want the 'top level' statements
         if self.current_line_num >= node.lineno:
             return   

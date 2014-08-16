@@ -138,7 +138,10 @@ class Preprocessor(AstFullTraverser):
             op = node.op
             target = node.target
             value = node.value
-            node.value = ast.BinOp(copy.deepcopy(target), op, value)
+            copy_target = copy.deepcopy(target)
+            # New value needs to be loaded, not stored
+            copy_target.ctx = ast.Load
+            node.value = ast.BinOp(copy_target, op, value)
             node.value.lineno = node.lineno
             node.targets = [node.target]
             node.transformed = True
