@@ -10,8 +10,7 @@ class SSA_Traverser(AstFullTraverser):
     
     Definitions of a symbol N kill previous definitions of N.
     
-    Phi nodes are implemented by adding a list to the if and case nodes. This
-    was seen as simpler than modifying the AST. 
+    Block processing is prioritised by ascending line numbers of the blocks.
     '''
     def __init__(self):
         AstFullTraverser.__init__(self)
@@ -33,11 +32,19 @@ class SSA_Traverser(AstFullTraverser):
             # where a is an assignment. 
         self.breaks = []
         self.continues = []
+        self.blocks_to_process = []  # Block queue
         assert isinstance(root, ast.Module)
         self.visit(root)
         return root
+    
+    def process_block_list(self):
+        while self.blocks_to_process:
+            block, dict_to_pass = self.blocks_to_process.pop(0)
+            self.process_block(block)
+            if dict_to_pass:
+                self.update_phis(block, dict_to_pass)
         
-    def process_blocks(self, block):
+    def process_block(self, block):
         ''' TODO: Handle infinite loops '''
         if block.ssa_mark:
             return
@@ -51,14 +58,25 @@ class SSA_Traverser(AstFullTraverser):
         for statement in block.statements:
             self.visit(statement)
         block.ssa_mark = True
-        #block.
-        exit_nos = [block.start_line_no for block in block.exit_blocks]
-        pprint("Block starting at: " + str(block.start_line_no) + " to " + str(exit_nos))
-        print(block.statements)
         dict_to_pass = self.d.copy()
         for an_exit in block.exit_blocks:
-            self.process_blocks(an_exit)
-            self.update_phis(an_exit, dict_to_pass)
+            self.add_to_list((an_exit, dict_to_pass))
+            
+    def add_to_list(self, item):
+        if item[0].start_line_no == "Exit":
+            return
+        if not self.blocks_to_process:
+            self.blocks_to_process.append(item)
+            return
+        insert_num = item[0].start_line_no
+        i = 0
+        test_num = self.blocks_to_process[i][0].start_line_no
+        while insert_num > test_num and i < len(self.blocks_to_process) - 1:
+            i += 1
+            test_num = self.blocks_to_process[i][0].start_line_no
+            print(type(test_num))
+        self.blocks_to_process.insert(i, item)
+        
             
     def add_phi_nodes(self, block):
         ''' Only add phi nodes with blocks with more than entry point. '''
@@ -77,10 +95,12 @@ class SSA_Traverser(AstFullTraverser):
         for var, num in predecessor_dict.items():
             if var in block.referenced_vars:
                     # Don't add the var if it is itself!
+                    if num == 6:
+                        pass
                     if var + str(num) == block.phi_nodes[var].get_var():
                         continue
                     block.phi_nodes[var].update_targets(var + str(num))
-                    print(block.start_line_no)
+                    print("Phis for: " + str(block.start_line_no))
                     print(block.phi_nodes)
                     
     def visit(self,node):
@@ -130,7 +150,8 @@ class SSA_Traverser(AstFullTraverser):
        # print(node.name)
        # self.visit(node.args)
         print("ssa-ing function: " + node.name)
-        self.process_blocks(node.initial_block)
+        self.blocks_to_process.append((node.initial_block, None))
+        self.process_block_list()
         self.d = old_d
 
     def do_Lambda(self, node):
@@ -141,7 +162,8 @@ class SSA_Traverser(AstFullTraverser):
 
     def do_Module (self, node):
         print("ssa-ing for Module code")
-        self.process_blocks(node.initial_block)
+     #   self.blocks_to_process.append(node.initial_block)
+     #   self.process_block_list()
         for z in node.body:
             self.visit(z)
 
