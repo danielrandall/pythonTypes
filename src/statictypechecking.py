@@ -67,26 +67,6 @@ from src.traversers.ssatraverser import Phi_Node
 from src.importdependent import ImportDependent
 
 
-class PatternFormatter (AstFormatter):
-    # def __init__ (self):
-        # AstFormatter.__init__ (self)
-
-    def do_BoolOp(self,node): # Python 2.x only.
-        return 'Bool' 
-
-    def do_Bytes(self,node): # Python 3.x only.
-        return 'Bytes' # return str(node.s)
-
-    def do_Name(self,node):
-        return 'Bool' if node.id in ('True','False') else node.id
-
-    def do_Num(self,node):
-        return 'Num' # return repr(node.n)
-
-    def do_Str (self,node):
-        '''This represents a string constant.'''
-        return 'Str' # return repr(node.s)
-
 
 class TypeInferrer(AstFullTraverser):
     '''A class to infer the types of objects. 
@@ -269,7 +249,7 @@ class TypeInferrer(AstFullTraverser):
         # Stupidly True and False are Names. Return bool type
         if (node.id == "True" or node.id == "False"):
             return [set([bool_type])]
-        if node.id == "self":
+        if node.id == "self" or (self.current_class and node.id == self.current_class.get_name()):
             assert self.current_class, "self used outside of class definition. "
             return [set([self.current_class])]
         if node.id in self.variableTypes:
@@ -370,6 +350,9 @@ class TypeInferrer(AstFullTraverser):
             if isinstance(targets[i], Attribute_Type):
                 self.attribute_assignment(targets[i], value_types[i])
             else:
+                print(node.lineno)
+                print(targets[i])
+                print(value_types[i])
                 self.variableTypes[targets[i]] = value_types[i]
             # For each new assign, check whether any are waiting on it.
             self.check_waiting(targets[i])
@@ -400,22 +383,7 @@ class TypeInferrer(AstFullTraverser):
         else:
             values = value_container.contents
         self.conduct_assignment(targets, values, node)
-        
-    def do_AugAssign(self,node):
-        ''' This covers things like x += ... x -=...
-            This is pretty much just a BinOp so modify the node so node.value is a binop
-            work out the type and then assign the result.
-            TODO: Do all of this modification in the preprocessing. Can then eliminate this function. '''
-        binOp_node = ast.BinOp()
-        binOp_node.left = node.prev_name
-        binOp_node.right = node.value
-        binOp_node.op = node.op
-        # Assign expects targets
-        node.targets = [node.target]
-        
-        node.value = binOp_node
-        self.do_Assign(node)
-        
+
     def check_waiting(self, new_var):
         waiting = [x[0] for x in self.awaiting_Typing if x[1] == new_var]
         for z in waiting:
@@ -450,6 +418,8 @@ class TypeInferrer(AstFullTraverser):
             TODO: Allow for Any_Type'''
         left_types = self.visit(node.left)[0] # Will return a list of 1 element
         right_types = self.visit(node.right)[0] # ''
+        print(node.left)
+        print(node.right)
         
         op_kind = self.kind(node.op)
         
@@ -483,6 +453,9 @@ class TypeInferrer(AstFullTraverser):
                     result_types |= set(binopcons.BIN_OP_CONSTRAINTS[op_kind][List_Type if isinstance(right, List_Type) else right])
                     continue
                 if isinstance(right, Any_Type):
+                    print(op_kind)
+                    print(left)
+                    print(node.lineno)
                     result_types |= set(binopcons.BIN_OP_CONSTRAINTS[op_kind][List_Type if isinstance(left, List_Type) else left])
                     continue
 
@@ -502,6 +475,10 @@ class TypeInferrer(AstFullTraverser):
                     result_types.add(new_list)
                     continue
                 
+                if op_kind == 'Mult' and isinstance(left, List_Type) and right <= int_type:
+                    result_types.add(left)
+                    continue
+                
                 if left <= string_type and right <= string_type and op_kind == 'Add':
                     result_types.add(string_type)
                     continue
@@ -517,6 +494,7 @@ class TypeInferrer(AstFullTraverser):
                     result_types.add(string_type)
                     continue
         pprint(left_types)
+        print(node.op)
         pprint(right_types)
         assert result_types, "Line " + str(node.lineno) + ": " + "No acceptable BinOp operation. "
         return [result_types]
@@ -654,8 +632,11 @@ class TypeInferrer(AstFullTraverser):
             arguments. '''
         given_arg_types = []
         result_types = set()
+        if node.lineno == 157:
+            pass
         for z in node.args:
             given_arg_types.extend(self.visit(z))
+        print("Given arg types")
         pprint(given_arg_types)
         pprint(self.variableTypes)
         possible_funcs = self.visit(node.func)[0]
@@ -734,7 +715,7 @@ class TypeInferrer(AstFullTraverser):
         ''' Find all args and return values.
         
             TODO: Find out possible types in *karg dict. '''
-        print(node.lineno)
+  #      print(node.lineno)
         self.variableTypes = node.variableTypes
         self.variableTypes.update(node.stc_context.variableTypes)
 
@@ -773,6 +754,9 @@ class TypeInferrer(AstFullTraverser):
         print("Final types")
         pprint(self.variableTypes)
         
+        if node.name == "__init__" and self.current_class:
+            self.current_class.set_init_params(parameter_types)
+        
         # Restore variables
         self.variableTypes = node.stc_context.variableTypes
         
@@ -781,6 +765,8 @@ class TypeInferrer(AstFullTraverser):
         # Add to the currently class vars if there is one
         if self.current_class:
             self.current_class.update_vars_types(node.name, self.variableTypes[node.name])
+        # Clear awaiting_typings - not needed outside of this scope
+        self.awaiting_Typing.clear()
             
     def do_arguments(self, node):
         ''' We need to begin checking what types the args can take. Defaults
@@ -819,6 +805,9 @@ class TypeInferrer(AstFullTraverser):
         self.variableTypes = node.variableTypes
         self.variableTypes.update(node.stc_context.variableTypes)
         
+        if node.name == "RGB":
+            pass
+        
         parent_class = self.current_class
         # Deal with inheritence.
         inherited_vars = {}
@@ -835,17 +824,17 @@ class TypeInferrer(AstFullTraverser):
                     acceptable_type = True
             assert acceptable_type, "Line " + str(node.lineno) + ": " + base.id + " is not a class. "
         # Add the self variables found
-        for self_var in node.self_variables:
-            if self_var not in inherited_vars:
-                inherited_vars[self_var] = set()
-        self.current_class = Class_Type(node.id, inherited_vars, node.callable)
-        self.move_init_to_top(node.body)
+   #     for self_var in node.self_variables:
+   #         if self_var not in inherited_vars:
+   #             inherited_vars[self_var] = set()
+        self.current_class = Class_Type(node.name, inherited_vars, node.callable)
+        self.move_init_to_top(node.body, node)
         
         for z in node.body:
             self.visit(z)
         # We need to set the parameters for init
-        init_def = list(self.variableTypes["__init__"])[0]
-        self.current_class.set_init_params(init_def.parameter_types)
+     #   init_def = list(self.variableTypes["__init__"])[0]
+        
         # Set the call if possible
         is_callable, call_node = node.callable
         if is_callable:
@@ -859,10 +848,10 @@ class TypeInferrer(AstFullTraverser):
         
         # Restore parents variables
         self.variableTypes = node.stc_context.variableTypes
-        self.variableTypes[node.id] = set([self.current_class])
+        self.variableTypes[node.name] = set([self.current_class])
         self.current_class = parent_class
         
-    def move_init_to_top(self, body):
+    def move_init_to_top(self, body, node):
         assert isinstance(body, list), "Body needs to be a list."
         for i in range(len(body)):
             elem = body[i]
@@ -880,8 +869,9 @@ class TypeInferrer(AstFullTraverser):
             init_def.args.args = [arg]
             init_def.args.defaults = []
             init_def.name = "__init__"
-            init_def.id = "__init__"
-            init_def.name = init_def.id
+            init_def.variableTypes = {}
+            init_def.lineno = 0
+            init_def.stc_context = node
             init_def.decorator_list = []
             body.insert(0, init_def)
 
@@ -904,6 +894,7 @@ class TypeInferrer(AstFullTraverser):
             return            
         print("value")
         print(node.value)
+        print(node.lineno)
         possible_return_type = self.visit(node.value)[0] # Can only be len 1
         # If the a parameter is being returned then use the default value set
         # Its probably any_type.
@@ -938,6 +929,9 @@ class TypeInferrer(AstFullTraverser):
             Lists have to be int
             Dicts can have any type for a key. '''
         value_types = self.visit(node.value)[0]
+        if value_types in self.fun_params:
+            self.constraint_gen.do_Slice(value_types)
+            return
         int_like_types = [x for x in value_types if x <= any_type]
         assert int_like_types, "Line " + str(node.lineno) + ": index value must be an integer"
         return
@@ -947,15 +941,23 @@ class TypeInferrer(AstFullTraverser):
             TODO: Do better with awaiting_type '''
         if node.upper:
             upper_types = self.visit(node.upper)[0]
+            if upper_types in self.fun_params:
+                self.constraint_gen.do_Slice(upper_types)
+                return
             int_like_types = [x for x in upper_types if x <= int_type or isinstance(x, Awaiting_Type)]
             assert int_like_types, "Line " + str(node.lineno) + ": upper in slice must be an integer"
         if node.lower:
             lower_types = self.visit(node.lower)[0]
-            pprint(lower_types)
+            if lower_types in self.fun_params:
+                self.constraint_gen.do_Slice(lower_types)
+                return
             int_like_types = [x for x in lower_types if x <= int_type or isinstance(x, Awaiting_Type)]
             assert int_like_types, "Line " + str(node.lineno) + ": lower in slice must be an integer"
         if node.step:
             step_types = self.visit(node.step)[0]
+            if step_types in self.fun_params:
+                self.constraint_gen.do_Slice(step_types)
+                return
             int_like_types = [x for x in step_types if x <= int_type or isinstance(x, Awaiting_Type)]
             assert int_like_types, "Line " + str(node.lineno) + ": step in slice must be an integer"
         return
@@ -965,9 +967,17 @@ class TypeInferrer(AstFullTraverser):
             TODO: Allow user-defined types to index/slice.
             TODO: Stop comparing with an instantiation of Container_Type - will probably be solved with the above. '''
         value_types = self.visit(node.value)[0]
+        print(node.lineno)
         if self.currently_assigning:
-            # Check whether variable can be a container
-            value_types = self.variableTypes[value_types]
+            if isinstance(value_types, Attribute_Type):
+                ct = value_types.class_type
+                vt = value_types.variable_type
+                value_types = ct.get_global_var(vt)
+            elif isinstance(value_types, ContainerUpdate):
+                value_types = value_types.get_container_list()
+            else:    
+                # Check whether variable can be a container
+                value_types = self.variableTypes[value_types]
         if value_types in self.fun_params:
             value_types = self.constraint_gen.do_Subscript(node.slice, value_types)
         # Check awaiting_type
@@ -1014,7 +1024,6 @@ class TypeInferrer(AstFullTraverser):
     def do_With (self, node):
         ''' Uses __enter__ and __exit__ methods to ensure initialisation and cleaning of the variable.
             TODO: Add new variable temporarily. '''
-        old_vars = self.variableTypes
         for z in node.items:
             self.visit(z)
         for z in node.body:
@@ -1023,6 +1032,8 @@ class TypeInferrer(AstFullTraverser):
     def do_withitem(self, node):
         ''' Equivalent to an assignment.
             TODO: Make it call __enter__ method here. '''
+        self.variableTypes[node.optional_vars] = set([any_type])
+        return
         assignment = ast.Assign()
         assignment.targets = [node.optional_vars]
         assignment.value = node.context_expr

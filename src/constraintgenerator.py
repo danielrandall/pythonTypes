@@ -153,7 +153,12 @@ class ConstraintGenerator:
             return
         self.csp_problem.addConstraint(self.limit_to_set(accepted_types), [param_to_constrain])
         
+    def do_Slice(self, param_to_constrain):
+        ''' Called from index and step, upper, lower in Slice. '''
+        self.csp_problem.addConstraint(self.limit_to_set(set([int_type])), [param_to_constrain])
+        
     def do_Subscript(self, index_or_slice, param_to_constrain):
+        ''' If argument is a container. '''
         if isinstance(index_or_slice, ast.Slice):
             possible_types = set(SLICE_TYPES)
         if isinstance(index_or_slice, ast.Index):

@@ -105,7 +105,7 @@ class Class_Base():
             self.global_dependents[name] = []
         return True
             
-    def get_vars(self, var):
+    def get_global_var(self, var):
         return self.global_vars[var]
     
     def create_dependent_dict(self):
@@ -142,6 +142,9 @@ class Class_Type(Callable_Type, Class_Base):
     def __repr__(self):
         return 'Class Dec: %s' % self.name
     
+    def get_name(self):
+        return self.name
+    
     def set_init_params(self, parameter_types):
         self.parameter_types = parameter_types
     
@@ -153,12 +156,12 @@ class Class_Type(Callable_Type, Class_Base):
         ''' We want to return a new instance every time. '''
         return set([Class_Instance(self.name, self.global_vars.copy(), \
                               self.has_call_func, self.call_param_types, \
-                              self.call_return_types, self.dependent_dict)])
+                              self.call_return_types, self.global_dependents)])
     
 class Class_Instance(Callable_Type, Class_Base):
     ''' Used to represent initialised classes. '''
     def __init__(self, name, global_vars, has_call_func, call_parameter_types, \
-                 call_return_types, dependent_dict):
+                 call_return_types, global_dependents):
         kind = 'Class Instance: %s' % name
         super().__init__(kind)
         self.name = name
@@ -166,7 +169,7 @@ class Class_Instance(Callable_Type, Class_Base):
         self.supports_calling = has_call_func
         self.parameter_types = call_parameter_types
         self.return_types = call_return_types
-        self.dependent_dict = dependent_dict
+        self.global_dependents = global_dependents
         
     
     def __repr__(self):
@@ -240,17 +243,18 @@ class Container_Type(BaseType):
     def infer_types(self):
         ''' Calculate the types contained in the list.
             Check if any element is a list and calculate their types. '''
+        self.content_types = set([any_type])
         # Don't infer it's already been done
      #   if not self.content_types:
          # All elements are sets.
-        for element in self.contents:
-            for t in element:
-                if isinstance(t, Container_Type):
-                    t.infer_types()
-                    self.content_types.add(t)
-                else:
-           #             pprint(element)
-                    self.content_types |= element
+     #   for element in self.contents:
+     #       for t in element:
+     #           if isinstance(t, Container_Type):
+     #               t.infer_types()
+     #               self.content_types.add(t)
+     #           else:
+     #               print(element)
+     #               self.content_types |= element
         self.define_kind()
         
     def get_content_types(self):
@@ -446,7 +450,7 @@ BUILTIN_TYPE_DICT = {
                                   2)]),
    'list':  set([Def_Type([set([any_type])],
                                   set([List_Type(None, [], set())]),
-                                  0)]),                
+                                  1)]),                
    'len':  set([Def_Type([set([any_type])],
                                   set([int_type]),
                                   0)]),
