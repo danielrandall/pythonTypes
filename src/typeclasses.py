@@ -13,9 +13,9 @@ class BaseType:
 
     '''
     
-    def __init__(self,kind):
+    def __init__(self, kind, global_vars = {}):
         self.kind = kind
-        self.global_vars = {}
+        self.global_vars = global_vars
         
     def __repr__ (self):
         return self.kind
@@ -41,9 +41,16 @@ class BaseType:
         ''' Should be overriden for a type which is callable. '''
         return False
     
-    def get_vars(self):
+    def get_contents_types(self):
+        ''' Needs to be overriden by tuples/lists.'''
+        return set()
+    
+    def get_global_var(self, var):
         ''' Returns the variables/functions contained in this class. '''
-        return self.global_vars
+        if var in self.global_vars:
+            return self.global_vars[var]
+        else:
+            return None
 
 class Any_Type(BaseType):    
     def __init__(self):
@@ -175,13 +182,10 @@ class Class_Instance(Callable_Type, Class_Base):
     def __repr__(self):
         return 'Class Instance: %s' % self.name
             
-class Module_Type(Class_Base, BaseType):
-    def __init__(self, name, global_vars):
-        kind = 'Module(%s)' % name
-        BaseType.__init__(self, kind)
-        self.global_vars = global_vars
-        
-        self.create_dependent_dict()
+class Module_Type(BaseType):
+    def __init__(self, global_vars):
+        kind = 'Module()'
+        BaseType.__init__(self, kind, global_vars)
 
 class Def_Type(Callable_Type):    
     ''' TODO: deal with kind. '''
@@ -257,8 +261,8 @@ class Container_Type(BaseType):
      #               self.content_types |= element
         self.define_kind()
         
-    def get_content_types(self):
-        return self.content_types
+    def get_contents_types(self):
+        return set([any_type])
         
     def update_content_types(self, new_types):
         self.content_types |= new_types
@@ -290,9 +294,9 @@ class ContainerUpdate():
         
 class Dict_Type(Container_Type):
     ''' TODO: Add values contained in a dict. '''
-    def __init__(self, node, contents, c_types):
+    def __init__(self):
         kind = 'dict(@%s)'
-        Container_Type.__init__(self, kind, node, contents, c_types)
+        Container_Type.__init__(self, kind, None, [], set([any_type]))
         
         self.global_vars = {# keys returns a dict view object - not yet supported
                             'keys' : set([Def_Type([],
@@ -313,28 +317,26 @@ class Dict_Type(Container_Type):
         
 class Set_Type(Container_Type):
     ''' TODO: Add new types when the function append is called or similar. '''
-    def __init__(self, node, contents, c_types):
+    def __init__(self):
         kind = 'set({})'
-        Container_Type.__init__(self, kind, node, contents, c_types)
+        Container_Type.__init__(self, kind, None, [], set())
         
     def define_kind(self):
         self.kind = 'set(%s)' % repr(self.content_types)
 
 class List_Type(Container_Type):
     ''' TODO: Add new types when the function append is called or similar. '''
-    def __init__(self, node, contents, c_types):
+    def __init__(self):
         kind = 'List({})'
-        Container_Type.__init__(self, kind, node, contents, c_types)
+        Container_Type.__init__(self, kind, None, [], set())
         
     def define_kind(self):
         self.kind = 'List(%s)' % repr(self.content_types)
     
 class Tuple_Type(Container_Type):
-    def __init__(self, node, contents, c_types):
-        self.contents = contents 
-        self.content_types = c_types
+    def __init__(self):
         kind = 'Tuple({})'
-        Container_Type.__init__(self, kind, node, contents, c_types)
+        Container_Type.__init__(self, kind, None, [], set())
         
     def define_kind(self):
         self.kind = 'Tuple(%s)' % repr(self.content_types)
@@ -388,40 +390,6 @@ class Awaiting_Type(BaseType):
             
     def contains_waiting_type(self):
         return self
-
-class BuildTables:
-    '''create global attribute tables.'''
-    
-    def run(self,files,root_d):
-        
-        self.attrs_d = {}
-            # Keys are attribute names.
-            # Values are lists of node.value nodes.
-        self.defined_attrs = set()
-        # self.classes_d = {}
-            # NOT USED YET.
-            # Keys are class names. Values are lists of classes.
-        # self.defs_d = {}
-            # NOT USED YET>
-            # Keys are def names. Values are lists of defs.
-        self.u = Utils()
-        for fn in files:
-            self.fn = fn
-            for cx in self.u.contexts(root_d.get(fn)):
-                self.do_context(cx)
-
-    def do_context(self,cx):
-        # Merge symbol table attrs_d into self.attrs_d.
-        st = cx.stc_symbol_table
-        d = st.attrs_d
-        for key in d.keys():
-            if self.attrs_d.has_key(key):
-                aSet = self.attrs_d.get(key)
-                aSet.update(d.get(key))
-            else:
-                self.attrs_d[key] = d.get(key)
-        # Is this useful?
-        self.defined_attrs |= st.defined_attrs
         
         
 # Create singleton instances of simple types.
@@ -449,13 +417,13 @@ BUILTIN_TYPE_DICT = {
                                   set([string_type]),
                                   2)]),
    'list':  set([Def_Type([set([any_type])],
-                                  set([List_Type(None, [], set())]),
+                                  set([List_Type()]),
                                   1)]),                
    'len':  set([Def_Type([set([any_type])],
                                   set([int_type]),
                                   0)]),
    'range':  set([Def_Type([set([int_type]), set([int_type]), set([int_type])],
-                                    set([ List_Type(None, [], set([int_type]) ) ]),
+                                    set([ List_Type() ]),
                                     2)]),
    'ord':  set([Def_Type([set([string_type])],
                                   set([int_type]),
@@ -470,8 +438,8 @@ BUILTIN_TYPE_DICT = {
    'reversed': set([Def_Type([set([any_type])],
                                   set([any_type]),
                                   0)]),
-   'sorted': set([Def_Type([set([List_Type(None, [], set())]), set([any_type]), set([bool_type])],
-                                  set([List_Type(None, [], set())]),
+   'sorted': set([Def_Type([set([List_Type()]), set([any_type]), set([bool_type])],
+                                  set([List_Type()]),
                                   2)]),
             # min and max work on any iterable and have varargs
    'min' : set([Def_Type([set([any_type]), set([any_type])],
@@ -487,7 +455,7 @@ BUILTIN_TYPE_DICT = {
                                   set([bool_type]),
                                   0)]),
    'dir': set([Def_Type([set([any_type])],
-                                  set([List_Type(None, [], set())]),
+                                  set([List_Type()]),
                                   1)]),
    'zip': set([Def_Type([set([any_type]), set([any_type]), set([any_type]), set([any_type])],
                                   set([any_type]),
@@ -497,8 +465,8 @@ BUILTIN_TYPE_DICT = {
                                   set([any_type]),
                                   7)]),
             # Should this be a function or class?
-   'set': set([Def_Type([set([List_Type(None, [], set())])],
-                                  set([Set_Type(None, [], set())]),
+   'set': set([Def_Type([set([List_Type()])],
+                                  set([Set_Type()]),
                                   1)]),
    'dict': set([Def_Type([set([any_type])],
                                   set([any_type]),
@@ -507,6 +475,6 @@ BUILTIN_TYPE_DICT = {
    'object' : set([Class_Type("object", {}, False)])
 } 
 
-SLICE_TYPES = [List_Type(None, [], set()), string_type]
-INDEX_TYPES = [List_Type(None, [], set()), Dict_Type(None, [], set()), string_type]
-ALL_TYPES = [List_Type(None, [], set()), Dict_Type(None, [], set()), int_type, float_type, bool_type, string_type, bytes_type, builtin_type]
+SLICE_TYPES = [List_Type(), string_type]
+INDEX_TYPES = [List_Type(), Dict_Type(), string_type]
+ALL_TYPES = [List_Type(), Dict_Type(), int_type, float_type, bool_type, string_type, bytes_type, builtin_type]

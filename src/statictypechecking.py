@@ -545,7 +545,7 @@ class TypeInferrer(AstFullTraverser):
             self.visit(z)
         for z in node.values:
             self.visit(z)
-        return [set([Dict_Type(None, [], set())])]
+        return [set([Dict_Type()])]
     
     def do_If(self,node):
         self.visit(node.test)

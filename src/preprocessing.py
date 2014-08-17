@@ -35,13 +35,11 @@ class Preprocessor(AstFullTraverser):
     '''
     def __init__(self):
         AstFullTraverser.__init__(self)
-        self.in_aug_assign = False
             # A hack: True if visiting the target of an AugAssign node.
         self.u = Utils()
 
     class Dummy_Node:
         def __init__(self):
-            
             # Use stc_ prefix to ensure no conflicts with ast.AST node field names.
             self.stc_parent = None
             self.stc_context = None
@@ -51,11 +49,6 @@ class Preprocessor(AstFullTraverser):
         '''Run the prepass: init, then visit the root.'''
         # Init all ivars.
         self.context = None
-        self.fn = fn
-        self.n_attributes = 0
-        self.n_contexts = 0
-        self.n_defined = 0
-        self.n_nodes = 0
         self.parent = self.Dummy_Node()
         self.import_dependents = None
         self.visit(root)
@@ -67,7 +60,6 @@ class Preprocessor(AstFullTraverser):
     def visit(self,node):
         '''Inject node references in all nodes.'''
         assert isinstance(node,ast.AST),node.__class__.__name__
-        self.n_nodes += 1
         # Save the previous context & parent & inject references.
         # Injecting these two references is cheap.
         node.stc_context = self.context
@@ -89,13 +81,11 @@ class Preprocessor(AstFullTraverser):
         st = cx.stc_symbol_table
         d = st.d
         if name not in d.keys():
-            self.n_defined += 1
             d[name] = [] # The type list.
         if defined:
             st.defined.add(name)
 
     def do_Attribute(self,node):
-        self.n_attributes += 1
         name = self.visit(node.value)
         cx = node.stc_context
         st = cx.stc_symbol_table
@@ -151,7 +141,6 @@ class Preprocessor(AstFullTraverser):
     def do_ClassDef(self, node):
         node.variableTypes = {}
         
-        self.n_contexts += 1
         parent_cx = self.context
         assert parent_cx == node.stc_context
         # Add this function to its parents contents dict
@@ -185,7 +174,6 @@ class Preprocessor(AstFullTraverser):
     def do_FunctionDef(self, node):     
         node.variableTypes = {}
         
-        self.n_contexts += 1
         parent_cx = self.context
         assert parent_cx == node.stc_context
         # Add this function to its parents contents dict
@@ -263,7 +251,6 @@ class Preprocessor(AstFullTraverser):
             
 
     def do_Lambda(self, node):
-        self.n_contexts += 1
         parent_cx = self.context
         assert parent_cx == node.stc_context
         # Inject the symbol table for this node.
@@ -293,7 +280,6 @@ class Preprocessor(AstFullTraverser):
     def do_Module (self,node):
         node.variableTypes = {}
         
-        self.n_contexts += 1
         assert self.context is None
         assert node.stc_context is None
         # Inject the symbol table for this node.
@@ -365,7 +351,6 @@ class Preprocessor(AstFullTraverser):
             # If there is no binding, we will get an UnboundLocalError at run time.
             # However, AugAssigns do not actually assign to the var.
             assert hasattr(cx,'stc_symbol_table'),cx
-            self.define_name(cx,node.id,defined = not self.in_aug_assign)
             node.stc_scope = cx
         else:
             # ast.Store does *not* necessarily define the scope.

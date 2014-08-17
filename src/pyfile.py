@@ -4,12 +4,23 @@ from src.preprocessing import Preprocessor
 from src.controlflowgraph import ControlFlowGraph, PrintCFG
 from src.traversers.ssatraverser import SSA_Traverser
 from src.traversers.ssapreprocessor import SSA_Pre_Processor
+from src.preprocessingsecond import PreprocessorSecond
 from src.utils import Utils
 import src.stcglobals as stcglobals
 
 class PyFile(object):
 
-    def __init__(self, name, relative_path, root):
+    def __init__(self, name, relative_path, root):  
+        # The base type for this file. All files have a module type.
+        self.module_type = None
+        self.source = self.prepare_file(root, name)
+        self.name = name
+        self.path = relative_path
+        self.typed = False
+ #       self.global_vars = None
+        
+    def prepare_file(self, root, name):
+        ''' Applies cfg, ssa and preprocessing. '''
         print("ast-ing " + name)
         ast_source = PyFile.parse_file(root)
         print("Finished ast " + name)
@@ -34,13 +45,12 @@ class PyFile(object):
         ssa_source = PyFile.apply_ssa(ssa_pp_source)
         print("Finished ssa-ing " + name)
         
-        print(utils.dump_ast(ssa_source))
+        print("preprocessingsecond " + name)
+        pp_2_source = PyFile.apply_preprocessing_second(self, ssa_source)
+        print("Finished preprocessingsecond " + name)
         
-        self.source = ssa_source
-        self.name = name
-        self.path = relative_path
-        self.typed = False
-        self.global_vars = None
+        print(utils.dump_ast(pp_2_source))
+        return pp_2_source
         
     def get_source(self):
         return self.source
@@ -54,11 +64,11 @@ class PyFile(object):
     def has_been_typed(self):
         return self.typed
     
-    def set_global_vars(self, global_vars):
-        self.global_vars = global_vars
+    def set_module_type(self, module_type):
+        self.module_type = module_type
         
-    def get_global_vars(self):
-        return self.global_vars
+    def get_module_type(self):
+        return self.module_type
     
     @staticmethod
     def extract_source(fn):
@@ -93,3 +103,8 @@ class PyFile(object):
     def apply_cfg(source):
         cfg = ControlFlowGraph()
         return cfg.run(source)
+    
+    @staticmethod
+    def apply_preprocessing_second(file, source):
+        pp2 = PreprocessorSecond()
+        return pp2.run(file, source)

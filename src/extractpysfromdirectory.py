@@ -1,7 +1,4 @@
 import os
-import ast
-
-import src.stcglobals as stcglobals
 from src.pyfile import PyFile
 
 def get_pys(top_level):
