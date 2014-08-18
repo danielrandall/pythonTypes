@@ -112,8 +112,14 @@ class Class_Base():
             self.global_dependents[name] = []
         return True
             
-    def get_global_var(self, var):
+    def get_var(self, var):
         return self.global_vars[var]
+    
+    def get_vars(self):
+        return self.global_vars
+    
+    def set_var(self, name, var):
+        self.global_vars[name] = var
     
     def create_dependent_dict(self):
         self.global_dependents = {}
@@ -135,7 +141,7 @@ class Class_Type(Callable_Type, Class_Base):
     
         TODO: Bultin functions such as __class__ .
         TODO: Only allow static functions to be called from here. '''
-    def __init__(self, name, global_vars, has_call_func):
+    def __init__(self, name, global_vars, has_call_func=False):
         ''' global_vars are variables accessible outside of the class. ''' 
         kind = 'Class Def: %s' % name
         super().__init__(kind)

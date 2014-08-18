@@ -70,9 +70,11 @@ class SSA_Pre_Processor(AstFullTraverser):
         
     def do_Name(self, node):
         # Global variable
-        if isinstance(node.ctx, ast.Store) and isinstance(node.stc_context, ast.Module):
+        if isinstance(node.ctx, ast.Store) and (isinstance(node.stc_context, ast.Module) or isinstance(node.stc_context, ast.ClassDef)):
             self.ssa_exempts.add(node.id)
         if isinstance(node.stc_context, ast.Module):
+            return
+        if isinstance(node.stc_context, ast.ClassDef):
             return
         if node.id == "True" or node.id == "False":
             return

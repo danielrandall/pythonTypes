@@ -211,7 +211,7 @@ class SSA_Traverser(AstFullTraverser):
         # We don't SSA a global variable
         if node.id == "num":
             pass
-        if isinstance(node.stc_context, ast.Module):
+        if isinstance(node.stc_context, ast.Module) or isinstance(node.stc_context, ast.ClassDef):
             return
         if node.id == "True" or node.id == "False":
             return

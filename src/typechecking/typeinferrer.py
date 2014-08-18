@@ -5,6 +5,9 @@ from src.traversers.astfulltraverser import AstFullTraverser
 from src.typechecking.basictypevariable import BasicTypeVariable
 from src.typechecking.contentstypevariable import ContentsTypeVariable
 from src.typechecking.binoptypevariable import BinOpTypeVariable
+from src.typechecking.classtypevariable import ClassTypeVariable
+from src.typechecking.getattrtypevariable import GetAttrTypeVariable
+from src.typechecking.setattrtypevariable import SetAttrTypeVariable
 from src.typeclasses import *
 from src.traversers.astfulltraverser import AstFullTraverser
 from src.importdependent import ImportDependent
@@ -99,11 +102,12 @@ class TypeInferrer(AstFullTraverser):
     
     def do_Name(self, node):
         ''' TODO: Add True/False/None to builtins. '''
-        print(node.id)
-        if (node.id == "True" or node.id == "False"):
+        if node.id == "True" or node.id == "False":
             return [BasicTypeVariable([bool_type])]
-        if (node.id == "None"):
+        if node.id == "None":
             return [BasicTypeVariable([none_type])]
+        if node.id == "self":
+            return [self.current_class]
         return [self.variableTypes[node.id]]
     
     def do_Phi_Node(self, node):
@@ -122,9 +126,7 @@ class TypeInferrer(AstFullTraverser):
     def do_Assign(self, node):
         ''' Set all target variables to have the type of the value of the
             assignment. '''
-        print(node.lineno)
         value_types = self.visit(node.value)
-    
         targets = []
         self.currently_assigning = True
         try:
@@ -136,9 +138,6 @@ class TypeInferrer(AstFullTraverser):
         
     def conduct_assignment(self, targets, value_types, node):
         ''' Updates the type variables with the new types. '''
-#        print(node.lineno)
-        print(targets)
-        print(value_types)
         # Special case list assignment
         if len(targets) != len(value_types):
             # Makes sure it's a single list
@@ -148,15 +147,30 @@ class TypeInferrer(AstFullTraverser):
             value_types = [contents_var] * len(targets)
             
         for target, value in zip(targets, value_types):
+            print(value)
             assert isinstance(value, BasicTypeVariable)
             assert isinstance(target, BasicTypeVariable)
             value.add_new_dependent(target)
+        print("Conduct")
+        self.print_types()
             
     def do_Call(self, node):
         return [BasicTypeVariable([any_type])]
     
-    def do_Attribute(self,node):
-        return [BasicTypeVariable([any_type])]
+    def do_Attribute(self, node):
+        return_type = None
+        value = self.visit(node.value)[0]
+        if isinstance(node.ctx, ast.Store):
+            return_type = SetAttrTypeVariable(value, node.attr)
+            # Create constraint between value and setattr
+            self.conduct_assignment([return_type], [value], node)
+        elif isinstance(node.ctx, ast.Load):
+            return_type = GetAttrTypeVariable(value, node.attr)
+            # Create constraint between value and getattr
+            self.conduct_assignment([return_type], [value], node)
+        else:
+            assert(False)
+        return [return_type]
         
     def do_FunctionDef(self, node):
         ''' Find all args and return values.
@@ -185,47 +199,40 @@ class TypeInferrer(AstFullTraverser):
         self.variableTypes.update(node.stc_context.variableTypes)
 
         parent_class = self.current_class
-        # Deal with inheritence.
+        # Deal with inheritance.
         inherited_vars = {}
+        base_classes = []
         for base in node.bases:
-            base_class = self.visit(base)[0]
-            acceptable_type = False
-            for possible_type in base_class:
-                if possible_type == any_type:
-                    # What the hell do I do here?
-                    acceptable_type = True
-                if isinstance(possible_type, Class_Type):
-                    # If there is a clash, the first instance will be used
-                    inherited_vars.update({k:v for k,v in possible_type.get_vars().items() if k not in inherited_vars})
-                    acceptable_type = True
-            assert acceptable_type, "Line " + str(node.lineno) + ": " + base.id + " is not a class. "
-        # Add the self variables found
-   #     for self_var in node.self_variables:
-   #         if self_var not in inherited_vars:
-   #             inherited_vars[self_var] = set()
-        self.current_class = Class_Type(node.name, inherited_vars, node.callable)
-        self.move_init_to_top(node.body, node)
+            base_classes.append(self.visit(base)[0])
         
-        for z in node.body:
-            self.visit(z)
-        # We need to set the parameters for init
-     #   init_def = list(self.variableTypes["__init__"])[0]
+        new_class = ClassTypeVariable(base_classes, node.variableTypes, node.name)
+        # Set up constraints between the classes
+        self.conduct_assignment([new_class] * len(base_classes), base_classes, node)
+            
+        # Add the definition to the context of this class
+        self.conduct_assignment([self.variableTypes[node.name]], [new_class], node)
         
-        # Set the call if possible
-        is_callable, call_node = node.callable
-        if is_callable:
-            fun = list(self.variableTypes[call_node.name])
-            # Should be a list of size 1
-            assert len(fun) == 1, "__call__ multiply defined. "
-            self.current_class.set_callable_params(fun[0].get_parameter_types(), fun[0].get_return_types())
-        
-        pprint("class globals")
-        pprint(node.self_variables)
-        
-        # Restore parents variables
-        self.variableTypes = node.stc_context.variableTypes
-        self.variableTypes[node.name] = set([self.current_class])
-        self.current_class = parent_class 
+        # Type the class body
+        self.current_class = new_class
+        try:
+            self.move_init_to_top(node.body, node)
+            for z in node.body:
+                self.visit(z)
+        finally:
+            # Restore parents variables
+            print("Class " + node.name + " vars")
+            self.print_types()
+            self.variableTypes = node.stc_context.variableTypes
+            self.current_class = parent_class 
+            
+    def move_init_to_top(self, body, node):
+        assert isinstance(body, list), "Body needs to be a list."
+        for i in range(len(body)):
+            elem = body[i]
+            if isinstance(elem, ast.FunctionDef):
+                if elem.name == "__init__":
+                    body.insert(0, body.pop(i))
+                    return
   
     def do_BinOp (self, node):
         ''' Adding the dependents causes it to update 3 times initially.

@@ -32,5 +32,7 @@ class ImportDependent(object):
         name = self.get_module_name()
         print(converted)
         print(name)
+        if name == self.import_from:
+            return "."
         # We want to remove the last '/' as well
         return converted[:converted.rfind(name) - 1]        
