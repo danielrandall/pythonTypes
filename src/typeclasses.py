@@ -126,8 +126,8 @@ class Class_Base():
         self.global_dependents = {}
         for glob in self.global_vars:
             self.global_dependents[glob] = []
-        print("DEPENDENTS")
-        print(self.global_dependents)
+      #  print("DEPENDENTS")
+      #  print(self.global_dependents)
     
     def update_dependents(self, var, new_dependent):
         if new_dependent not in self.global_dependents[var]:
@@ -339,6 +339,16 @@ class List_Type(Container_Type):
         
     def define_kind(self):
         self.kind = 'List(%s)' % repr(self.content_types)
+        
+class Generator_Type(Container_Type):
+    ''' TODO: Add new types when the function append is called or similar. '''
+    def __init__(self):
+        kind = 'List({})'
+        Container_Type.__init__(self, kind, None, [], set())
+        
+    def define_kind(self):
+        self.kind = 'List(%s)' % repr(self.content_types)
+    
     
 class Tuple_Type(Container_Type):
     def __init__(self):

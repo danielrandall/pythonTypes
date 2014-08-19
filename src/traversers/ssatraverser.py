@@ -57,8 +57,8 @@ class SSA_Traverser(AstFullTraverser):
         for statement in block.statements:
             self.visit(statement)
         dict_to_pass = self.d.copy()
-        print("Block " + str(block.start_line_no) + " to")
-        print(block.exit_blocks)        
+    #    print("Block " + str(block.start_line_no) + " to")
+    #    print(block.exit_blocks)        
         for an_exit in block.exit_blocks:
             self.add_to_list((an_exit, dict_to_pass))
             
@@ -87,6 +87,7 @@ class SSA_Traverser(AstFullTraverser):
             else:
                 self.d[ref_var] = 1
             new_phi = Phi_Node(ref_var + str(self.d[ref_var]), set())
+            new_phi.lineno = block.statements[0].lineno
             block.phi_nodes[ref_var] = new_phi
             block.statements[0].phi_nodes.append(new_phi)
             
@@ -97,8 +98,8 @@ class SSA_Traverser(AstFullTraverser):
                     if var + str(num) == block.phi_nodes[var].get_var():
                         continue
                     block.phi_nodes[var].update_targets(var + str(num))
-                    print("Phis for: " + str(block.start_line_no))
-                    print(block.phi_nodes)
+          #          print("Phis for: " + str(block.start_line_no))
+           #         print(block.phi_nodes)
                     
     def visit(self,node):
         '''Compute the dictionary of assignments live at any point.'''
@@ -111,6 +112,8 @@ class SSA_Traverser(AstFullTraverser):
       #  print(node.id)
         # We don't SSA a global variable
         if isinstance(node.stc_context, ast.Module) or isinstance(node.stc_context, ast.ClassDef):
+            return
+        if node.id == "_":
             return
         if node.id == "True" or node.id == "False":
             return
@@ -207,6 +210,20 @@ class SSA_Traverser(AstFullTraverser):
             self.visit(node.starargs)
         if getattr(node,'kwargs',None):
             self.visit(node.kwargs)
+            
+    def do_ListComp(self, node):
+        ''' Don't ssa stuf in comps '''
+        pass
+    
+    def do_DictComp(self, node):
+        ''' Don't ssa stuf in comps '''
+        pass
+    
+    def do_GeneratorExp(self,node):
+        ''' don't ssa elts. '''
+        #self.visit(node.elt)
+        for z in node.generators:
+            self.visit(z)
         
 class Phi_Node():
     ''' Class used to represent a phi node in the SSA. Allows us to represent

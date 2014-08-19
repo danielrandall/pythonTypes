@@ -49,7 +49,7 @@ class PyFile(object):
         pp_2_source = PyFile.apply_preprocessing_second(self, ssa_source)
         print("Finished preprocessingsecond " + name)
         
-        print(utils.dump_ast(pp_2_source))
+     #   print(utils.dump_ast(pp_2_source))
         return pp_2_source
         
     def get_source(self):

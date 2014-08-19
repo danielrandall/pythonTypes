@@ -27,7 +27,6 @@ class BinOpTypeVariable(BasicTypeVariable):
             return set()
         
         extracted = set()
-        print(self.op)
         for left in left_ts:
             for right in right_ts:
                 ''' TODO: do this better | check the type is acceptable
@@ -36,9 +35,13 @@ class BinOpTypeVariable(BasicTypeVariable):
                     extracted.add(any_type)
                     continue
                 if isinstance(left, Any_Type):
+                    if not right in BIN_OP_CONSTRAINTS[self.op]:
+                        continue
                     extracted |= set(BIN_OP_CONSTRAINTS[self.op][List_Type if isinstance(right, List_Type) else right])
                     continue
                 if isinstance(right, Any_Type):
+                    if not left in BIN_OP_CONSTRAINTS[self.op]:
+                        continue
                     extracted |= set(BIN_OP_CONSTRAINTS[self.op][List_Type if isinstance(left, List_Type) else left])
                     continue
 

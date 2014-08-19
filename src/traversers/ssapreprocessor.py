@@ -24,21 +24,35 @@ class SSA_Pre_Processor(AstFullTraverser):
         return method(node)
     
     def do_Module(self, node):
-        print("CFG for Module code")
         for dependent in node.import_dependents:
             self.ssa_exempts.add(dependent.get_as_name())
         self.process_blocks(node.initial_block)
         for z in node.body:
             self.visit(z)
+            
+    def do_ClassDef (self, node):
+        self.ssa_exempts.add(node.name)
+        old_ssa_exempts = self.ssa_exempts.copy()
+        try:
+            for z in node.bases:
+                self.visit(z)
+            for z in node.body:
+                self.visit(z)
+            for z in node.decorator_list:
+                self.visit(z)
+        finally:
+            self.ssa_exempts = old_ssa_exempts 
+        
     
     def do_FunctionDef(self, node):
-        print("CFG for " + node.name)
-        print(node.lineno)
+        self.ssa_exempts.add(node.name)
         old_ssa_exempts = self.ssa_exempts.copy()
-        # Visit args to exempts them
-        self.visit(node.args)
-        self.process_blocks(node.initial_block)
-        self.ssa_exempts = old_ssa_exempts 
+        try:
+            # Visit args to exempts them
+            self.visit(node.args)
+            self.process_blocks(node.initial_block)
+        finally:
+            self.ssa_exempts = old_ssa_exempts 
         
     def do_arg(self, node):
         self.ssa_exempts.add(node.arg)
@@ -67,6 +81,20 @@ class SSA_Pre_Processor(AstFullTraverser):
                 self.visit(z)
             for z in node.orelse:
                 self.visit(z)
+                
+    def do_ListComp(self, node):
+        ''' Don't ssa stuf in comps '''
+        pass
+    
+    def do_DictComp(self, node):
+        ''' Don't ssa stuf in comps '''
+        pass
+    
+    def do_GeneratorExp(self,node):
+        ''' don't ssa elts. '''
+        #self.visit(node.elt)
+        for z in node.generators:
+            self.visit(z)
         
     def do_Name(self, node):
         # Global variable
@@ -75,6 +103,8 @@ class SSA_Pre_Processor(AstFullTraverser):
         if isinstance(node.stc_context, ast.Module):
             return
         if isinstance(node.stc_context, ast.ClassDef):
+            return
+        if node.id == "_":
             return
         if node.id == "True" or node.id == "False":
             return

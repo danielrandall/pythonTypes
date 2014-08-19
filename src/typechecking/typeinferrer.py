@@ -110,7 +110,11 @@ class TypeInferrer(AstFullTraverser):
         if node.id == "None":
             return [BasicTypeVariable([none_type])]
         if node.id == "self":
-            return [self.current_class]
+            if self.current_class:
+                return [self.current_class]
+            else:
+                # Then we have to treat this like a regular parameter. Make sure it's a function parameter
+                return [BasicTypeVariable([any_type])]
         return [self.variableTypes[node.id]]
     
     def do_Phi_Node(self, node):
@@ -121,6 +125,7 @@ class TypeInferrer(AstFullTraverser):
         var = self.variableTypes[node.get_var()]
         targets = []
         values = []
+        print(node.lineno)
         for target in node.get_targets():
             targets.append(var)
             values.append(self.variableTypes[target])
@@ -142,26 +147,30 @@ class TypeInferrer(AstFullTraverser):
     def conduct_assignment(self, targets, value_types, node):
         ''' Updates the type variables with the new types. '''
    #     print()
-        print(node.lineno)
+   #     print(node.lineno)
    #     print("targets")
    #     print(targets)
    #     print("values")
    #     print(value_types)
    #     print()
         # Special case list assignment
-        if len(targets) != len(value_types):
-            # Makes sure it's a single list
-            assert len(value_types) == 1
-            # Create a contentstypevariable for each target
-            contents_var = ContentsTypeVariable(list(value_types[0].get()))
-            value_types = [contents_var] * len(targets)
+        try:
+            if len(targets) != len(value_types):
+                # Makes sure it's a single list
+                assert len(value_types) == 1
+                # Create a contentstypevariable for each target
+                contents_var = ContentsTypeVariable(list(value_types[0].get()))
+                value_types = [contents_var] * len(targets)
             
-        for target, value in zip(targets, value_types):
-            assert isinstance(value, BasicTypeVariable)
-            assert isinstance(target, BasicTypeVariable)
-            value.add_new_dependent(target)
-        print("Conduct")
-        self.print_types()
+            for target, value in zip(targets, value_types):
+                assert isinstance(value, BasicTypeVariable)
+                assert isinstance(target, BasicTypeVariable)
+                value.add_new_dependent(target)
+        except:
+            print("xcept")
+            print(node.lineno)
+    #    print("Conduct")
+    #    self.print_types()
             
     def do_Call(self, node):
         return [BasicTypeVariable([any_type])]
@@ -170,14 +179,18 @@ class TypeInferrer(AstFullTraverser):
         return_type = None
         value = self.visit(node.value)[0]
         if isinstance(node.ctx, ast.Store):
-            return_type = SetAttrTypeVariable(value, node.attr)
+            return_type = SetAttrTypeVariable(value, node.attr, node)
             # Create constraint between value and setattr
             self.conduct_assignment([return_type], [value], node)
         elif isinstance(node.ctx, ast.Load):
-            return_type = GetAttrTypeVariable(value, node.attr)
+            return_type = GetAttrTypeVariable(value, node.attr, node)
             # Create constraint between value and getattr
             self.conduct_assignment([return_type], [value], node)
+        elif isinstance(node.ctx, ast.Del):
+            # This is like del x.f . Do we care? Don't think so
+            return
         else:
+            print("CONTEXXXXXXXXXX")
             print(node.ctx)
             assert(False)
         return [return_type]
@@ -186,8 +199,6 @@ class TypeInferrer(AstFullTraverser):
         ''' Find all args and return values.
         
             TODO: Find out possible types in *karg dict. '''
-        print("Fun typessssssssssssssssssssssssssss")
-        print(node.variableTypes)
         self.variableTypes = node.variableTypes
         self.variableTypes.update(node.stc_context.variableTypes)
         old_return = self.return_variable
@@ -388,6 +399,12 @@ class TypeInferrer(AstFullTraverser):
         return_types = BasicTypeVariable()
         self.conduct_assignment([return_types] * 2, [body_types, else_types], node)
         return [return_types]
+    
+    def do_GeneratorExp(self,node):
+        self.visit(node.elt)
+        for z in node.generators:
+            self.visit(z)
+        return [BasicTypeVariable([Generator_Type()])]
 
     def do_Compare(self, node):
         ''' A comparison will always return a boolean type.

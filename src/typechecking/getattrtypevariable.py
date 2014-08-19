@@ -4,8 +4,12 @@ from src.typeclasses import Class_Type
 class GetAttrTypeVariable(BasicTypeVariable):
     ''' Must work for modules and classes.
         self.types represents the types the attribute can take '''
-    def __init__(self, value, attr):
-        assert isinstance(value, BasicTypeVariable)
+    def __init__(self, value, attr, node):
+        try:
+            assert isinstance(value, BasicTypeVariable)
+        except:
+            print(value)
+            print(node.lineno)
         
         self.value = value
         self.attr = attr

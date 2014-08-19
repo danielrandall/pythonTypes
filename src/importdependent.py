@@ -30,8 +30,8 @@ class ImportDependent(object):
     def get_directory_no_name(self):
         converted = self.convert_to_directories()
         name = self.get_module_name()
-        print(converted)
-        print(name)
+ #       print(converted)
+ #       print(name)
         if name == self.import_from:
             return "."
         # We want to remove the last '/' as well

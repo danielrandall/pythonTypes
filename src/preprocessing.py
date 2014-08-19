@@ -414,6 +414,10 @@ class Preprocessor(AstFullTraverser):
         if node.value:
             self.visit(node.value)
             
+            
+            
+    # The following functions are only here to track the current body.
+            
     def do_Try(self, node):
         # body
         old_body = self.current_body
@@ -536,6 +540,20 @@ class Preprocessor(AstFullTraverser):
         self.current_body = node.orelse
         try:
             for z in node.orelse:
+                self.visit(z)
+        finally:
+            self.current_body = old_body
+            
+    def do_ExceptHandler(self,node):
+        if node.type:
+            self.visit(node.type)
+        if node.name and isinstance(node.name,ast.Name):
+            self.visit(node.name)
+        # body
+        old_body = self.current_body
+        self.current_body = node.body
+        try:
+            for z in node.body:
                 self.visit(z)
         finally:
             self.current_body = old_body

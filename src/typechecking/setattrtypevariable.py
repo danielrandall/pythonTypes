@@ -6,7 +6,7 @@ class SetAttrTypeVariable(BasicTypeVariable):
         self.types represents the types the attribute assigns.
         
         This class adds its own dependents '''
-    def __init__(self, value, attr):
+    def __init__(self, value, attr, node):
         assert isinstance(value, BasicTypeVariable)
         
         self.value = value
