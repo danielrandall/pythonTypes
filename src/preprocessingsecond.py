@@ -48,8 +48,8 @@ class PreprocessorSecond(AstFullTraverser):
                 self.visit(z)
         finally:
             # Restore
-            print("class vars " + node.name)
-            pprint(node.variableTypes)
+       #     print("class vars " + node.name)
+       #     pprint(node.variableTypes)
             self.variableTypes = old_types
 
     def do_FunctionDef(self, node):    
@@ -66,8 +66,8 @@ class PreprocessorSecond(AstFullTraverser):
                 self.visit(z)
         finally:
             # Restore
-            print("functions vars " + node.name)
-            pprint(node.variableTypes)
+      #      print("functions vars " + node.name)
+      #      pprint(node.variableTypes)
             self.variableTypes = old_types
 
     def do_Lambda(self, node):
@@ -84,8 +84,8 @@ class PreprocessorSecond(AstFullTraverser):
                 self.variableTypes[as_name] = BasicTypeVariable() 
         for z in node.body:
             self.visit(z)
-        print("Module vars")
-        pprint(node.variableTypes)
+     #   print("Module vars")
+     #   pprint(node.variableTypes)
         module_type = Module_Type(node.variableTypes)
         self.source_file.set_module_type(module_type)
         

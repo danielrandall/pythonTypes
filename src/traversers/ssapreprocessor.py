@@ -97,15 +97,15 @@ class SSA_Pre_Processor(AstFullTraverser):
         self.current_block = block
         pred_nos = [block.start_line_no for block in block.predecessors]
         exit_nos = [block.start_line_no for block in block.exit_blocks]
-        pprint("Block starting at: " + str(block.start_line_no) + " to " + str(exit_nos))
-        pprint("Block starting at: " + str(block.start_line_no) + " preceded by " + str(pred_nos))
-        print(block.statements)
+   #     pprint("Block starting at: " + str(block.start_line_no) + " to " + str(exit_nos))
+   #     pprint("Block starting at: " + str(block.start_line_no) + " preceded by " + str(pred_nos))
+   #     print(block.statements)
         if block.start_line_no == 4:
             pass
         for statement in block.statements:
             self.visit(statement)
             block.ssa_prepro_mark = True
-        print("Variables referenced: " + str(block.referenced_vars))
+   #     print("Variables referenced: " + str(block.referenced_vars))
         for an_exit in block.exit_blocks:
             self.process_blocks(an_exit)
       #  if block.next_block:

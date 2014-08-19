@@ -48,17 +48,17 @@ class SSA_Traverser(AstFullTraverser):
         ''' TODO: Handle infinite loops '''
         if block.ssa_mark:
             return
+        block.ssa_mark = True
         if block.start_line_no == "Exit":
             return
         if not block.statements:
             return
-        if block.start_line_no == 4:
-            pass
         self.add_phi_nodes(block)
         for statement in block.statements:
             self.visit(statement)
-        block.ssa_mark = True
         dict_to_pass = self.d.copy()
+        print("Block " + str(block.start_line_no) + " to")
+        print(block.exit_blocks)        
         for an_exit in block.exit_blocks:
             self.add_to_list((an_exit, dict_to_pass))
             
@@ -74,7 +74,6 @@ class SSA_Traverser(AstFullTraverser):
         while insert_num > test_num and i < len(self.blocks_to_process) - 1:
             i += 1
             test_num = self.blocks_to_process[i][0].start_line_no
-            print(type(test_num))
         self.blocks_to_process.insert(i, item)
         
             
@@ -95,8 +94,6 @@ class SSA_Traverser(AstFullTraverser):
         for var, num in predecessor_dict.items():
             if var in block.referenced_vars:
                     # Don't add the var if it is itself!
-                    if num == 6:
-                        pass
                     if var + str(num) == block.phi_nodes[var].get_var():
                         continue
                     block.phi_nodes[var].update_targets(var + str(num))
@@ -107,31 +104,40 @@ class SSA_Traverser(AstFullTraverser):
         '''Compute the dictionary of assignments live at any point.'''
         method = getattr(self,'do_' + node.__class__.__name__)
         method(node)
-    
-    def buildPhiList(self, nameList, dictList, node, before):
-        ''' name_list is the list of names to add phi nodes for.
-            dict_list is the list of dicts to extract the instance of the variable
-        '''
-        phiList = []
-        for name in nameList:
-            if name in self.d:  # Needed for before when var may not yet exist
-                self.d[name] += 1
+        
+    def do_Name(self, node):
+        ''' If the id is True or false then ignore. WHY ARE TRUE AND FALSE
+            IDENTIFIED THE SAME WAY AS VARIABLES. GAH. '''
+      #  print(node.id)
+        # We don't SSA a global variable
+        if isinstance(node.stc_context, ast.Module) or isinstance(node.stc_context, ast.ClassDef):
+            return
+        if node.id == "True" or node.id == "False":
+            return
+        if node.id == "None":
+            return
+        if node.id == "self":
+            return
+        if node.id in BUILTIN_TYPE_DICT:
+            return
+        if not hasattr(node, 'originalId'):
+            node.originalId = node.id
+        # If the variable is being assigned a new value
+        if isinstance(node.ctx, ast.Store):
+            if node.originalId in self.d:
+                self.d[node.originalId] += 1
             else:
-                self.d[name] = 1
-            targets = []
-            for nameDict in dictList:
-                # Check if the variables had not been previously
-                #  initialised
-                if name not in nameDict:
-                    targets.append(Phi_Node.TARGET_NOT_DECLARED)
-                else:
-                    if (before):
-                        targets.append(name + str(nameDict[name]))
-                    else:
-                        targets.append(name + str(nameDict[name]))
-            newPhi = Phi_Node(name + str(self.d[name]), targets)
-            phiList.append(newPhi)
-        return phiList
+                self.d[node.originalId] = 1
+        # If it's x.y attribute and a ast.Load then for now we assume that it's already present
+        ''' TODO: Check all possible attributes. '''
+        if isinstance(node.ctx, ast.Load) and isinstance(node, ast.Attribute):
+            return
+                
+       # pprint(self.d)
+        try:
+            node.id = node.originalId + str(self.d[node.originalId])
+        except:
+            pass
 
     def do_ClassDef (self, node):
         ''' - We do not assign ssa numbers to class names as it's impossible
@@ -149,21 +155,19 @@ class SSA_Traverser(AstFullTraverser):
         old_d = self.d.copy()
        # print(node.name)
        # self.visit(node.args)
-        print("ssa-ing function: " + node.name)
-        if node.name == "str2int":
-            pass
+    #    print("ssa-ing function: " + node.name)
         self.blocks_to_process.append((node.initial_block, None))
         self.process_block_list()
         self.d = old_d
 
     def do_Lambda(self, node):
-        old_d = self.d
+        old_d = self.d.copy()
         self.visit(node.args)
         self.visit(node.body)
         self.d = old_d
 
     def do_Module (self, node):
-        print("ssa-ing for Module code")
+   #     print("ssa-ing for Module code")
      #   self.blocks_to_process.append(node.initial_block)
      #   self.process_block_list()
         for z in node.body:
@@ -203,42 +207,6 @@ class SSA_Traverser(AstFullTraverser):
             self.visit(node.starargs)
         if getattr(node,'kwargs',None):
             self.visit(node.kwargs)
-    
-    def do_Name(self, node):
-        ''' If the id is True or false then ignore. WHY ARE TRUE AND FALSE
-            IDENTIFIED THE SAME WAY AS VARIABLES. GAH. '''
-      #  print(node.id)
-        # We don't SSA a global variable
-        if node.id == "num":
-            pass
-        if isinstance(node.stc_context, ast.Module) or isinstance(node.stc_context, ast.ClassDef):
-            return
-        if node.id == "True" or node.id == "False":
-            return
-        if node.id == "None":
-            return
-        if node.id == "self":
-            return
-        if node.id in BUILTIN_TYPE_DICT:
-            return
-        if not hasattr(node, 'originalId'):
-            node.originalId = node.id
-        # If the variable is being assigned a new value
-        if isinstance(node.ctx, ast.Store):
-            if node.originalId in self.d:
-                self.d[node.originalId] += 1
-            else:
-                self.d[node.originalId] = 1
-        # If it's x.y attribute and a ast.Load then for now we assume that it's already present
-        ''' TODO: Check all possible attributes. '''
-        if isinstance(node.ctx, ast.Load) and isinstance(node, ast.Attribute):
-            return
-                
-       # pprint(self.d)
-        try:
-            node.id = node.originalId + str(self.d[node.originalId])
-        except:
-            pass
         
 class Phi_Node():
     ''' Class used to represent a phi node in the SSA. Allows us to represent
@@ -252,6 +220,7 @@ class Phi_Node():
     def __init__(self, var, targets):
         self.var = var
         self.targets = targets
+        self.lineno = -1
         
     def _str__(self):
         self.__repr__()

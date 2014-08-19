@@ -329,7 +329,8 @@ class AstFullTraverser(AstBaseTraverser):
             
     def do_withitem(self, node):
         self.visit(node.context_expr)
-        self.visit(node.optional_vars)
+        if node.optional_vars:
+            self.visit(node.optional_vars)
 
     def do_Yield(self,node):
         if node.value:

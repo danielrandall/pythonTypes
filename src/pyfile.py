@@ -26,7 +26,7 @@ class PyFile(object):
         print("Finished ast " + name)
         
         utils = Utils()
-        print(utils.dump_ast(ast_source))
+    #    print(utils.dump_ast(ast_source))
         
         print("preprocessing " + name)
         pp_source = PyFile.apply_preprocessing(root, ast_source)
@@ -34,7 +34,7 @@ class PyFile(object):
         
         print("Generating CFG for: " + name)
         cfg_source = self.apply_cfg(pp_source)
-        PrintCFG(cfg_source)
+   #     PrintCFG(cfg_source)
         print("Finished CFG for: " + name)
         
         print("ssa preprocessing " + name)

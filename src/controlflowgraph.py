@@ -213,7 +213,7 @@ class ControlFlowGraph(AstFullTraverser):
             return
         if not self.current_block.start_line_no:
             self.current_block.start_line_no = node.lineno
-            print(self.current_block.start_line_no )
+     #       print(self.current_block.start_line_no )
             
     def check_has_return(self):
         ''' Used for eliminating dead code. '''
@@ -471,14 +471,14 @@ class PrintCFG(AstFullTraverser):
         return method(node)
     
     def do_Module(self, node):
-        print("CFG for Module code")
+      #  print("CFG for Module code")
         self.process_blocks(node.initial_block)
         for z in node.body:
             self.visit(z)
     
     def do_FunctionDef(self, node):
-        print("CFG for " + node.name)
-        print(node.lineno)
+    #    print("CFG for " + node.name)
+    #    print(node.lineno)
         self.process_blocks(node.initial_block)
         
     def process_blocks(self, block):
@@ -489,21 +489,14 @@ class PrintCFG(AstFullTraverser):
             return
         pred_nos = [block.start_line_no for block in block.predecessors]
         exit_nos = [block.start_line_no for block in block.exit_blocks]
-        pprint("Block starting at: " + str(block.start_line_no) + " to " + str(exit_nos))
-        pprint("Block starting at: " + str(block.start_line_no) + " preceded by " + str(pred_nos))
-        print(block.statements)
+    #    pprint("Block starting at: " + str(block.start_line_no) + " to " + str(exit_nos))
+    #    pprint("Block starting at: " + str(block.start_line_no) + " preceded by " + str(pred_nos))
+     #   print(block.statements)
         block.marked = True
         for an_exit in block.exit_blocks:
             self.process_blocks(an_exit)
         if block.next_block:
             self.process_blocks(block.next_block)
-        
-        
-if __name__ == '__main__':
-    fn = "/homes/dr1810/4thYear/individualProject/pythonTypes/testFiles/test.py"
-    cfg = ControlFlowGraph()
-    s_ast = cfg.parse_file(fn)
-    PrintCFG(s_ast)
     
         
         

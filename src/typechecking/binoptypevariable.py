@@ -5,10 +5,11 @@ class BinOpTypeVariable(BasicTypeVariable):
     ''' Represents a binary operation. The types must be given in the order
         left-right.
         self.types represents the types the binop can result in. '''
-    def __init__(self, left, right, op):
+    def __init__(self, node, left, right, op):
         assert isinstance(left, BasicTypeVariable)
         assert isinstance(right, BasicTypeVariable)
         
+        self.lineno = node.lineno
         self.left_types = left
         self.right_types = right
         self.op = op
@@ -26,6 +27,7 @@ class BinOpTypeVariable(BasicTypeVariable):
             return set()
         
         extracted = set()
+        print(self.op)
         for left in left_ts:
             for right in right_ts:
                 ''' TODO: do this better | check the type is acceptable

@@ -52,6 +52,7 @@ class Preprocessor(AstFullTraverser):
         self.parent = self.Dummy_Node()
         self.import_dependents = None
         self.visit(root)
+        self.current_body = None
         # Undo references to Dummy_Node objects.
         root.stc_parent = None
         root.stc_context = None
@@ -130,7 +131,7 @@ class Preprocessor(AstFullTraverser):
             value = node.value
             copy_target = copy.deepcopy(target)
             # New value needs to be loaded, not stored
-            copy_target.ctx = ast.Load
+            copy_target.ctx = ast.Load()
             node.value = ast.BinOp(copy_target, op, value)
             node.value.lineno = node.lineno
             node.targets = [node.target]
@@ -158,8 +159,13 @@ class Preprocessor(AstFullTraverser):
         self.context = node
         for z in node.bases:
             self.visit(z)
-        for z in node.body:
-            self.visit(z)
+            
+        old_body = self.current_body
+        try:
+            for z in node.body:
+                self.visit(z)
+        finally:
+            self.current_body = old_body
         for z in node.decorator_list:
             self.visit(z)
         self.context = parent_cx
@@ -197,8 +203,14 @@ class Preprocessor(AstFullTraverser):
         
         node.args.lineno = node.lineno
         self.visit(node.args)
-        for z in node.body:
-            self.visit(z)
+        
+        old_body = self.current_body
+        self.current_body = node.body
+        try:
+            for z in node.body:
+                self.visit(z)
+        finally:
+            self.current_body = old_body
         for z in node.decorator_list:
             self.visit(z)
         self.context = parent_cx
@@ -290,6 +302,8 @@ class Preprocessor(AstFullTraverser):
         self.import_dependents = node.import_dependents
         # Visit the children in the new context.
         self.context = node
+        
+        self.current_body = node.body
         for z in node.body:
             self.visit(z)
         self.context = None
@@ -306,6 +320,11 @@ class Preprocessor(AstFullTraverser):
         node.slice.lineno = node.lineno
         self.visit(node.slice)
         self.visit(node.value)
+        
+    def do_ExtSlice (self, node):
+        for z in node.dims:
+            z.lineno = node.lineno
+            self.visit(z)
         
     def do_ListComp(self, node):
         self.visit(node.elt)
@@ -333,12 +352,39 @@ class Preprocessor(AstFullTraverser):
             self.visit(z)
             
     def do_With(self, node):
-        for z in node.items:
-            z.lineno = node.lineno
+        ''' withs offer nothing to type inference. Replace all occurences in
+            code with equivalent, nicer, stuff. '''
+        transformed_items = self.convert_with_items(node.items, node.lineno)
+        current_index = self.current_body.index(node)
+        del self.current_body[current_index]
+        insert_list = transformed_items + node.body
+        for elem in reversed(insert_list):
+            self.current_body.insert(current_index, elem)
+        for z in insert_list:
             self.visit(z)
-        for z in node.body:
-            z.lineno = node.lineno
-            self.visit(z)
+       # for z in node.items:
+       #     z.lineno = node.lineno
+       #     self.visit(z)
+       # for z in node.body:
+       #     z.lineno = node.lineno
+       #     self.visit(z)
+            
+    def convert_with_items(self, items, lineno):
+        return_list = []
+        for item in items:
+            new_node = None
+            if item.optional_vars:
+                # Create an assignment
+                new_node = ast.Assign()
+                new_node.lineno = lineno
+                new_node.targets = [item.optional_vars]
+                new_node.value = item.context_expr
+            else:
+                new_node = item.context_expr
+            return_list.append(new_node)
+        return return_list
+                
+                
 
     def do_Name(self, node):
         # If node is a global variable, add it to the module list.
@@ -365,4 +411,131 @@ class Preprocessor(AstFullTraverser):
         assert isinstance(self.context, ast.FunctionDef)
         self.context.generator_function = True
         #self.visit(node.expr)
-        self.visit(node.value)
+        if node.value:
+            self.visit(node.value)
+            
+    def do_Try(self, node):
+        # body
+        old_body = self.current_body
+        self.current_body = node.body
+        try:
+            for z in node.body:
+                self.visit(z)
+        finally:
+            self.current_body = old_body
+        for z in node.handlers:
+            self.visit(z)
+        # orelse
+        old_body = self.current_body
+        self.current_body = node.orelse
+        try:
+            for z in node.orelse:
+                self.visit(z)
+        finally:
+            self.current_body = old_body
+        # final body
+        old_body = self.current_body
+        self.current_body = node.finalbody
+        try:
+            for z in node.finalbody:
+                self.visit(z)
+        finally:
+            self.current_body = old_body
+
+    def do_TryExcept(self, node):
+        old_body = self.current_body
+        self.current_body = node.body
+        try:
+            for z in node.body:
+                self.visit(z)
+        finally:
+            self.current_body = old_body
+        for z in node.handlers:
+            self.visit(z)
+        # orelse
+        old_body = self.current_body
+        self.current_body = node.orelse
+        try:
+            for z in node.orelse:
+                self.visit(z)
+        finally:
+            self.current_body = old_body
+
+    def do_TryFinally(self, node):
+        # body
+        old_body = self.current_body
+        self.current_body = node.body
+        try:
+            for z in node.body:
+                self.visit(z)
+        finally:
+            self.current_body = old_body
+        # final body
+        old_body = self.current_body
+        self.current_body = node.finalbody
+        try:
+            for z in node.finalbody:
+                self.visit(z)
+        finally:
+            self.current_body = old_body
+
+    def do_While (self, node):
+        self.visit(node.test)
+        
+        old_body = self.current_body
+        self.current_body = node.body
+        try:
+            for z in node.body:
+                self.visit(z)
+        finally:
+            self.current_body = old_body
+            
+        # orelse
+        old_body = self.current_body
+        self.current_body = node.orelse
+        try:
+            for z in node.orelse:
+                self.visit(z)
+        finally:
+            self.current_body = old_body
+            
+    def do_If(self,node):
+        self.visit(node.test)
+        
+        old_body = self.current_body
+        self.current_body = node.body
+        try:
+            for z in node.body:
+                self.visit(z)
+        finally:
+            self.current_body = old_body
+            
+        # orelse
+        old_body = self.current_body
+        self.current_body = node.orelse
+        try:
+            for z in node.orelse:
+                self.visit(z)
+        finally:
+            self.current_body = old_body
+            
+    def do_For (self,node):
+        self.visit(node.target)
+        self.visit(node.iter)
+        
+        old_body = self.current_body
+        self.current_body = node.body
+        try:
+            for z in node.body:
+                self.visit(z)
+        finally:
+            self.current_body = old_body
+            
+        # orelse
+        old_body = self.current_body
+        self.current_body = node.orelse
+        try:
+            for z in node.orelse:
+                self.visit(z)
+        finally:
+            self.current_body = old_body

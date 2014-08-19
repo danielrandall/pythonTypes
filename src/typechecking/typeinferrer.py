@@ -19,13 +19,14 @@ class TypeInferrer(AstFullTraverser):
         self.fun_params = []
         # The class definition we are currently under
         self.current_class = None
+        self.return_variable = None
         
         # Detecting circular inferences
         self.call_stack = [] # Detects recursive calls
         self.assign_stack = [] # Detects circular assignments.
 
         # Add the builtin_types to the variable dict
-    #    self.variableTypes.update(BUILTIN_TYPE_DICT)
+        self.variableTypes.update(BUILTIN_TYPE_DICT)
         
        
     def run(self, file_tree):
@@ -82,11 +83,13 @@ class TypeInferrer(AstFullTraverser):
     def type_file(self, file, dependents):   
         ''' Runs the type_checking on an individual file. '''
         root = file.get_source()     
-        print("Printing module: ----------------------------- " + file.get_name() + " ------------------------------")   
+        print()
+        print("Printing module: |||||||||||||||||||||||||||||||||||************************ " + file.path + " " + file.get_name() + " *******************|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||")   
+        print()
         self.variableTypes = root.variableTypes
         self.init()
-        print("-DEPENDENTS-")
-        pprint(dependents)
+   #     print("-DEPENDENTS-")
+   #     pprint(dependents)
         self.variableTypes.update(dependents)
         self.visit(root)
         file.typed = True
@@ -138,6 +141,13 @@ class TypeInferrer(AstFullTraverser):
         
     def conduct_assignment(self, targets, value_types, node):
         ''' Updates the type variables with the new types. '''
+   #     print()
+        print(node.lineno)
+   #     print("targets")
+   #     print(targets)
+   #     print("values")
+   #     print(value_types)
+   #     print()
         # Special case list assignment
         if len(targets) != len(value_types):
             # Makes sure it's a single list
@@ -147,7 +157,6 @@ class TypeInferrer(AstFullTraverser):
             value_types = [contents_var] * len(targets)
             
         for target, value in zip(targets, value_types):
-            print(value)
             assert isinstance(value, BasicTypeVariable)
             assert isinstance(target, BasicTypeVariable)
             value.add_new_dependent(target)
@@ -169,6 +178,7 @@ class TypeInferrer(AstFullTraverser):
             # Create constraint between value and getattr
             self.conduct_assignment([return_type], [value], node)
         else:
+            print(node.ctx)
             assert(False)
         return [return_type]
         
@@ -176,24 +186,36 @@ class TypeInferrer(AstFullTraverser):
         ''' Find all args and return values.
         
             TODO: Find out possible types in *karg dict. '''
+        print("Fun typessssssssssssssssssssssssssss")
+        print(node.variableTypes)
         self.variableTypes = node.variableTypes
         self.variableTypes.update(node.stc_context.variableTypes)
+        old_return = self.return_variable
+        try:
+            self.fun_params = self.visit(node.args)
+            self.return_variable = BasicTypeVariable()
+            for z in node.body:
+                self.visit(z)
+            for z in node.decorator_list:
+                self.visit(z)
 
-        for z in node.body:
-            self.visit(z)
-        for z in node.decorator_list:
-            self.visit(z)
-
-        print("Final types")
-        self.print_types()
+     #       print("Final types")
+     #       self.print_types()
+        finally:
+            # Restore parent variables
+            self.variableTypes = node.stc_context.variableTypes
+            # Add the new function type
+            fun_type = BasicTypeVariable([any_type])
+            self.conduct_assignment([self.variableTypes[node.name]], [fun_type], node)
         
-        # Restore parent variables
-        self.variableTypes = node.stc_context.variableTypes
+    def do_Return(self, node):
+        value = None
+        if not node.value:
+            value = BasicTypeVariable([none_type])
+        else:
+            value = self.visit(node.value)[0]
+        self.conduct_assignment([self.return_variable], [value], node)                
         
-        # Add the new function type
-        fun_type = BasicTypeVariable([any_type])
-        self.conduct_assignment([self.variableTypes[node.name]], [fun_type], node)
-
     def do_ClassDef(self, node):
         self.variableTypes = node.variableTypes
         self.variableTypes.update(node.stc_context.variableTypes)
@@ -220,8 +242,8 @@ class TypeInferrer(AstFullTraverser):
                 self.visit(z)
         finally:
             # Restore parents variables
-            print("Class " + node.name + " vars")
-            self.print_types()
+    #        print("Class " + node.name + " vars")
+    #        self.print_types()
             self.variableTypes = node.stc_context.variableTypes
             self.current_class = parent_class 
             
@@ -239,7 +261,7 @@ class TypeInferrer(AstFullTraverser):
             TODO: find a way to stop this. '''
         left_types = self.visit(node.left)[0]
         right_types = self.visit(node.right)[0]
-        binop_var = BinOpTypeVariable(left_types, right_types, self.kind(node.op))
+        binop_var = BinOpTypeVariable(node, left_types, right_types, self.kind(node.op))
         # Create the dependents
         self.conduct_assignment([binop_var] * 2, [left_types, right_types], node)
         return [binop_var]
@@ -271,6 +293,11 @@ class TypeInferrer(AstFullTraverser):
             self.visit(z)
         return [BasicTypeVariable([Dict_Type()])]
     
+    def do_Lambda(self, node):
+        self.visit(node.args)
+        self.visit(node.body)
+        return [BasicTypeVariable([any_type])]
+    
    # def do_Slice(self, node):
         ''' No need to return anything here.
             TODO: Do better with awaiting_type '''
@@ -295,20 +322,35 @@ class TypeInferrer(AstFullTraverser):
         # Will return portion of the list. We don't know which
         if isinstance(node.slice, ast.Slice):
             return [value_types]
+        # I don't know what an extended slice is...
+        if isinstance(node.slice, ast.ExtSlice):
+            return [BasicTypeVariable([any_type])]
         assert False
     
     def do_ListComp(self, node):
         ''' A list comp can edit values inside of comp. Therefore must reset the
             variable types.
             TODO: Tuple in node.elt should result in List(Tuple(type)). '''
-        old_type_list = self.variableTypes.copy()
-        
-        for node2 in node.generators:
-            self.visit(node2)
-        t = self.visit(node.elt)
-        # Reset types
-        self.variableTypes = old_type_list
+        old_type_list = self.variableTypes.copy() 
+        try:
+            for node2 in node.generators:
+                self.visit(node2)
+                t = self.visit(node.elt)
+        finally:
+            # Reset types
+            self.variableTypes = old_type_list
         return [BasicTypeVariable([List_Type()])]
+    
+    def do_DictComp(self, node):
+        old_type_list = self.variableTypes.copy()
+        try:
+            self.visit(node.key)
+            self.visit(node.value)
+            for z in node.generators:
+                self.visit(z)
+        finally:
+            self.variableTypes = old_type_list
+        return [BasicTypeVariable([Dict_Type()])]
     
     def do_BoolOp(self, node):
         ''' For and/or
@@ -336,6 +378,16 @@ class TypeInferrer(AstFullTraverser):
       #      if a_type == int_type or a_type == float_type:
       #          return [set([a_type])]
         return [BasicTypeVariable([any_type])]
+    
+    def do_IfExp (self, node):
+        ''' For stuff like x = a if b else c.
+            Can return the type of a or c. '''
+        self.visit(node.test)
+        body_types = self.visit(node.body)[0]
+        else_types = self.visit(node.orelse)[0]
+        return_types = BasicTypeVariable()
+        self.conduct_assignment([return_types] * 2, [body_types, else_types], node)
+        return [return_types]
 
     def do_Compare(self, node):
         ''' A comparison will always return a boolean type.
