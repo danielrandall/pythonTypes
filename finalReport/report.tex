@@ -562,8 +562,9 @@ An extension to Diamondback Ruby, $\mathcal{P}$Ruby, was created in order to han
 
 \newpage
 \section{Implementation}
-This project was built on top of the work by Edward K. Ream's \textit{stc}~\footnote{\url{https://code.launchpad.net/~edreamleo/python-static-type-checking/trunk} Revision \#448 was used for this project.}. The primary contribution taken from stc, which was left largely unchanged, was the traversers which are used to navigate the the abstract syntax tree. \\
-The basic structure of our system can be seen in Figure~\ref{fig:systemStructure}.
+The basic structure of our system can be seen in Figure~\ref{fig:systemStructure}. The basic components are the AST, CFG, SSA, Preprocessing and Type Inference. Each component will be described here. \\
+This traverser used to navigate the AST are taken from Edward K. Ream's \textit{stc}~\footnote{\url{https://code.launchpad.net/~edreamleo/python-static-type-checking/trunk} Revision \#448 was used for this project.}. \\
+
 
 \begin{figure}
 \centering
@@ -572,9 +573,55 @@ The basic structure of our system can be seen in Figure~\ref{fig:systemStructure
 \label{fig:systemStructure}
 \end{figure}
 
+\subsection{Preprocessing}
+The preprocessing step is designed to modify the AST generated
+
+\subsubsection{Inferring types involved in \textit{with} statements}
+When dealing with objects which need to be built up before their use and clean up after they have been used, such as file manipulation, engineers using Python had to follow a process similar to the following in the past:
+\begin{lstlisting}[mathescape]
+	# Set up object
+	file = open("file.txt")
+	try:
+		# Do something
+		data = file.read()
+	finally:
+		# Clean up
+		file.close()
+\end{lstlisting}
+The code ensures the the object is constructed before use, due to flow restrictions, and destroyed after being used since all paths exiting the \textit{try} must lead to the finally. Python 2.5 introduced the \textit{with} keyword to make this code cleaner. Using \textit{with} a example on a file becomes:
+\begin{lstlisting}[mathescape]
+	with open("file.txt") as file:
+		data = file.read()
+\end{lstlisting}
+\textit{with} works by calling the \textit{\_\_enter\_\_} function on the object provided immediately after the \textit{with} keyword (\textit{open} returns a file) and calling the \textit{\_\_exit\_\_} function when the body has exited. An engineer can build their class to work with the \textit{with} keyword by implementing these functions with their construction and destruction code. For example:
+\begin{lstlisting}[mathescape]
+	class Example():
+		def __enter__(self):
+			pass
+			
+		def __exit__(self, type, value, trace):
+			pass
+			
+		def do_something(self):
+			# Do something
+			
+	with Example() as ex:
+		ex.do_something()
+\end{lstlisting}
+The \textit{type}, \textit{value} and \textit{trace} parameters provide information which can used to handle exceptions. \\
+We can handle the \textit{with} keyword by de-sugaring it back into its equivalent try-finally. The set-up code will involve assignment to the specified variable and a call to the \textit{\_\_enter\_\_} function. The finally block will simply consist of a call the \textit{\_\_exit\_\_} function. Our transformed \textit{with} using the \textit{Example} class will look like so:
+\begin{lstlisting}[mathescape]
+	ex = Example()
+	ex.__enter__()
+	try:
+		ex.do_something()
+	finally:
+		ex.__exit__(p1, p2, p3)
+\end{lstlisting}
+The main difficulty involved with this transformation is simulating the variables passed to the \textit{\_\_exit\_\_} function. The simplest way to deal with this is to pass temporary variable which have an \textit{Any\_Type}.
 
 \subsection{Generating the Control Flow Graph}
-Due to the limitations of the CFG generators for Python as previously described, the decision was made to create our own. It was felt that no current generator provided a platform to extract a CFG containing the necessary information about each statement which wouldn't require time consuming modification. The benefit of writing our own generator was that it could be written in a manner which will make it easy to integrate with currently written type inferencer. We create CFGs for functions only.
+Due to the limitations of the CFG generators for Python as previously described, the decision was made to create our own. It was felt that no current generator provided a platform to extract a CFG containing the necessary information about each statement which wouldn't require time consuming modification. The benefit of writing our own generator was that it could be written in a manner which will make it easy to integrate with the design of the SSA and type inferencer. We create CFGs for functions only due local/global stuff.
 
 \subsubsection{Ifs and Elses}
 
@@ -634,6 +681,7 @@ Join points \\
 ssa-ing builtin function names
 
 \subsubsection{Global and Local Variables}
+We consider a global variable to be a variable in the Module-wide or Class-wide namespace. A local variable is one which is limited to the scope of a function. \\
 Consider the following snippet of Python code:
 \begin{lstlisting}
     class C():
@@ -646,10 +694,18 @@ Consider the following snippet of Python code:
       def h(self):
         a + self.x 
 \end{lstlisting}
-The references to $self.x$ refer to the same variable. The principles of SSA naming state that a variable should only be assigned to once. But which $x$ should be labelled $x_1$ and which should be labelled $x_2$? Or, rather, which of the assignments to $x$ in function \textit{f} and function \textit{g} will be called first? Without any analysis of the call sites or typical run-time behaviour it is impossible to determine this statically. A similar problem arises when we attempt to decide which reference to give to the instance of \textit{self.x} in function \textit{h}. Without knowledge of the order the functions are called (if a consistent ordering even exists) we cannot predict which is the correct label. For this reason SSA naming is only performed on local variables.
+The references to $self.x$ refer to the same variable. The principles of SSA naming state that a variable should only be assigned to once. But which $x$ should be labelled $x_1$ and which should be labelled $x_2$? Or, rather, which of the assignments to $x$ in function \textit{f} and function \textit{g} will be called first? Without any analysis of the call sites or typical run-time behaviour it is impossible to determine this statically. A similar problem arises when we attempt to decide which reference to give to the instance of \textit{self.x} in function \textit{h}. Without knowledge of the order the functions are called (if a consistent ordering even exists) we cannot predict which is the correct label. For this reason SSA naming is only performed on local variables. \\
+Separating which variables are global and which are local is not simple due to the fact it can change line-by-line.
 
 \paragraph*{Global Keyword}\mbox{} \\
-The keyword \textit{global} in Python is used to enable the programmer to write to the global namespace within a function. By default the programmer has immediate read access to global and local scope and so the keyword is only necessary when a write to the global scope is to take place. With this keyword global variables and global functions can be defined dynamically at runtime.
+The keyword \textit{global} in Python is used to enable the programmer to write to the global namespace within a function. By default the programmer has immediate read access to global and local scope and so the keyword is only necessary when a write to the global scope is to take place. With this keyword global variables and global functions can be defined dynamically at runtime. \\
+Python code in which the global keyword is used \textit{after} the variable has been assigned, such as the following:
+\begin{lstlisting}
+    def f(self):
+      x = 5
+      global x
+\end{lstlisting}
+functions correctly, i.e.\ $x$ in the global namespace is assigned $5$. However the Python interpreter issues a warning to the programmer. For this reason we do not support this behaviour.
 
 
 \subsection{Type Inference}
@@ -658,10 +714,18 @@ The keyword \textit{global} in Python is used to enable the programmer to write 
 All changes to the types of variables involve assignment. For each assignment the variable on the left-hand side (LHS) assumes all of the types which the right-hand side (RHS) can possibly have. The following shows a number of ways in which this can be done.
 \begin{lstlisting}
 	x = 5
-	x = "Hi"
-	x = f()
+	y = x
+	z = f()
 \end{lstlisting}
-Assignments with a simple numeric or string value can be inferred very easily and we can assign the variable a single possible type with complete confidence. If the RHS is a function then we assign all of the types the function can possibly return.
+The first two demonstrate If the RHS is a function then we assign all of the types the function can possibly return. \\
+We simulate this flow of types with a simple subset constraint. The set of types the RHS can assume must be a subset of the set of types the LHS can assume.
+
+\begin{figure}
+\centering
+\includegraphics[scale=0.4]{images/assignment_constraint.pdf}
+\label{figure:assignConstraint}
+\caption{The constraint network generated by the assignments, \texttt{x = 5} and \texttt{y = x}.}
+\end{figure}
 
 \subsubsection{Inferring the Types of Binary Operations}
 Binary operators are handled by our type inferencer by first inferring the types of the left and right hand side of the operator. We then determine whether there is at least one combination between the two sets of types which can be legally used with the operator. \\
@@ -796,12 +860,20 @@ A problem raised by this is that the $\phi$ function at the beginning of the loo
 There are two different ways we can go about inferring the types of function arguments. We could use either a \textit{top-down} approach or a \textit{bottom-up} approach.
 
 \paragraph{Top-Down: Extracting Information From Call Sites}\mbox{} \\
-A top-down approach involves finding all of the calls to a function and determining the types the function accepts by inferring the types of the values given to the function. This means we assume all of the values to be correct. The benefits to this approach are that the return types inferred for the functions should be quire accurate. However the major downside is that we lose a bug-checking opportunity at all call sites.
+A top-down approach involves finding all of the calls to a function and determining the types the function accepts by inferring the types of the values given to the function. This means we assume all of the values to be correct. The benefits to this approach are that the return types inferred for the functions should be quire accurate. However there are two major downsides. Firstly, we lose a bug-checking opportunity at all call sites. We rely on the types given to the function call to be true. Secondly, any errors which may be present at the call site will propagate through the function call body. Any clashes with the types used in the function body will result in a false positive. For example, consider the following:
+\begin{lstlisting}[mathescape]
+    def add_one(x):
+      return x + 1    	
+    	
+    	# Only call to function f
+    	add_one("Hi")
+\end{lstlisting}
+Analysing the given code with a top-down would see that the only the function call to \texttt{add\_one} gives the argument \texttt{x} a string type thus give the argument a type set containing only string. Due to this an error will be flagged on the use of the int \texttt{1} in a binary \texttt{+} operation with \texttt{x}. While an error will certainly occur at that line when the function is called with a string, the line \texttt{x + 1} is not the cause of error but instead the function call. In this case, assuming the types given to function calls is not a reasonable assumptions and will cause the type checker to raise errors in the wrong places.
 
 \paragraph{Bottom-Up: Use Case}\mbox{} \\
 A bottom-up approach involves determining the types of arguments solely by how they are used within the function body. To do this we make use of pre-existing knowledge from the types which other functions and built-in operators accept. If a parameter is used within a context then the types that parameter can take are limited by the types accepted within that context. \\
 
-It was felt that more was to be gained using this approach since we would be able to detect errors caused by incorrect types being passed to a function. However it is important to note that useful information can be extracted from the calls. There is a possibility of using this information when we are unable to infer the types of the parameters using the function body in isolation. \\
+It was felt that more was to be gained using the bottom-up approach since we would be able to detect errors caused by incorrect types being passed to a function. However it is important to note that useful information can be extracted from the calls. There is a possibility of using this information when we are unable to infer the types of the parameters using the function body in isolation. \\
 To do this we will generate a number of constraints and attempt to solve them. In order to solve the constraints we will make use of a pre-existing constraint solver for Python, \textit{python-constraint}~\footnote{\url{http://labix.org/python-constraint}}. When our generated constraints cannot be solved, we resort to labelling the parameter as having any possible type (AnyType / Top).
 It is important to do this before we attempt to infer the return types of a function as it is likely that the possible return types will depend upon the types of the function arguments. \\\\
 \textbf{Constraint Generation} \\
@@ -921,60 +993,29 @@ Python supports multiple inheritance. This works by separating the base classes 
 	  pass
 \end{lstlisting}
 When a function is called on a subclass Python initially looks for a declaration in the subclass. If it is not found there the search is continued through the base classes, in the order they are given, until the referenced variable/function is found. Therefore preference is given to the base classes listed first. So, in the previous example, if a call to the function \textit{f} is made on an instance of class \textit{E} the search will end on the function instance in class \textit{C}. \\
-To support inheritance, at beginning of a class declaration the variables/functions from the list of base classes are added in reverse order, with name clashes being overwritten as we go through the list.
+To support inheritance, at beginning of a class declaration the variables/functions from the list of base classes are added in reverse order, with name clashes being overwritten as we go through the list. \\
+Python supports dynamic change in the list of base classes through tricks such as the following:
+\begin{lstlisting}[mathescape]
+CurrentClass = type('CurrentClass', (NewBaseClass,), dict(NewBaseClass.__dict__))
+\end{lstlisting}
+This behaviour is not supported. For what is likely a rare occurrence and considered `bad coding' by most, the time required to include support for this dynamic changing of base classes was deemed counter productive to the project as a whole.
 
-\subsubsection{Inferring types involved in \textit{with} statements}
-When dealing with objects which need to be built up before their use and clean up after they have been used, such as file manipulation, engineers using Python had to follow a process similar to the following in the past:
-\begin{lstlisting}[mathescape]
-	# Set up object
-	file = open("file.txt")
-	try:
-		# Do something
-		data = file.read()
-	finally:
-		# Clean up
-		file.close()
-\end{lstlisting}
-The code ensures the the object is constructed before use, due to flow restrictions, and destroyed after being used since all paths exiting the \textit{try} must lead to the finally. Python 2.5 introduced the \textit{with} keyword to make this code cleaner. Using \textit{with} a example on a file becomes:
-\begin{lstlisting}[mathescape]
-	with open("file.txt") as file:
-		data = file.read()
-\end{lstlisting}
-\textit{with} works by calling the \textit{\_\_enter\_\_} function on the object provided immediately after the \textit{with} keyword (\textit{open} returns a file) and calling the \textit{\_\_exit\_\_} function when the body has exited. An engineer can build their class to work with the \textit{with} keyword by implementing these functions with their construction and destruction code. For example:
-\begin{lstlisting}[mathescape]
-	class Example():
-		def __enter__(self):
-			pass
-			
-		def __exit__(self, type, value, trace):
-			pass
-			
-		def do_something(self):
-			# Do something
-			
-	with Example() as ex:
-		ex.do_something()
-\end{lstlisting}
-The \textit{type}, \textit{value} and \textit{trace} parameters provide information which can used to handle exceptions. \\
-We can handle the \textit{with} keyword by de-sugaring it back into its equivalent try-finally. The set-up code will involve assignment to the specified variable and a call to the \textit{\_\_enter\_\_} function. The finally block will simply consist of a call the \textit{\_\_exit\_\_} function. Our transformed \textit{with} using the \textit{Example} class will look like so:
-\begin{lstlisting}[mathescape]
-	ex = Example()
-	ex.__enter__()
-	try:
-		ex.do_something()
-	finally:
-		ex.__exit__(p1, p2, p3)
-\end{lstlisting}
-The main difficulty involved with this transformation is simulating the variables passed to the \textit{\_\_exit\_\_} function. The simplest way to deal with this is to pass temporary variable which have an \textit{Any\_Type}.
 
 \newpage
 \section{Improvements}
 
 \subsection{Python Standard Library}
 One possible reason for Python's popularity is its extensive standard library. 3rd party library are also popular, with millions of downloads (source). There are two ways these can used. Included it in the project directory, or by installing it on the machine the code is running on.
+
 \newpage
+\section{Evaluation}
 
 
+\newpage
+\section{Conclusion}
+
+
+\newpage
 \bibliography{mybib}{}
 \bibliographystyle{plain}
 
