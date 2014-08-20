@@ -17,16 +17,27 @@ class GetAttrTypeVariable(BasicTypeVariable):
         output_types = self.extract_types()
         super().__init__(list(output_types))
         
+    def check_output(self):
+        ''' We need the output types to not be empty.
+            This signifies an acceptable combination. '''
+        return self.types
+        
     def extract_types(self):
+        any_base = False
         extracted = set()
         for possible_type in self.value:
             if isinstance(possible_type, Any_Type):
                 extracted.add(any_type)
-            
             if isinstance(possible_type, Class_Type):
                 has_attr = possible_type.get_global_var(self.attr)
                 if has_attr:
                     extracted |= has_attr.types
+                else:
+                    any_base = True if possible_type.has_any_base() else any_base
+        # If the attr hasn't been found but has any base then
+        # it might be there but we can't see it! any_type
+        if not extracted and any_base:
+            extracted.add(any_type)
         return extracted
     
     def receive_update(self, other):

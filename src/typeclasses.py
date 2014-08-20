@@ -155,12 +155,19 @@ class Class_Type(Callable_Type, Class_Base):
         self.call_param_types = None
         self.call_return_types = None
         self.create_dependent_dict()
+        self.any_base_class = False
         
     def __repr__(self):
         return 'Class Dec: %s' % self.name
     
     def get_name(self):
         return self.name
+    
+    def set_any_base(self):
+        self.any_base_class = True
+        
+    def has_any_base(self):
+        return self.any_base_class
     
     def set_init_params(self, parameter_types):
         self.parameter_types = parameter_types

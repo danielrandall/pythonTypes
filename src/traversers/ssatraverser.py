@@ -145,8 +145,7 @@ class SSA_Traverser(AstFullTraverser):
     def do_ClassDef (self, node):
         ''' - We do not assign ssa numbers to class names as it's impossible
               to track order of execution.
-            - We need the global variables. Do not start with an empty d
-            TODO: Check for classes defined after. '''    
+            - We need the global variables. Do not start with an empty d '''    
         old_d = self.d.copy()
         for z in node.body:
             self.visit(z)
@@ -220,7 +219,8 @@ class SSA_Traverser(AstFullTraverser):
     def do_DictComp(self, node):
         for z in node.generators:
             self.visit(z)
-        self.visit(node.elt)
+        self.visit(node.key)
+        self.visit(node.value)
     
     def do_GeneratorExp(self, node):
         for z in node.generators:

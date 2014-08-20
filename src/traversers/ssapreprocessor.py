@@ -91,7 +91,9 @@ class SSA_Pre_Processor(AstFullTraverser):
     def do_DictComp(self, node):
         for z in node.generators:
             self.visit(z)
-        self.visit(node.elt)
+        self.visit(node.key)
+        self.visit(node.value)
+        
     
     def do_GeneratorExp(self, node):
         for z in node.generators:

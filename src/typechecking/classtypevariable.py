@@ -15,13 +15,17 @@ class ClassTypeVariable(BasicTypeVariable):
         
         self.initialise_vars(self_variables)
         self.class_type = Class_Type(name, self.class_variables)
+        if self.any_base_class:
+            self.class_type.set_any_base()
         
         super().__init__([self.class_type])
+        
+    def check_base_classes(self):
+        return [base for base in self.base_classes if base not in self.acceptable_base_classes]
         
     def initialise_vars(self, self_variables):
         ''' Add the variables from the base classes in the correct order. '''
         for base_class in self.base_classes:
-            print(base_class)
             assert isinstance(base_class, BasicTypeVariable)
             for possible_type in base_class:
                 if possible_type == any_type:
@@ -43,6 +47,9 @@ class ClassTypeVariable(BasicTypeVariable):
             if possible_type == any_type:
                     # What the hell do I do here?
                     self.acceptable_base_classes.add(base_class)
+                    self.class_type.set_any_base()
+                    # Only update change if we've not already seen a any
+                    change = True if not self.any_base_class else change
                     self.any_base_class = True
             if isinstance(possible_type, Class_Type):
                 # If there is a clash, the first instance will be used

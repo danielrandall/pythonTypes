@@ -167,7 +167,8 @@ class TypeInferrer(AstFullTraverser):
             assert len(value_types) == 1
             # Create a contentstypevariable for each target
             value_types = value_types[0]
-            if isinstance(value_types, Container_Type):
+            # Hack
+            if isinstance(list(value_types.get())[0], Container_Type):
                 value_types = ContentsTypeVariable(list(value_types.get()))
             value_types = [value_types] * len(targets)
             
@@ -192,6 +193,8 @@ class TypeInferrer(AstFullTraverser):
             return_type = GetAttrTypeVariable(value, node.attr, node)
             # Create constraint between value and getattr
             self.conduct_assignment([return_type], [value], node)
+            # Add an output constraint to the error issuer
+            self.error_issuer.add_issue(GetAttrIssue(node, return_type, self.module_name))
         elif isinstance(node.ctx, ast.Del):
             # This is like del x.f . Do we care? Don't think so
             return
@@ -264,6 +267,9 @@ class TypeInferrer(AstFullTraverser):
         # Add the definition to the context of this class
         self.conduct_assignment([self.variableTypes[node.name]], [new_class], node)
         
+        # Add an base class constraint to the issuer
+        self.error_issuer.add_issue(BaseClassIssue(node, new_class, self.module_name))
+        
         # Type the class body
         self.current_class = new_class
         try:
@@ -291,24 +297,27 @@ class TypeInferrer(AstFullTraverser):
             TODO: find a way to stop this. '''
         left_types = self.visit(node.left)[0]
         right_types = self.visit(node.right)[0]
-        if node.lineno == 35:
-            pass
         binop_var = BinOpTypeVariable(node, left_types, right_types, self.kind(node.op))
         # Create the dependents
         self.conduct_assignment([binop_var] * 2, [left_types, right_types], node)
         
         # Add an output constraint to the issuer
-        self.error_issuer.add_issue(BinOpIssue(binop_var, self.module_name))
+        self.error_issuer.add_issue(BinOpIssue(node, binop_var, self.module_name))
         return [binop_var]
     
     def do_For(self, node):
         ''' Here we need to assign the target the contents of the list.
-            TODO: Ensure iter is iterable. '''
-        target = self.visit(node.target)[0]
-        iter = self.visit(node.iter)[0]
+            TODO: Ensure all iters are iterable. '''
+        self.currently_assigning = True
+        try:
+            targets = self.visit(node.target)
+        finally:
+            self.currently_assigning = False
+            
+        iters = self.visit(node.iter)
         # Assign to the iter target#
-        contents_var = ContentsTypeVariable(list(iter.get()))
-        self.conduct_assignment([target], [contents_var], node)
+     #   contents_var = ContentsTypeVariable(list(iter.get()))
+        self.conduct_assignment(targets, iters, node)
         
         for z in node.body:
             self.visit(z)
@@ -398,7 +407,11 @@ class TypeInferrer(AstFullTraverser):
     def do_comprehension(self, node):
         ''' Can check whether node.iter has __iter__ function.
             The target is assigned the contents. '''
-        targets = self.visit(node.target) 
+        self.currently_assigning = True
+        try:
+            targets = self.visit(node.target)
+        finally:
+            self.currently_assigning = False 
         value_types = self.visit(node.iter)
         self.conduct_assignment(targets, value_types, node)
         for z in node.ifs:
@@ -442,9 +455,9 @@ class TypeInferrer(AstFullTraverser):
         return [return_types]
     
     def do_GeneratorExp(self,node):
-        self.visit(node.elt)
         for z in node.generators:
             self.visit(z)
+        self.visit(node.elt)
         return [BasicTypeVariable([Generator_Type()])]
 
     def do_Compare(self, node):
