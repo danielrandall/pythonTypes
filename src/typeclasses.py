@@ -56,6 +56,9 @@ class BaseType:
 class Any_Type(BaseType):    
     def __init__(self):
         BaseType.__init__(self,'Any')
+        
+    def get_contents_types(self):
+        return set([any_type])
 
 class Bool_Type(BaseType):    
     ''' Contains no varibles/functions. '''
@@ -274,14 +277,6 @@ class Container_Type(BaseType):
     def update_content_types(self, new_types):
         self.content_types |= new_types
         self.infer_types()
-        
-    def contains_waiting_type(self):
-        self.infer_types()
-        for e in self.content_types:
-            result = e.contains_waiting_type()
-            if result:
-                return result
-        return False
     
     def define_kind(self):
         ''' Override this. '''
@@ -396,17 +391,6 @@ class String_Type(Container_Type):
     
     def define_kind(self):
         self.kind = 'String'
-        
-class Awaiting_Type(BaseType):
-    def __init__(self, waitee, waiting_for):
-        self.waitee = waitee
-        self.waiting_for = waiting_for
-            
-        kind = 'Awaiting_Type'
-        BaseType.__init__(self, kind)
-            
-    def contains_waiting_type(self):
-        return self
         
         
 # Create singleton instances of simple types.

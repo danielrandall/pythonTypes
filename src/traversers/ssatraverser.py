@@ -212,17 +212,25 @@ class SSA_Traverser(AstFullTraverser):
             self.visit(node.kwargs)
             
     def do_ListComp(self, node):
-        ''' Don't ssa stuf in comps '''
-        pass
+        ''' Must visit generators first as they assign. '''
+        for z in node.generators:
+            self.visit(z)
+        self.visit(node.elt)
     
     def do_DictComp(self, node):
-        ''' Don't ssa stuf in comps '''
-        pass
-    
-    def do_GeneratorExp(self,node):
-        ''' don't ssa elts. '''
-        #self.visit(node.elt)
         for z in node.generators:
+            self.visit(z)
+        self.visit(node.elt)
+    
+    def do_GeneratorExp(self, node):
+        for z in node.generators:
+            self.visit(z)
+        self.visit(node.elt)
+            
+    def do_comprehension(self, node):
+        self.visit(node.iter)
+        self.visit(node.target)
+        for z in node.ifs:
             self.visit(z)
         
 class Phi_Node():

@@ -2,6 +2,7 @@ import ast
 from pprint import pprint
 
 from src.traversers.astfulltraverser import AstFullTraverser
+from src.typechecking.errorissuer import *
 from src.typechecking.basictypevariable import BasicTypeVariable
 from src.typechecking.contentstypevariable import ContentsTypeVariable
 from src.typechecking.binoptypevariable import BinOpTypeVariable
@@ -14,7 +15,11 @@ from src.importdependent import ImportDependent
 from src.pyfile import PyFile
 
 class TypeInferrer(AstFullTraverser):
-    def init(self):   
+    
+    def __init__(self, error_issuer):
+        self.error_issuer = error_issuer
+    
+    def initialise(self):
         self.currently_assigning = False
         self.fun_params = []
         # The class definition we are currently under
@@ -24,9 +29,6 @@ class TypeInferrer(AstFullTraverser):
         # Detecting circular inferences
         self.call_stack = [] # Detects recursive calls
         self.assign_stack = [] # Detects circular assignments.
-
-        # Add the builtin_types to the variable dict
-        self.variableTypes.update(BUILTIN_TYPE_DICT)
         
        
     def run(self, file_tree):
@@ -86,13 +88,18 @@ class TypeInferrer(AstFullTraverser):
         print()
         print("Printing module: |||||||||||||||||||||||||||||||||||************************ " + file.path + " " + file.get_name() + " *******************|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||")   
         print()
+        self.module_name = file.path + " " + file.get_name()
         self.variableTypes = root.variableTypes
-        self.init()
+        self.initialise()
    #     print("-DEPENDENTS-")
    #     pprint(dependents)
-        self.variableTypes.update(dependents)
+        self.link_imports(dependents)
         self.visit(root)
         file.typed = True
+        
+    def link_imports(self, imports):
+        for name, value in imports.items():
+            self.conduct_assignment([self.variableTypes[name]], [value], None)
     
     def visit(self, node):
         '''Visit a single node.  Callers are responsible for visiting children.'''
@@ -125,7 +132,6 @@ class TypeInferrer(AstFullTraverser):
         var = self.variableTypes[node.get_var()]
         targets = []
         values = []
-        print(node.lineno)
         for target in node.get_targets():
             targets.append(var)
             values.append(self.variableTypes[target])
@@ -153,22 +159,22 @@ class TypeInferrer(AstFullTraverser):
    #     print("values")
    #     print(value_types)
    #     print()
-        # Special case list assignment
-        try:
-            if len(targets) != len(value_types):
-                # Makes sure it's a single list
-                assert len(value_types) == 1
-                # Create a contentstypevariable for each target
-                contents_var = ContentsTypeVariable(list(value_types[0].get()))
-                value_types = [contents_var] * len(targets)
+   
+        # Special case list or double assignment
+        # x = y = 6 
+        if len(targets) != len(value_types):
+            # Makes sure it's a single element
+            assert len(value_types) == 1
+            # Create a contentstypevariable for each target
+            value_types = value_types[0]
+            if isinstance(value_types, Container_Type):
+                value_types = ContentsTypeVariable(list(value_types.get()))
+            value_types = [value_types] * len(targets)
             
-            for target, value in zip(targets, value_types):
-                assert isinstance(value, BasicTypeVariable)
-                assert isinstance(target, BasicTypeVariable)
-                value.add_new_dependent(target)
-        except:
-            print("xcept")
-            print(node.lineno)
+        for target, value in zip(targets, value_types):
+            assert isinstance(value, BasicTypeVariable)
+            assert isinstance(target, BasicTypeVariable)
+            value.add_new_dependent(target)
     #    print("Conduct")
     #    self.print_types()
             
@@ -200,10 +206,13 @@ class TypeInferrer(AstFullTraverser):
         
             TODO: Find out possible types in *karg dict. '''
         self.variableTypes = node.variableTypes
-        self.variableTypes.update(node.stc_context.variableTypes)
         old_return = self.return_variable
         try:
             self.fun_params = self.visit(node.args)
+            # Add any_type to args
+            for param in self.fun_params:
+                self.conduct_assignment([self.variableTypes[param]], [BasicTypeVariable([any_type])], node)
+                
             self.return_variable = BasicTypeVariable()
             for z in node.body:
                 self.visit(z)
@@ -218,6 +227,17 @@ class TypeInferrer(AstFullTraverser):
             # Add the new function type
             fun_type = BasicTypeVariable([any_type])
             self.conduct_assignment([self.variableTypes[node.name]], [fun_type], node)
+            
+    def do_arguments(self, node):
+        ''' We need to begin checking what types the args can take.
+            We can check stuff like 'self' here. '''
+        args = []
+        for z in node.args:
+            args.extend(self.visit(z))
+        return args
+            
+    def do_arg(self, node):
+        return [node.arg]
         
     def do_Return(self, node):
         value = None
@@ -229,7 +249,6 @@ class TypeInferrer(AstFullTraverser):
         
     def do_ClassDef(self, node):
         self.variableTypes = node.variableTypes
-        self.variableTypes.update(node.stc_context.variableTypes)
 
         parent_class = self.current_class
         # Deal with inheritance.
@@ -272,10 +291,29 @@ class TypeInferrer(AstFullTraverser):
             TODO: find a way to stop this. '''
         left_types = self.visit(node.left)[0]
         right_types = self.visit(node.right)[0]
+        if node.lineno == 35:
+            pass
         binop_var = BinOpTypeVariable(node, left_types, right_types, self.kind(node.op))
         # Create the dependents
         self.conduct_assignment([binop_var] * 2, [left_types, right_types], node)
+        
+        # Add an output constraint to the issuer
+        self.error_issuer.add_issue(BinOpIssue(binop_var, self.module_name))
         return [binop_var]
+    
+    def do_For(self, node):
+        ''' Here we need to assign the target the contents of the list.
+            TODO: Ensure iter is iterable. '''
+        target = self.visit(node.target)[0]
+        iter = self.visit(node.iter)[0]
+        # Assign to the iter target#
+        contents_var = ContentsTypeVariable(list(iter.get()))
+        self.conduct_assignment([target], [contents_var], node)
+        
+        for z in node.body:
+            self.visit(z)
+        for z in node.orelse:
+            self.visit(z)
   
     def do_Tuple(self, node):
         names = []
@@ -316,9 +354,13 @@ class TypeInferrer(AstFullTraverser):
     
     def do_Index(self, node):
         ''' Lists can only index with ints, but dicts can be anything.
-            No need to return anythin here.
+            No need to return anything here.
             TODO: Distinguish what can be indexed with. '''
         value_types = self.visit(node.value)[0]
+        
+    def do_Ellipsis(self, node):
+        ''' Not 100% what to do with this. '''
+        return [BasicTypeVariable([any_type])]
 
     def do_Subscript(self, node):
         ''' You can have slice assignment. e.g. x[0:2] = [1, 2]
@@ -339,29 +381,28 @@ class TypeInferrer(AstFullTraverser):
         assert False
     
     def do_ListComp(self, node):
-        ''' A list comp can edit values inside of comp. Therefore must reset the
-            variable types.
+        ''' A list comp can edit values inside of comp. 
             TODO: Tuple in node.elt should result in List(Tuple(type)). '''
-        old_type_list = self.variableTypes.copy() 
-        try:
-            for node2 in node.generators:
-                self.visit(node2)
-                t = self.visit(node.elt)
-        finally:
-            # Reset types
-            self.variableTypes = old_type_list
+        for z in node.generators:
+            self.visit(z)
+        t = self.visit(node.elt)
         return [BasicTypeVariable([List_Type()])]
     
     def do_DictComp(self, node):
-        old_type_list = self.variableTypes.copy()
-        try:
-            self.visit(node.key)
-            self.visit(node.value)
-            for z in node.generators:
-                self.visit(z)
-        finally:
-            self.variableTypes = old_type_list
+        self.visit(node.key)
+        self.visit(node.value)
+        for z in node.generators:
+            self.visit(z)
         return [BasicTypeVariable([Dict_Type()])]
+    
+    def do_comprehension(self, node):
+        ''' Can check whether node.iter has __iter__ function.
+            The target is assigned the contents. '''
+        targets = self.visit(node.target) 
+        value_types = self.visit(node.iter)
+        self.conduct_assignment(targets, value_types, node)
+        for z in node.ifs:
+            self.visit(z)
     
     def do_BoolOp(self, node):
         ''' For and/or
@@ -415,8 +456,13 @@ class TypeInferrer(AstFullTraverser):
         return [BasicTypeVariable([bool_type])]
     
     def do_Num(self, node):
+        ''' node.n is the number in the num. '''
         ''' Returns int or float. '''
-        t_num = Num_Type(node.n.__class__)
+        t_num = None
+        if isinstance(node.n, int):
+            t_num = int_type
+        if isinstance(node.n, float):
+            t_num = float_type
         return [BasicTypeVariable([t_num])]
     
     def do_Bytes(self, node):

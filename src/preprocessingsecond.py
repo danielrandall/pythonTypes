@@ -38,6 +38,7 @@ class PreprocessorSecond(AstFullTraverser):
             self.variableTypes[node.name] = BasicTypeVariable()
         old_types = self.variableTypes 
         node.variableTypes = {}
+        node.variableTypes.update(self.variableTypes)
         self.variableTypes = node.variableTypes
         try:
             for z in node.bases:
@@ -51,12 +52,16 @@ class PreprocessorSecond(AstFullTraverser):
        #     print("class vars " + node.name)
        #     pprint(node.variableTypes)
             self.variableTypes = old_types
+            
+    def do_arg(self, node):
+        self.variableTypes[node.arg] = BasicTypeVariable()
 
     def do_FunctionDef(self, node):    
         if node.name not in self.variableTypes:
             self.variableTypes[node.name] = BasicTypeVariable()
         old_types = self.variableTypes 
         node.variableTypes = {}
+        node.variableTypes.update(self.variableTypes)
         self.variableTypes = node.variableTypes
         try:
             self.visit(node.args)
@@ -77,6 +82,8 @@ class PreprocessorSecond(AstFullTraverser):
     def do_Module (self,node):
         node.variableTypes = {}
         self.variableTypes = node.variableTypes
+        # Add the builtin_types to the variable dict
+        self.variableTypes.update(BUILTIN_TYPE_DICT)
         # Add names for imports
         for dependent in node.import_dependents:
             as_name = dependent.get_as_name()

@@ -21,6 +21,7 @@ class ClassTypeVariable(BasicTypeVariable):
     def initialise_vars(self, self_variables):
         ''' Add the variables from the base classes in the correct order. '''
         for base_class in self.base_classes:
+            print(base_class)
             assert isinstance(base_class, BasicTypeVariable)
             for possible_type in base_class:
                 if possible_type == any_type:
