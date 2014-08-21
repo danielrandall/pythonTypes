@@ -204,17 +204,17 @@ The XML format of the program is then analysed in order to determine where each 
 \subsubsection{Flow-sensitivity}
 A flow insensitive analysis of a program does not consider the order of execution~\cite{nielson99}. That is, each occurrence of a variable typically is represented by the same set of possible types no matter where it appears in the program. Consider the following example:
 \begin{lstlisting}
-	if (y):	
-	  x = 5     # S1
-	else:
-          x = 5.0        # S2
-	f(x)		    # S3
+    if (y):	
+      x = 5     # S1
+    else:
+      x = 5.0   # S2
+    f(x)        # S3
 \end{lstlisting}
 A flow-sensitive algorithm would infer the type of $x$ at S1 to be $\left\{ {int}\right\}$ and $\left\{ {float}\right\}$ at S2, while a flow-insensitive algorithm would infer the type of $x$ to be $\left\{ {int, float}\right\}$ at S1, S2 and S3. \\
 Another case in which ignoring the flow of execution can change the types inferred is represented by the following trivial block of code:
 \begin{lstlisting}
-	x = 5
-	x = 5.0
+    x = 5
+    x = 5.0
 \end{lstlisting}
 A flow-insensitive algorithm would infer the type of \textit{x}, for any future occurrences of $x$, to be in the set $\left\{ {int, float}\right\}$. A flow-sensitive algorithm is able to recognise that the second statement `overwrites' the first. This permits a more accurate representation of the flow, allowing it to infer more accurately the type of $x$ as the set $\left\{ {float}\right\}$. \\
 A flow-sensitive algorithm is clearly the more accurate approach but requires a comparatively complex algorithm which consumes more information than a flow-insensitive approach. \\
@@ -224,17 +224,17 @@ Ryder~\cite{ryder03} suggests that the difference between a flow-sensitive and f
 Primarily used in compilers, Single Static Assignment (SSA) is used to acquire ``unique names for distinct entities.''~\cite{ssaBook} What this means is that each variable should only be assigned to once. There are number of variants of SSA, each designed for a specialised purpose, such as Hashed SSA form which intends to capture the fact that a single static use or definition (e.g.\ $*p$ in C) could potentially impact multiple variables. In our case we are only to use a basic version of SSA, `vanilla' SSA which we will now describe. \\
 Consider the following example:
 \begin{lstlisting}
-	x = 5
-	y = x + 1
-	x = 7
-	z = x + 1
+    x = 5
+    y = x + 1
+    x = 7
+    z = x + 1
 \end{lstlisting}
 This code violates the SSA requirements since the variable $x$ is assigned to twice. Translating this block into SSA form would give us the following:
 \begin{lstlisting}
-	x1 = 5
-	y1 = x1 + 1
-	x2 = 7
-	z1 = x2 + 1
+    x1 = 5
+    y1 = x1 + 1
+    x2 = 7
+    z1 = x2 + 1
 \end{lstlisting}
 It can be observed that the latest assignment of $x$  is used in all instances of $x$ where $x$ isn't being assigned a new value. This can be seen in the assignments to $y$ and $z$ where $x_1$ and $x_2$ is used respectively. \\
 Note that the names of, both, $y$ and $z$ need not be changed in this case since they are only assigned to once. However it often makes the implementation of SSA easier to do so regardless.
@@ -242,62 +242,71 @@ Note that the names of, both, $y$ and $z$ need not be changed in this case since
 \subsubsection{The $\phi$ function}
 In a sequential program the manner used to number new variables is quite intuitive, we simply increment the number appended the end of the variable name. However as we introduce branching into our programs this method alone breaks down. Consider the following program:
 \begin{lstlisting}
-	x = 5
-	if (y):
-	  x = 5
-	else:
-	  x = 6
-	z = x + 1
+    x = 5
+    if (y):
+      x = 5
+    else:
+      x = 6
+    z = x + 1
 \end{lstlisting}
 The \textit{if} statement has two branches which both assign a new value to the variable $x$. Assigning new names to these variables is required by the rules of SSA, however it is unclear which name we are to use after the \textit{if} and \textit{else} when \textit{x} is used in then assignment to the variable \textit{z}. \\
 To resolve this problem, we introduce the concept of the \emph{$\phi$ function}. The $\phi$ function is used ``to merge values from different incoming paths, at control-flow merge points.''~\cite{ssaBook} Put simply, the result of the $\phi$ can be said to be \emph{any} of the parameters given. 
 \begin{lstlisting}[mathescape]
-	x1 = 5
-	if (y):
-	  x2 = 5.0
-	else:
-	  x3 = 6
-	x4 = $\phi$(x2, x3)
-	z = x + 1
+    x1 = 5
+    if (y):
+      x2 = 5.0
+    else:
+      x3 = 6
+    x4 = $\phi$(x2, x3)
+    z = x + 1
 \end{lstlisting}
 Since we only care about the possible types of each variable the $\phi$ function can viewed as a glorified union of all possible types of all parameters in our case. So in the above example we would have $x4 = \phi(x2, x3) = \{Float\} \cup \{Int\} = \{Float, Int\}$. \\
 A similar, slightly more complex case arises for loops. In this case, we must consider the types of the variables at each iteration of the loop as well as the exit. Consider the following trivial example:
 \begin{lstlisting}
-	x = 5
-	while (y):
-	  x = x + 1.0
-	z = x + 1
+    x = 5
+    while (y):
+      x = x + 1.0
+    z = x + 1
 \end{lstlisting}
 At the entry of the loop, $x$ can come from the statement immediately before the loop as well as the end of the loop. The case for immediately outside the loop is the same as the case for \textit{if}. This can be seen clearly in Figure~\ref{phiCFG} where there are two entries into the loop header where $x$ may take a value. Using this information gives us two causes for a $\phi$ function. The resulting program in SSA form is:
 
 
 \begin{lstlisting}[mathescape]
-	x1 = 5
-	while (y):
-	  x2 = $\phi$(x1, x3)
-	  x3 = x2 + 1.0
-	x4 = $\phi$(x1, x3)
-	z = x4 + 1
+    x1 = 5
+    while (y):
+      x2 = $\phi$(x1, x3)
+      x3 = x2 + 1.0
+    x4 = $\phi$(x1, x3)
+    z = x4 + 1
 \end{lstlisting}
 The $\phi$ function can also be used for inferring the possible return types of a function. Consider the following Python function:
 \begin{lstlisting}[mathescape]
-	def f():
-		if ($p_1$):
-		  return 5
-		if ($p_2$):
-		  return "Hi"
-		return 5.0
+    def f():
+        if ($p_1$):
+          return 5
+        if ($p_2$):
+          return "Hi"
+        return 5.0
 \end{lstlisting}
 Here we can see that the function \textit{f} has a number of different \textit{return} statements which can return a number of different types. In order to infer the possible types that a function can return we need to look at the types of each return statements. We can use the $\phi$ function in order to simplify this task. To do so we modify the function as follows:
 \begin{lstlisting}[mathescape]
-	def f():
-		if ($p_1$):
-		  $r_1$ = 5
-		if ($p_2$):
-		  $r_2$ = "Hi"
-		$r_3$ = 5.0
-		$r_4$ = $\phi$($r_1$, $r_2$, $r_3$)
+    def f():
+        if ($p_1$):
+          $r_1$ = 5
+        if ($p_2$):
+          $r_2$ = "Hi"
+        $r_3$ = 5.0
+        $r_4$ = $\phi$($r_1$, $r_2$, $r_3$)
 \end{lstlisting}
+
+\paragraph*{Creating $\phi$ functions}\mbox{} \\
+Since most functions do contain a single set of variables constrained to a single control flow construct but instead have many local variables and many constructs, to create $\phi$ functions we need to know for which variables to create them for. There are two ways we can go about this:
+\begin{itemize}
+	\item Method One - create a $\phi$ function for every variable within scope.
+	\item Method Two - use dominance frontiers to calculate which $\phi$ functions are necessary
+\end{itemize}
+Method One is very simple to implement. However it clearly comes with some redundancy. It will cause to create $\phi$ functions for variables which are not modified and variables which are no longer referenced in future code. \\
+\indent Method Two, dominance frontiers, eliminate redundancy at the expense of a more complicated algorithm. The algorithm is performed on code which has already been transformed into a control flow graph. The algorithm initially determines a \textit{dominance} relationship between the nodes in the CFG. ``Let X and Y be nodes in the CFG. $X$ dominates $Y$ (written $X≥Y$) if $X$ appears on every path from Entry to $Y$.''~\cite{ssaLecture} We extend this to a tighter relationship. We can say that ``$X>Y$ ($X$ strictly dominates $Y$) when $X$ dominates $Y$ but $X \neq Y$.''~\cite{ssaLecture} Using this information we can then begin to compute the dominance frontiers. ``$Y$ is in the dominance frontier of $X$ iff there exists a path from $X$ to Exit through $Y$ such that $Y$ is the first node not strictly dominated by $X$.''~\cite{ssaLecture} Having computed the dominance frontiers we add a $\phi$ function in the dominance frontier of a node for every variable assigned in that node. \\
 
 The usefulness of SSA naming is immediately obvious. We need not track how the types of a variable may change over time. We may treat each new naming as a completely distinct variable. Managing the control-flow also becomes a much simpler task as we are easily able to express the fact that a variable can possibly be a number of different types depending on the path taken through the program.
 
@@ -391,21 +400,21 @@ The excessive duplication makes the algorithm impractical. In the worst case, su
 The Cartesian Product Algorithm (CPA) was originally conceived by Agesen as an improvement on the Palsberg and Schwartzbach algorithm for the language Self~\cite{agesen95}. \\
 The Cartesian Product Algorithm works by modelling data flow as opposed to the constraint and unification method adopted by the Hindley-Milner algorithm. This is done by building a set of possible types an expression can take. Consider the following code:
 \begin{lstlisting}
-	if (y):	
-          x = 5     
-	else:
-	  x = 5.0  
+    if (y):	
+      x = 5     
+    else:
+      x = 5.0  
 \end{lstlisting}
 The inferred types for $x$ would be the set $\left\{ {int, float}\right\}$, where the possible \textit{int} type is found in the \textit{then} branch and the \textit{float} type is found in the \textit{else} branch. The types from each branch are added to the set of possible types for $x$. The CPA algorithm guarantees that the type of the variable is contained within the set. \\
 In order to infer the types handed to a function the cartesian product of the set of possible types for all given arguments is taken. Consider the following code:
 \begin{lstlisting}
-	if (y):	
-	  x = 5 
-	  z = "Hello world"    
-	else:
-	  x = 5.0 
-	  z = True
-	f(x, z)
+    if (y):	
+      x = 5 
+      z = "Hello world"    
+    else:
+      x = 5.0 
+      z = True
+    f(x, z)
 \end{lstlisting}
 The set of inferred types for $x$ is, as before, $\left\{ {int, float}\right\}$ and the set for $z$ is $\left\{ {str, bool}\right\}$. The possible types of the inputs to the function $f$ are: $\left\{ {int, float}\right\} \times \left\{ {str, bool}\right\} = \left\{ {(int, str), (int, bool), (float, str), (float, bool)}\right\}$, where each tuple represents the possible types of the variables given to $f$. \\
 The biggest shortcoming of the Palsberg and Schwartzbach algorithm, the expansions, was remedied by the CPA algorithm. This was done by duplicating function bodies such that they contain an argument list with monomorphic types which Agesen calls templates. Each argument list generated by taking the cartesian product at calls sites is connected with constraints to the corresponding template. The types of the values returned by each template are connected to the result of the function call.
@@ -562,7 +571,9 @@ An extension to Diamondback Ruby, $\mathcal{P}$Ruby, was created in order to han
 
 \newpage
 \section{Implementation}
-The basic structure of our system can be seen in Figure~\ref{fig:systemStructure}. The basic components are the AST, CFG, SSA, Preprocessing and Type Inference. Each component will be described here. \\
+All of the implementation was created used the language Python. This was decided upon purely due to the the built-in \texttt{ast} module which provided the base from which this project was built. Since no other language offered such a critical component out-of-the-box this was an easy decision. \\
+\indent Our project uses a flow-sensitive approach. This was decided in order to increase accuracy. To implement flow-sensitivity, we use single static assignment. \\
+\indent The basic structure of our system can be seen in Figure~\ref{fig:systemStructure}. The basic components are the AST, CFG, SSA, Preprocessing and Type Inference. Each component will be described here. \\
 This traverser used to navigate the AST are taken from Edward K. Ream's \textit{stc}~\footnote{\url{https://code.launchpad.net/~edreamleo/python-static-type-checking/trunk} Revision \#448 was used for this project.}. \\
 
 
@@ -574,9 +585,9 @@ This traverser used to navigate the AST are taken from Edward K. Ream's \textit{
 \end{figure}
 
 \subsection{Preprocessing}
-The preprocessing step is designed to modify the AST generated
+The preprocessing step is designed to modify the AST generated by the \texttt{ast} module in order to simplify the further steps. Some information extraction is also performed. Nodes are labelled with their context in order to simplify
 
-\subsubsection{Inferring types involved in \textit{with} statements}
+\subsubsection{\textit{with} statements}
 When dealing with objects which need to be built up before their use and clean up after they have been used, such as file manipulation, engineers using Python had to follow a process similar to the following in the past:
 \begin{lstlisting}[mathescape]
 	# Set up object
@@ -621,10 +632,10 @@ We can handle the \textit{with} keyword by de-sugaring it back into its equivale
 The main difficulty involved with this transformation is simulating the variables passed to the \textit{\_\_exit\_\_} function. The simplest way to deal with this is to pass temporary variable which have an \textit{Any\_Type}.
 
 \subsection{Generating the Control Flow Graph}
-Due to the limitations of the CFG generators for Python as previously described, the decision was made to create our own. It was felt that no current generator provided a platform to extract a CFG containing the necessary information about each statement which wouldn't require time consuming modification. The benefit of writing our own generator was that it could be written in a manner which will make it easy to integrate with the design of the SSA and type inferencer. We create CFGs for functions only due local/global stuff.
+Due to the limitations of the CFG generators for Python as previously described, the decision was made to create our own. It was felt that no current generator provided a platform to extract a CFG containing the necessary information about each statement which wouldn't require time consuming modification. The benefit of writing our own generator was that it could be written in a manner which will make it easy to integrate with the design of the SSA and type inferencer. We create CFGs for functions only.
 
 \subsubsection{Ifs and Elses}
-
+For if nodes we add the test to the current block. A new block created for the \texttt{then} and \texttt{else} bodies to be used as their initial blocks. A block is created as an `exit' node and the last active blocks in each are linked to the exit node.
 
 
 \subsubsection{Breaks and Continues} 
@@ -643,8 +654,8 @@ The \textit{try} keyword can be used in a few different ways in Python. Firstly 
     except ZeroDivisionError:
       # Deal with error
 \end{lstlisting}
-The statement $open("myfile.txt")$ will lead to the $IOError$ except block if, for instance, the file does not exist. The $x = 5 / y$ will lead to the $ZeroDivisionError$ if $y$ is equal to $0$ at the time of execution. In order to accurately create a control flow graph for try and excepts we need to know which statements can create exceptions and which exceptions they can create. While very time consuming, this knowledge can be gathered for the builtin exceptions and statements in the Python language and standard library and then hardcoded into our CFG generator. But programmers can also create their own exceptions classes by inheriting from the \textit{Exception} class. This would be very hard to track. For this reason the design decision was made to attempt to minimise any false positives. This was done by determining that every statement in a try block can lead to every except block. \\
-Trys can also be used to ensure that Nested \textit{finally}s are all executed no matter where an exception, return or break occurs. For instance if the following is executed:
+The statement \texttt{open("myfile.txt")} will lead to the \texttt{IOError} except block if, for instance, the file does not exist. The \texttt{x = 5 / y} will lead to the \texttt{ZeroDivisionError} if \texttt{y} is equal to \texttt{0} at the time of execution. In order to accurately create a control flow graph for try and excepts we need to know which statements can create exceptions and which exceptions they can create. While very time consuming, this knowledge can be gathered for the builtin exceptions and statements in the Python language and standard library and then hardcoded into our CFG generator. But programmers can also create their own exceptions classes by inheriting from the \texttt{Exception} class. This would be very hard to track. For this reason the design decision was made to attempt to minimise any false positives. This was done by determining that every statement in a try block can lead to every except block. \\
+\texttt{try}s can also be used to ensure that Nested \texttt{finally}s are all executed no matter where an exception, return or break occurs. For instance if the following is executed:
 \begin{lstlisting}
     try:
       x = 1
@@ -670,18 +681,29 @@ If only try/finally then exceptions still lead to the finally. Even if an except
 \end{lstlisting}
 In the above example raise leads to finally and finally to the except block.
 
+\subsubsection{Wrapping exit blocks}
+At the end of the programming constructs dictating control flow a new block is created as an `exit' block to which the blocks exiting the construct (such as a \texttt{break} in a loop) are linked to. However a problem arises when constructs are nested. Consider the following:
+\begin{lstlisting}
+    if c1:
+      # First then block
+      if c2:
+        # Second then block
+      else:
+        # second else block
+    else:
+      # Second else block
+    # exit
+\end{lstlisting}
+The exit block for the inner \texttt{if} is not needed as there no further statements in the first \texttt{then} body. Instead the exit block for the inner \texttt{if} should be the same as the outer \texttt{if} as exiting each one will lead to the same. Thus we need to wrap the inner exits up a level such that they point to the correct location. To ensure this occurs we check the last active block once each path has been analysed. If the block is not empty then proceed as normal. If the block is empty we delete the block and update the reference to point to the exit block for the current construct.
+
 \subsection{SSA Form}
 The implementation of SSA renaming was performed precisely as described in the background section. A few additional allowances were required for the system to function correctly. These will be explained here. \\
-Still uses AST nodes. \\
-CFG helps. If, while and for need not be considered separately but are all handled with precisely the same logic. \\
-Can improve by calculating dominance frontiers/trees which will reduce the number of phi-nodes. \\
-Option 1 - phi-node for every variable referenced in a block with more than one predecessor
-Option 2 - compute dominance frontier \\
-Join points \\
-ssa-ing builtin function names
+\indent Having created the CFG our SSA naming can ignore specifics programming constructs such as \texttt{for}, \texttt{if} and \texttt{while}. The knowledge required to successfully create the phi-nodes are encapsulated for these constructs are encapsulated in the exits for each basic blocks in the CFG. \\
+\indent The algorithm works by analysing each function at a time. A dictionary is held with each variable name eligible within the current scope. The dictionary is reset to containing only module/class wide variables at the end of each function. When a identifier is encountered it is determined whether we wish to rename it. If we do then we check whether it is a \texttt{store} or \texttt{load} operation. A \texttt{store} checks whether the identifier has been referenced beforehand. If hasn't we add the identifier to the dictionary along with the value \texttt{1} and modified by appending that value. Otherwise the identifier's value is incremented and renamed with the new value. A \texttt{load} operation uses the latest the latest value for that identifier. Once we reach the end of a basic block the state of current block's dictionary is forwarded to all of the block's exits.
 
 \subsubsection{Global and Local Variables}
-We consider a global variable to be a variable in the Module-wide or Class-wide namespace. A local variable is one which is limited to the scope of a function. \\
+
+We consider a global variable to be a variable in the Module-wide or Class-wide namespace. This includes all imports, function identifiers and all of the built-in functions and classes. A local variable is one which is limited to the scope of a function. \\
 Consider the following snippet of Python code:
 \begin{lstlisting}
     class C():
@@ -698,17 +720,26 @@ The references to $self.x$ refer to the same variable. The principles of SSA nam
 Separating which variables are global and which are local is not simple due to the fact it can change line-by-line.
 
 \paragraph*{Global Keyword}\mbox{} \\
-The keyword \textit{global} in Python is used to enable the programmer to write to the global namespace within a function. By default the programmer has immediate read access to global and local scope and so the keyword is only necessary when a write to the global scope is to take place. With this keyword global variables and global functions can be defined dynamically at runtime. \\
-Python code in which the global keyword is used \textit{after} the variable has been assigned, such as the following:
+The keyword \texttt{global} in Python is used to enable the programmer to write to the global namespace within a function. By default the programmer has immediate read access to the global scope and read/write access to the local scope. This means the \texttt{global} keyword is only necessary when a write to the global scope is to take place within the function. With the keyword global variables and global functions can be defined dynamically at runtime. If an identifier to a global variable is modified without indicating this with the \texttt{global} keyword then a new local variable with the same name is created. Consider the following code:
 \begin{lstlisting}
-    def f(self):
-      x = 5
+	x =  5
+    def f():
+      x = "Hi"
+      y = x
+      
+      
+    def g():
       global x
+      x = 5.0
+      y = x
 \end{lstlisting}
-functions correctly, i.e.\ $x$ in the global namespace is assigned $5$. However the Python interpreter issues a warning to the programmer. For this reason we do not support this behaviour.
+Function \texttt{f} does not modify the global variable. Instead a local variable is created. In the rest of the function \texttt{x} will reference the local variable created. The global \texttt{x} cannot be accessed unless a highly dynamic method is used, such as \texttt{globals().get("x")} where the function \texttt{globals} returns a dictionary containing all global variables. \\
+It is common in Python to use the \texttt{global} keyword at the beginning of the function to increase clarity, however Python code in which the global keyword is used \textit{after} the variable has been assigned functions correctly, i.e.\ $x$ in the global namespace is assigned the value (despite the Python interpreter issuing a warning to the programmer.) Therefore we need only worry if the a variable name is used in conjunction with the keyword \textit{somewhere} in the function. \\
+Using this knowledge
 
 
 \subsection{Type Inference}
+Type inference in our system works by creating a network modelling the data flow of types. Similar to that used in \textit{Starkiller}. 
 
 \subsubsection{Inferring the Types of Simple Assignments}
 All changes to the types of variables involve assignment. For each assignment the variable on the left-hand side (LHS) assumes all of the types which the right-hand side (RHS) can possibly have. The following shows a number of ways in which this can be done.
@@ -718,7 +749,7 @@ All changes to the types of variables involve assignment. For each assignment th
 	z = f()
 \end{lstlisting}
 The first two demonstrate If the RHS is a function then we assign all of the types the function can possibly return. \\
-We simulate this flow of types with a simple subset constraint. The set of types the RHS can assume must be a subset of the set of types the LHS can assume.
+We simulate this flow of types with a simple subset relationship. The set of types the RHS can assume must be a subset of the set of types the LHS can assume.
 
 \begin{figure}
 \centering
@@ -911,54 +942,59 @@ There is a the possibility of a relationship between the types of the parameters
 \subsubsection{Inferring Context}
 Unlike many static languages such as Java and C++, Python is heavily dependent on context. This may lead to the same function and class having very different values at different times in the program. Consider the following class:
 \begin{lstlisting}[mathescape]
-	class C():
-		def __init__(self):
-			self.x = 3
+    class C():
+       def __init__(self):
+         self.x = 3
 			
-		def f(self):
-			self.x = 3.0
+       def f(self):
+         self.x = 3.0
 \end{lstlisting}
 
 \subsubsection{Inferring the Classes}
 In statically typed languages such as Java and C++ the global variables are required to be specifically defined outside of the function and in the main body of the program. In Python this is not required. The global variables which can be accessed outside of a class can be declared in a function within that class, and even outside of the class entirely. If a variable has been declared inside of a function, then the function is required to be called before the variable is referenced. An example of this is as follows:
 \begin{lstlisting}[mathescape]
-	class C():
-	  def f():
-	    self.x = 5
+    class C():
+      def f():
+        self.x = 5
 		
-	  def g():
-	    self.x = "hi"
-	# Using the class C
-	c = C()
-	print(c.x)    # Error
-	c.f()
-	print(c.x)    # Okay - prints 5
+      def g():
+        self.x = "hi"
+        
+    # Using the class C
+    c = C()
+    print(c.x)    # Error
+    c.f()
+    print(c.x)    # Okay - prints 5
 \end{lstlisting}
 You may also notice that the global variable held by C can be different types - \textit{int} or \textit{float} depending on which of the functions \textit{f} and \textit{g} was called last. To infer the types of these variables we can use a few different methods.
 
 \paragraph{Method One: Any Possible Type at Any Time}\mbox{}\\
-Whilst analysing the functions of the class we can keep track of all of the possible types of each global variable. We do this on a function-by-function basis. So once we have analysed function \textit{f} we believe that the variable \textit{x} can be the set of types $\left\{ {int}\right\}$. We update this to $\left\{ {int, float}\right\}$ after the analysis of the function \textit{g}. Once the entire class has been analysed and the variable has been accessed we return all of the possible types the variable can be. This method is not very accurate, and does not take into account the changes that the function calls obviously make the object.
+Whilst analysing the functions of the class we can keep track of all of the possible types of each global variable. We do this on a function-by-function basis. So once we have analysed function \textit{f} we believe that the variable \textit{x} can be the set of types $\left\{ {int}\right\}$. We update this to $\left\{ {int, float}\right\}$ after the analysis of the function \textit{g}. Once the entire class has been analysed and the variable has been accessed we return all of the possible types the variable can be. This method is not very accurate, and does not take into account the changes that the function calls make to the object.
 
 \paragraph{Method Two: Treat Function Calls as Object Modifiers}\mbox{}\\
-Whilst analysing the functions of a class, instead of recording all of the types a variable can take we can tag the function with the variable modifications it makes. So for the example given above we would tag for the function \textit{f} as modifying the variable \textit{x} to $\left\{ {int}\right\}$ and function \textit{g} to $\left\{ {float}\right\}$. However to take advantage of this information we are required to manipulate the calling code somewhat. If we are stating that the functions change the state of the object then we need to explicitly indicate this as we did with `normal' variables with SSA naming. For example, consider the calling code for the class C example we gave above. We would edit this to be the following:
+Whilst analysing the functions of a class, instead of recording all of the types a variable can take we can tag the function with the variable modifications it makes. So for the example given above we would tag for the function \textit{f} as modifying the variable \textit{x} to $\left\{ {int}\right\}$ and function \textit{g} to $\left\{ {float}\right\}$. However to take advantage of this information we are required to manipulate the calling code somewhat. If we are stating that the functions change the state of the object then we need to explicitly indicate this as we did with `normal' variables with SSA naming. For example, consider the calling code for the class C example we gave above. We would edit this to be something similar to the following:
 \begin{lstlisting}[mathescape]
-	# Using the class C
-	c1 = C()
-	print(c1.x)    # Error
-	c2 = c1.f()
-	print(c2.x)    # Okay - prints 5
+    # Using the class C
+    c1 = C()
+    print(c1.x)    # Error
+    c1.f()
+    c2 = $\theta$(c1.f())
+    print(c2.x)    # Okay - prints 5
 \end{lstlisting}
-We assume that the function creates a special kind of assignment to the object with the old object information plus the changes to the global variables made by the function. If the function returns a result and is already part of a regular assignment then we would just have two assignments, the original assignment and the new special object replacement kind. \\
+Where the $\theta$ function represents modifications to the class instance. We assume that the function creates a special kind of assignment to the object with the old object information plus the changes to the global variables made by the function. On top of this we must also take account to account the changes the function may perform on variables other than the once it is called upon. For example, the function may take a class instance as parameter and perform modifications on it. \\
 This method is much more accurate than the first as we keep track of how a object instance grows and changes with each function call made upon it. However the price we pay for this accuracy is a much complex implementation process.
 
-\paragraph{Small Improvement: Analyse the \textit{\_\_init\_\_} Function First}\mbox{}\\
-The equivalent of a Java/C++ constructor in Python is the \textit{\_\_init\_\_} function. While Python in no way forces you to declare your \textit{self} variables in the \_\_init\_\_ function, it makes sense to do so and we can reasonably assume that large percentage is declared there. The advantage of analysing this function before the others is that if a global variable is referenced (not assigned to) in a function then to acquire the most accurate typing of that function we want to already having typing information available for that variable. To do this we simply look for the \_\_init\_\_ function in the list of the functions contained in the class and move it to the top of the list if it is found.
+The decision was made to use Method One. While Method Two is clearly more accurate, calculating the side-effects of a function would be complicated process and would not fit within the timescale of the project. \\
+To implement Method One we treat the class variables in the same manner that we treat module-wide global variables.
+
+\paragraph{Small Improvement: Analyse the \texttt{\_\_init\_\_} Function First}\mbox{}\\
+The equivalent of a Java/C++ constructor in Python is the \texttt{\_\_init\_\_} function. While Python in no way forces you to declare your \texttt{self} variables in the \texttt{\_\_init\_\_} function, it makes sense to do so and we can reasonably assume that large percentage is declared there. The advantage of analysing this function before the others is that if a global variable is referenced (not assigned to) in a function then to acquire the most accurate typing of that function we want to already having typing information available for that variable. To do this we simply look for the \texttt{\_\_init\_\_} function in the list of the functions contained in the class and move it to the top of the list if it is found.
 
 \subsubsection{`Magic' Functions}
-Python has a large number of special functions which can be implemented by the programmer which will then be used in a unorthodox way. All of these functions are characterised by having a double leading and trailing underscores. The most frequently used of these is \textit{\_\_init\_\_} and \textit{\_\_del\_\_} which act as a constructor and destructor respectively. \\
-The functions \textit{\_\_eq\_\_}, \textit{\_\_ne\_\_}, \textit{\_\_gt\_\_}, \textit{\_\_ge\_\_}, \textit{\_\_lt\_\_}, \textit{\_\_le\_\_} are used to define comparisons between objects using the $==$, $\neq$, $\ge$, $\geq$, $<$, $\leq$ operators respectively. No type errors can ever occur using the $==$, $\neq$, for instance $4 == ``Hi"$ simply returns false. However using the ordering operators, $>$, $\geq$, $<$, $\leq$, on a class which has not defined the respective function results in a type error.
+Python has a large number of special functions which can be implemented by the programmer which will then be used in a unorthodox way. All of these functions are characterised by having a double leading and trailing underscores. The most frequently used of these is \texttt{\_\_init\_\_} and \texttt{\_\_del\_\_} which act as a constructor and destructor respectively. \\
+The functions \texttt{\_\_eq\_\_}, \texttt{\_\_ne\_\_}, \texttt{\_\_gt\_\_}, \texttt{\_\_ge\_\_}, \texttt{\_\_lt\_\_}, \texttt{\_\_le\_\_} are used to define comparisons between objects using the $==$, $\neq$, $\ge$, $\geq$, $<$, $\leq$ operators respectively. No type errors can ever occur using the $==$, $\neq$, for instance $4 == ``Hi"$ simply returns false. However using the ordering operators, $>$, $\geq$, $<$, $\leq$, on a class which has not defined the respective function results in a type error.
 
-\subsubsection{Inheritance}\mbox{}\\
+\subsubsection{Inheritance}
 In Python a programmer can indicate inheritance by inserting the name of the base class within the parenthesis of the class declaration. This can be seen in the following example:
 \begin{lstlisting}[mathescape]
 	class C():
