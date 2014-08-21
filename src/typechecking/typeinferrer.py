@@ -4,6 +4,7 @@ from pprint import pprint
 from src.traversers.astfulltraverser import AstFullTraverser
 from src.typechecking.errorissuer import *
 from src.typechecking.basictypevariable import BasicTypeVariable
+from src.typechecking.calltypevariable import CallTypeVariable
 from src.typechecking.contentstypevariable import ContentsTypeVariable
 from src.typechecking.binoptypevariable import BinOpTypeVariable
 from src.typechecking.classtypevariable import ClassTypeVariable
@@ -168,7 +169,7 @@ class TypeInferrer(AstFullTraverser):
             # Create a contentstypevariable for each target
             value_types = value_types[0]
             # Hack
-            if isinstance(list(value_types.get())[0], Container_Type):
+            if value_types.get() and isinstance(list(value_types.get())[0], Container_Type):
                 value_types = ContentsTypeVariable(list(value_types.get()))
             value_types = [value_types] * len(targets)
             
@@ -180,7 +181,17 @@ class TypeInferrer(AstFullTraverser):
     #    self.print_types()
             
     def do_Call(self, node):
-        return [BasicTypeVariable([any_type])]
+        ''' Link the indentifier to a callvariable. '''
+        func_indentifier = self.visit(node.func)[0]
+        given_args = []
+        for z in node.args:
+            given_args.extend(self.visit(z))
+        return_type = CallTypeVariable(given_args, node)
+        # Set up a constraint between the call and the identifier
+        self.conduct_assignment([return_type], [func_indentifier], node)
+        # Create a call issue
+        self.error_issuer.add_issue(CallIssue(node, return_type, self.module_name))
+        return [return_type]
     
     def do_Attribute(self, node):
         return_type = None
@@ -316,7 +327,7 @@ class TypeInferrer(AstFullTraverser):
             
         iters = self.visit(node.iter)
         # Assign to the iter target#
-     #   contents_var = ContentsTypeVariable(list(iter.get()))
+        iters = [ContentsTypeVariable(list(x.get())) for x in iters]
         self.conduct_assignment(targets, iters, node)
         
         for z in node.body:

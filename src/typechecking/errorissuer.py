@@ -28,11 +28,15 @@ class DefinedIssue(BaseIssue):
     
 class CallIssue(BaseIssue):
     ''' Checks there is an acceptable call. '''
-    def __init__(self, var):
-        pass
+    def __init__(self, node, var, module_name):
+        super().__init__(node, var, module_name)
     
     def check(self):
-        pass
+        if not self.var_to_check.check_callable():
+            self.print_error()
+            
+    def print_error(self):
+        print(self.module_name + ": " + "Line " + str(self.lineno) + ": Cannot call variable: ")
     
 class BaseClassIssue(BaseIssue):
     ''' Checks acceptable base classes. '''
@@ -70,4 +74,7 @@ class GetAttrIssue(BaseIssue):
         
     def print_error(self):        
         print(self.module_name + ": " + "Line " + str(self.lineno) + ": Cannot find atrribute.")
+        
+class MustContainTypeIssue(BaseIssue):
+    pass
 

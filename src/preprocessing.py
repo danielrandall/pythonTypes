@@ -2,7 +2,7 @@ import ast
 import copy
 from pprint import pprint
 
-
+from src.typeclasses import BUILTIN_TYPE_DICT
 from src.symboltable import SymbolTable
 from src.utils import Utils
 from src.traversers.astfulltraverser import AstFullTraverser
@@ -10,28 +10,6 @@ from src.importdependent import ImportDependent
 
 class Preprocessor(AstFullTraverser):
     '''
-    Unified pre-pass does two things simultaneously:
-    1. Injects ivars into nodes. Only this pass should do this!
-       For all nodes::
-            node.stc_context = self.context
-            node.stc_parent = self.parent
-       For all context nodes::
-            node.stc_symbol_table = {} # Expensive!
-       For all Name nodes.
-            node.stc_scope = None.
-    2. Calls define_name() for all defined names:
-       - class and function names,
-       - all names defined in import statements.
-       - all paramater names (ctx is 'Param')
-       - all assigned-to names (ctx is 'Store'):
-       This has the effect of setting::
-           node.stc_scope = self.context.
-           
-    **Important**: Injecting empty lists, dicts or sets causes gc problems.
-    This code now injects empty dicts only in context nodes, which does
-    not cause significant problems.
-    
-    TODO: Add global variables to the module dictionary
     '''
     def __init__(self):
         AstFullTraverser.__init__(self)
@@ -140,7 +118,10 @@ class Preprocessor(AstFullTraverser):
             
 
     def do_ClassDef(self, node):
-        node.variableTypes = {}
+        old_globals = self.global_variables     
+        node.global_variables = set()
+        node.global_variables |= self.global_variables
+        self.global_variables = node.global_variables
         
         parent_cx = self.context
         assert parent_cx == node.stc_context
@@ -165,6 +146,7 @@ class Preprocessor(AstFullTraverser):
             for z in node.body:
                 self.visit(z)
         finally:
+            self.global_variables = old_globals
             self.current_body = old_body
         for z in node.decorator_list:
             self.visit(z)
@@ -177,8 +159,8 @@ class Preprocessor(AstFullTraverser):
        # for self_var in node.self_variables:
        #     print(self_var)
 
-    def do_FunctionDef(self, node):     
-        node.variableTypes = {}
+    def do_FunctionDef(self, node):
+        ''' Doesn't need global variables. Use parent's. '''
         
         parent_cx = self.context
         assert parent_cx == node.stc_context
@@ -261,6 +243,8 @@ class Preprocessor(AstFullTraverser):
             import_dependent = ImportDependent(alias.name, import_from, as_name)
             self.import_dependents.append(import_dependent)
             
+            self.global_variables.add(import_dependent.get_as_name())
+            
 
     def do_Lambda(self, node):
         parent_cx = self.context
@@ -290,7 +274,10 @@ class Preprocessor(AstFullTraverser):
         self.context = parent_cx
 
     def do_Module (self,node):
-        node.variableTypes = {}
+        node.global_variables = set()
+        self.global_variables = node.global_variables
+        # Add builtins
+        self.global_variables |= set(BUILTIN_TYPE_DICT.keys())
         
         assert self.context is None
         assert node.stc_context is None
@@ -387,9 +374,9 @@ class Preprocessor(AstFullTraverser):
                 
 
     def do_Name(self, node):
-        # If node is a global variable, add it to the module list.
-        #if isinstance(node.ctx, ast.Store) and isinstance(node.stc_context, ast.Module):
-        #    node.stc_context.variableTypes[node.id] = set()
+        # If node is a global variable, add it to the globals
+        if isinstance(node.ctx, ast.Store) and isinstance(node.stc_context, ast.Module) or isinstance(node.stc_context, ast.ClassDef):
+            self.global_variables.add(node.id)
         
         cx = node.stc_context
         if isinstance(node.ctx,(ast.Param,ast.Store)):
@@ -413,8 +400,6 @@ class Preprocessor(AstFullTraverser):
         #self.visit(node.expr)
         if node.value:
             self.visit(node.value)
-            
-            
             
     # The following functions are only here to track the current body.
             

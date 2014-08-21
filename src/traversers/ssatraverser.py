@@ -27,6 +27,8 @@ class SSA_Traverser(AstFullTraverser):
 
     def run(self, root):
         self.u = Utils()
+        self.global_variables = None
+        self.global_var_edits = None
         self.d = {}
             # Keys are names, values are lists of a.values
             # where a is an assignment. 
@@ -104,12 +106,11 @@ class SSA_Traverser(AstFullTraverser):
     def visit(self,node):
         '''Compute the dictionary of assignments live at any point.'''
         method = getattr(self,'do_' + node.__class__.__name__)
-        method(node)
+        return method(node)
         
     def do_Name(self, node):
         ''' If the id is True or false then ignore. WHY ARE TRUE AND FALSE
             IDENTIFIED THE SAME WAY AS VARIABLES. GAH. '''
-      #  print(node.id)
         # We don't SSA a global variable
         if isinstance(node.stc_context, ast.Module) or isinstance(node.stc_context, ast.ClassDef):
             return
@@ -121,8 +122,13 @@ class SSA_Traverser(AstFullTraverser):
             return
         if node.id == "self":
             return
-        if node.id in BUILTIN_TYPE_DICT:
+        if node.id in self.global_variables and isinstance(node.ctx, ast.Load):
             return
+        if node.id in self.global_variables and node.id in self.global_var_edits:
+            return
+        # Becomes local variable in this context
+        if node.id in self.global_variables and isinstance(node.ctx, ast.Store):
+            self.global_variables.remove(node.id)
         if not hasattr(node, 'originalId'):
             node.originalId = node.id
         # If the variable is being assigned a new value
@@ -146,21 +152,44 @@ class SSA_Traverser(AstFullTraverser):
         ''' - We do not assign ssa numbers to class names as it's impossible
               to track order of execution.
             - We need the global variables. Do not start with an empty d '''    
+        self.global_variables = node.global_variables
         old_d = self.d.copy()
-        for z in node.body:
-            self.visit(z)
-        self.d = old_d
+        try:
+            for z in node.body:
+                self.visit(z)
+        finally:
+            self.d = old_d
+            self.global_variables = node.stc_context.global_variables
 
     def do_FunctionDef (self, node):
         ''' Variables defined in function should not exist outside. '''
         # Store d so we can eradicate local variables
+    #    old_args = self.fun_args.copy()
+        old_globals = self.global_variables.copy()
+        self.global_var_edits = node.global_var_edits
         old_d = self.d.copy()
+        
+    #    args = self.visit(node.args)
+    #    self.fun_args += args
        # print(node.name)
        # self.visit(node.args)
     #    print("ssa-ing function: " + node.name)
-        self.blocks_to_process.append((node.initial_block, None))
-        self.process_block_list()
-        self.d = old_d
+        try:
+            self.blocks_to_process.append((node.initial_block, None))
+            self.process_block_list()
+        finally:
+            self.d = old_d
+            self.global_variables = old_globals
+     #   self.fun_args = old_args
+        
+    def do_arguments(self, node):
+        args = []
+        for z in node.args:
+            args.extend(self.visit(z))
+        return args
+            
+    def do_arg(self, node):
+        return [node.arg]
 
     def do_Lambda(self, node):
         old_d = self.d.copy()
@@ -172,6 +201,7 @@ class SSA_Traverser(AstFullTraverser):
    #     print("ssa-ing for Module code")
      #   self.blocks_to_process.append(node.initial_block)
      #   self.process_block_list()
+        self.global_variables = node.global_variables
         for z in node.body:
             self.visit(z)
 
@@ -181,13 +211,16 @@ class SSA_Traverser(AstFullTraverser):
             self.visit(target)
             
     def do_While(self, node):
+        ''' body and else are in their own blocks. '''
         self.visit(node.test)
         
     def do_For(self, node):
+        ''' body and else are in their own blocks. '''
         self.visit(node.target)
         self.visit(node.iter)
         
     def do_If(self,node):
+        ''' body and else are in their own blocks. '''
         self.visit(node.test)
 
     def do_Assert(self, node):
@@ -200,7 +233,7 @@ class SSA_Traverser(AstFullTraverser):
         pass
             
     def do_Call(self, node):
-        ''' We don't wish to SSA the function name. '''
+        self.visit(node.func)
         for z in node.args:
             self.visit(z)
         for z in node.keywords:
@@ -217,17 +250,20 @@ class SSA_Traverser(AstFullTraverser):
         self.visit(node.elt)
     
     def do_DictComp(self, node):
+        ''' Must visit generators first as they assign. '''
         for z in node.generators:
             self.visit(z)
         self.visit(node.key)
         self.visit(node.value)
     
     def do_GeneratorExp(self, node):
+        ''' Must visit generators first as they assign. '''
         for z in node.generators:
             self.visit(z)
         self.visit(node.elt)
             
     def do_comprehension(self, node):
+        ''' Must visit iters first as they assign. '''
         self.visit(node.iter)
         self.visit(node.target)
         for z in node.ifs:

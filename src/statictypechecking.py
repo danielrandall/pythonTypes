@@ -182,8 +182,8 @@ class TypeInferrer(AstFullTraverser):
         print("Printing module: ----------------------------- " + file.get_name() + " ------------------------------")   
         self.variableTypes = root.variableTypes
         self.init()
-        print("-DEPENDENTS-")
-        pprint(dependents)
+     #   print("-DEPENDENTS-")
+     #   pprint(dependents)
         self.variableTypes.update(dependents)
         self.visit(root)
         pprint(self.variableTypes)

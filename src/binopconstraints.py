@@ -9,84 +9,120 @@ BASE_RSHIFT = [int_type]
 BASE_LSHIFT = [int_type]
 BASE_FLOOR_DIV = [int_type, bool_type, float_type]
         
-OP_TYPES = {
-            'Add' : BASE_ADD_TYPES,
-            'Mod' : BASE_MOD_TYPES
-}
 
 # (left_type, right_type) -> return_type
 
 
 ADD_DICT = { (Int_Type, Int_Type) : Int_Type,
              (Int_Type, Float_Type) : Float_Type,
+             (Int_Type, Bool_Type) : Int_Type,
              (Float_Type, Int_Type) : Float_Type,
              (Float_Type, Float_Type) : Float_Type,
+             (Float_Type, Bool_Type) : Float_Type,
              (String_Type, String_Type) : String_Type,
              (Bytes_Type, Bytes_Type) : Bytes_Type,
              (List_Type, List_Type) : List_Type,
+             (Bool_Type, Int_Type) : Int_Type,
+             (Bool_Type, Float_Type) : Float_Type,
+             (Bool_Type, Bool_Type) : Int_Type,
             }
 SUB_DICT = { (Int_Type, Int_Type) : Int_Type,
              (Int_Type, Float_Type) : Float_Type,
+             (Int_Type, Bool_Type) : Int_Type,
              (Float_Type, Int_Type) : Float_Type,
              (Float_Type, Float_Type) : Float_Type,
+             (Float_Type, Bool_Type) : Float_Type,
              (String_Type, String_Type) : String_Type,
              (Bytes_Type, Bytes_Type) : Bytes_Type,
              (List_Type, List_Type) : List_Type,
+             (Bool_Type, Int_Type) : Int_Type,
+             (Bool_Type, Float_Type) : Float_Type,
+             (Bool_Type, Bool_Type) : Int_Type,
             }
 MULT_DICT = { (Int_Type, Int_Type) : Int_Type,
              (Int_Type, Float_Type) : Float_Type,
              (Int_Type, List_Type) : List_Type,
              (Int_Type, String_Type) : String_Type,
+             (Int_Type, Bool_Type) : Int_Type,
              (Float_Type, Int_Type) : Float_Type,
              (Float_Type, Float_Type) : Float_Type,
+             (Float_Type, Bool_Type) : Float_Type,
              (String_Type, String_Type) : String_Type,
              (String_Type, Int_Type) : String_Type,
              (Bytes_Type, Int_Type) : Bytes_Type,
              (List_Type, List_Type) : List_Type,
              (List_Type, Int_Type) : List_Type,
+             (Bool_Type, Int_Type) : Int_Type,
+             (Bool_Type, Float_Type) : Float_Type,
+             (Bool_Type, Bool_Type) : Int_Type,
             }
 
 DIV_DICT = { (Int_Type, Int_Type) : Int_Type,
              (Int_Type, Float_Type) : Float_Type,
              (Int_Type, List_Type) : List_Type,
              (Int_Type, String_Type) : String_Type,
+             (Int_Type, Bool_Type) : Int_Type,
              (Float_Type, Int_Type) : Float_Type,
              (Float_Type, Float_Type) : Float_Type,
+             (Float_Type, Bool_Type) : Float_Type,
              (List_Type, List_Type) : List_Type,
+             (Bool_Type, Int_Type) : Int_Type,
+             (Bool_Type, Float_Type) : Float_Type,
+             (Bool_Type, Bool_Type) : Int_Type,
             }
 
 MOD_DICT = { (Int_Type, Int_Type) : Int_Type,
              (Int_Type, Float_Type) : Float_Type,
+             (Int_Type, Bool_Type) : Int_Type,
              (Float_Type, Int_Type) : Float_Type,
              (Float_Type, Float_Type) : Float_Type,
              (String_Type, Any_Type) : String_Type,
+             (Bool_Type, Int_Type) : Int_Type,
+             (Bool_Type, Float_Type) : Float_Type,
+             (Bool_Type, Bool_Type) : Int_Type,
             }
 
 POW_DICT = { (Int_Type, Int_Type) : Int_Type,
              (Int_Type, Float_Type) : Float_Type,
+             (Int_Type, Bool_Type) : Int_Type,
              (Float_Type, Int_Type) : Float_Type,
              (Float_Type, Float_Type) : Float_Type,
+             (Bool_Type, Int_Type) : Int_Type,
+             (Bool_Type, Float_Type) : Float_Type,
+             (Bool_Type, Bool_Type) : Int_Type,
             }
 
 BITAND_DICT = { (Int_Type, Int_Type) : Int_Type,
+                (Int_Type, Bool_Type) : Int_Type,
                 (Bool_Type, Bool_Type) : Bool_Type,
+                (Bool_Type, Int_Type) : Int_Type,
                 (Set_Type, Set_Type) : Set_Type,
               }
 
 BITOR_DICT = { (Int_Type, Int_Type) : Int_Type,
+               (Int_Type, Bool_Type) : Int_Type,
                (Bool_Type, Bool_Type) : Bool_Type,
+               (Bool_Type, Int_Type) : Int_Type,
                (Set_Type, Set_Type) : Set_Type,
              }
  
 BITXOR_DICT = { (Int_Type, Int_Type) : Int_Type,
+                (Int_Type, Bool_Type) : Int_Type,
                 (Bool_Type, Bool_Type) : Bool_Type,
+                (Bool_Type, Int_Type) : Int_Type,
                 (Set_Type, Set_Type) : Set_Type,
               }
 
 RSHIFT_DICT = { (Int_Type, Int_Type) : Int_Type,
+                (Int_Type, Bool_Type) : Int_Type,
+                (Bool_Type, Int_Type) : Int_Type,
+                (Bool_Type, Bool_Type) : Int_Type,
               }
 
 LSHIFT_DICT = { (Int_Type, Int_Type) : Int_Type,
+                (Int_Type, Bool_Type) : Int_Type,
+                (Bool_Type, Int_Type) : Int_Type,
+                (Bool_Type, Bool_Type) : Int_Type,
               }
 
 FLOORDIV_DICT = { (Int_Type, Int_Type) : Int_Type,
@@ -97,6 +133,7 @@ FLOORDIV_DICT = { (Int_Type, Int_Type) : Int_Type,
                   (Float_Type, Bool_Type) : Float_Type,
                   (Bool_Type, Int_Type) : Int_Type,
                   (Bool_Type, Float_Type) : Float_Type,
+                  (Bool_Type, Bool_Type) : Int_Type,
                 }
 
 OP_DICTS = {'Add' : ADD_DICT,

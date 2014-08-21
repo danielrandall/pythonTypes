@@ -59,6 +59,12 @@ class Any_Type(BaseType):
         
     def get_contents_types(self):
         return set([any_type])
+    
+    def is_callable(self):
+        return True
+    
+    def get_return_types(self):
+        return BasicTypeVariable([any_type])
 
 class Bool_Type(BaseType):    
     ''' Contains no varibles/functions. '''
@@ -411,6 +417,12 @@ string_type = String_Type()
 any_type = Any_Type()
 
 BUILTIN_TYPE_DICT = {
+  # keywords
+  'True': BasicTypeVariable([bool_type]),
+  'False': BasicTypeVariable([bool_type]),
+  'None': BasicTypeVariable([none_type]),
+  # Bit of a hack
+  '_' : BasicTypeVariable([any_type]),
   # Functions
   'eval': BasicTypeVariable([Def_Type([BasicTypeVariable([string_type])],
                                   BasicTypeVariable([any_type]),
