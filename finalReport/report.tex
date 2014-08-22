@@ -8,6 +8,10 @@
 \usepackage{colonequals}
 \usepackage[hyphens]{url}
 
+
+
+\usepackage{dirtree}
+
 % Multi-row columns in a table
 \usepackage{multirow}
 
@@ -884,7 +888,10 @@ The following shows a `raw' while loop and the same while loop in SSA form:
     x4 = $\phi$(x1, x3)
     y2 = $\phi$(y1, None)
 \end{lstlisting}
-A problem raised by this is that the $\phi$ function at the beginning of the loop depends on the types which can not be determined until the end of the loop body. In between there may be other variables which use the result of the $\phi$ function in their own assignment, like $y1$ above. To overcome this we use a \textit{Awaiting\_Type} value which is assigned to any variable which is awaiting the type of another variable, the \textit{waiter} along with the name of the variable they are waiting for, the \textit{waitee}. In the case above we have $x2$ waiting for $x3$ and $y1$ waiting for $x2$. When a waitee is assigned its types then attempts are made to type all of that variable's waiters. If it is found they also need to wait for another variable then the same process occurs again otherwise they are successfully typed. Currently this approach collapses if there is a circular assignment involving a waiter and waitee, e.g.\ $x2 = x1 + 1$ where $x1$ which can cause the waiter of each to be each other. Currently if this circular assignment is detected then both variables are assigned the Any\_Type.
+A problem raised by this is that the $\phi$ function at the beginning of the loop depends on the types which can not be determined until the end of the loop body. In between there may be other variables which use the result of the $\phi$ function in their own assignment, like \texttt{y1} above. Due to the manner we deal with simple assignment, using the subset relation, we can treat the $\phi$ function as a number of assignments. Thus, while in the example above \texttt{x3} may be an empty type variable once we set up the relationship the types will flow through to \texttt{x4} as \texttt{x3} receives them. \\
+\indent \texttt{while} loop tests require no significant effort since any type can be compared to \texttt{True} and \texttt{False}, however \texttt{for} loops use the Python concept of \texttt{iterators}. \texttt{iterators} work by systematically yielding each object that they contain and until all objects have been exhausted.
+
+A Python type qualifies as an iterator if it implements the \texttt{\_\_iter\_\_} function.
 
 
 \subsubsection{Inferring the Possible Types of Function Arguments}
@@ -1036,6 +1043,34 @@ CurrentClass = type('CurrentClass', (NewBaseClass,), dict(NewBaseClass.__dict__)
 \end{lstlisting}
 This behaviour is not supported. For what is likely a rare occurrence and considered `bad coding' by most, the time required to include support for this dynamic changing of base classes was deemed counter productive to the project as a whole.
 
+\subsubsection{Imports}
+Python offers a number of constructs to organise project code. These are as follows:
+\begin{itemize}
+	\item \textbf{Modules} - Modules are files containing definitions and statements. The file name is the module name with the suffix \texttt{.py} appended.~\cite{pythonImports}
+	\item \textbf{Packages} - A package is a collection of modules and sub-packages. ``Packages are a way of structuring Python's module namespace by using ``dotted module names''. For example, the module name `A.B' designates a submodule named `B' in a package named `A'.''
+\end{itemize}
+At face value Python offers two ways to import into a module:
+\begin{itemize}
+	\item import \_
+	\item from \_ import \_
+\end{itemize}
+Both types of import have their own rules on they can be legally used.
+There a number of subjects which can be the subject of a Python import, these are:
+\begin{itemize}
+	\item A module
+	\item A package
+	\item An element within a module (e.g.\ a class / function / variable)
+\end{itemize}
+
+\begin{figure}
+\dirtree{.1 root/.  .2 vehicles/. .3 \_\_init\_\_.py. .3 car.py. .3 train.py.  
+                    .2 locations/. .3 \_\_init\_\_.py. .3 london.py. .3 lisbon.py.
+                    .2 buildings/. .3 \_\_init\_\_.py. .3 theshard.py.
+                    .2 \_\_init\_\_.py.
+                    .2 travel.py. }
+\label{fig:directory}
+\caption{An example Python directory structure}
+\end{figure}
 
 \newpage
 \section{Improvements}
@@ -1046,6 +1081,11 @@ One possible reason for Python's popularity is its extensive standard library. 3
 \newpage
 \section{Evaluation}
 
+\subsection{False-positives}
+
+\subsection{Accuracy}
+
+\subsection{Runtime}
 
 \newpage
 \section{Conclusion}
