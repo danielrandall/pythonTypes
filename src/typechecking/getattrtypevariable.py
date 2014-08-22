@@ -1,5 +1,5 @@
 from src.typechecking.basictypevariable import BasicTypeVariable
-from src.typeclasses import Class_Type, Any_Type, any_type
+from src.typeclasses import Class_Base, Any_Type, any_type
 
 class GetAttrTypeVariable(BasicTypeVariable):
     ''' Must work for modules and classes.
@@ -28,7 +28,7 @@ class GetAttrTypeVariable(BasicTypeVariable):
         for possible_type in self.value:
             if isinstance(possible_type, Any_Type):
                 extracted.add(any_type)
-            if isinstance(possible_type, Class_Type):
+            if isinstance(possible_type, Class_Base):
                 has_attr = possible_type.get_global_var(self.attr)
                 if has_attr:
                     extracted |= has_attr.types

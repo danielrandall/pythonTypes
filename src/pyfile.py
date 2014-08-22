@@ -10,12 +10,12 @@ import src.stcglobals as stcglobals
 
 class PyFile(object):
 
-    def __init__(self, name, relative_path, root):  
+    def __init__(self, path_and_name, relative_path, root):  
         # The base type for this file. All files have a module type.
         self.module_type = None
-        self.source = self.prepare_file(root, relative_path, name)
-        self.name = name
-        self.path = relative_path
+        self.source = self.prepare_file(root, relative_path, path_and_name)
+        self.path_and_name = path_and_name
+        self.relative_path = relative_path
         self.typed = False
  #       self.global_vars = None
         
@@ -49,17 +49,21 @@ class PyFile(object):
         pp_2_source = PyFile.apply_preprocessing_second(self, ssa_source)
         print("Finished preprocessingsecond " + path + name)
         
-        print(utils.dump_ast(pp_2_source))
+    #    print(utils.dump_ast(pp_2_source))
         return pp_2_source
         
     def get_source(self):
         return self.source
     
     def get_name(self):
-        return self.name
-    
+        return self.path_and_name.split('/')[-1]
+        
     def get_path(self):
-        return self.name
+        path = self.path_and_name.replace(self.get_name(), "")
+        if not path:
+            return "."
+        else:
+            return path
     
     def has_been_typed(self):
         return self.typed

@@ -1,5 +1,5 @@
 from src.typechecking.basictypevariable import BasicTypeVariable
-from src.typeclasses import Class_Type
+from src.typeclasses import Class_Base
 
 class SetAttrTypeVariable(BasicTypeVariable):
     ''' Must work for modules and classes.
@@ -16,13 +16,13 @@ class SetAttrTypeVariable(BasicTypeVariable):
     def find_new_dependents(self):
         dependents = set()
         for possible_type in self.value:
-            if isinstance(possible_type, Class_Type):
+            if isinstance(possible_type, Class_Base):
                 # Doesn't have the var yet, create a new type var for it
                 if self.attr not in possible_type.get_vars():
                     new_dependent = BasicTypeVariable()
                     possible_type.set_var(self.attr, new_dependent)
                 else:
-                    new_dependent = possible_type.get_var(self.attr)
+                    new_dependent = possible_type.get_global_var(self.attr)
                 if new_dependent not in self.constraint_dependents:
                     dependents.add(new_dependent)
         return dependents

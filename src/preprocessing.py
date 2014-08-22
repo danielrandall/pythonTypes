@@ -6,7 +6,7 @@ from src.typeclasses import BUILTIN_TYPE_DICT
 from src.symboltable import SymbolTable
 from src.utils import Utils
 from src.traversers.astfulltraverser import AstFullTraverser
-from src.importdependent import ImportDependent
+from src.importdependent import ImportDependent, Import, ImportFrom
 
 class Preprocessor(AstFullTraverser):
     '''
@@ -223,19 +223,26 @@ class Preprocessor(AstFullTraverser):
         for name in node.names:
             self.define_name(cx,name)
             
-    def do_Import(self,node):
+    def do_Import(self, node):
         ''' Import(names=[alias(name='ast')])
             Import(names=[alias(name='os',asname='ossy')]) '''
-        self.alias_helper(node, None)
+        for alias in node.names:
+            as_name = alias.asname if alias.asname else None
+            new_import = Import(alias.name, as_name)
+            self.import_dependents.append(new_import)
+    #    self.alias_helper(node, None)
                 
     def do_ImportFrom(self,node):
         ''' ImportFrom(module='b',names=[alias(name='*')],level=0)])'''
-        self.alias_helper(node, node.module)
+        for alias in node.names:
+            as_name = alias.asname if alias.asname else None
+            new_import = ImportFrom(alias.name, node.module, as_name, node.level)
+            self.import_dependents.append(new_import)
+    #    self.alias_helper(node, node.module)
 
     def alias_helper(self, node, import_from):
         ''' alias.name contains import name e.g. a.b.c.filename
             alias.asname contains the obvious asname e.g. import filename as asname
-            TODO: Deal with asname
             TODO: Allow imports outside of start ''' 
         #assert self.import_dependents
         for alias in node.names:

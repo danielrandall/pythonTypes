@@ -1,3 +1,6 @@
+from src.typeclasses import Module_Type, any_type
+from src.typechecking.basictypevariable import BasicTypeVariable
+
 class ImportDependent(object):
 
     def __init__(self, name, import_from, as_name):
@@ -20,8 +23,12 @@ class ImportDependent(object):
         return split_string.pop()
     
     def get_as_name(self):
-        ''' If no asname is specified then it is just the name '''
-        return self.as_name if self.as_name else self.name
+        ''' If no asname is specified then it is just the first package '''
+        if self.as_name:
+            return self.as_name
+        split_string = self.name.split('.')
+        return split_string[0]
+    
     
     def convert_to_directories(self):
         module_path = self.import_from if self.import_from else self.name
@@ -36,3 +43,103 @@ class ImportDependent(object):
             return "."
         # We want to remove the last '/' as well
         return converted[:converted.rfind(name) - 1]        
+    
+class ImportFrom():
+    ''' item can be a module, package or a function/class/variable.
+        The import statement first tests whether the item is defined in the package;
+        if not, it assumes it is a module and attempts to load it. If it fails to find it, an ImportError exception is raised.
+        Can only wildcard import modules - last item must be module
+        import a.b.c defines:
+            a
+            a.b
+            a.b.c
+        You can import relative to the current directory using ellipses.
+        . is current directory
+        .. is one above
+        ... is two above, and so on...
+        This is represented in the levels variable '''
+    def __init__(self, item, path = "", as_name = None, level = None):
+        self.path = path
+        self.item = item
+        self.as_name = as_name
+        self.level = level
+    
+    def convert_to_directories(self, path):
+        return self.path.split('.')
+    
+    def get_as_name(self):
+        if self.as_name:
+            return self.as_name
+        else:
+            return self.item
+
+    def find(self, dirs, current_dir):
+        return (self.get_as_name(), BasicTypeVariable([any_type]))
+       # if self.level:
+       #     path 
+       # path = self.convert_to_directories(self.path)
+        
+            
+        
+    
+class Import():
+    ''' Can only import modules and packages.
+        Can not import classes/functions.
+        If no as_name then define the first as a module:
+            import a.b
+            a -> module_type
+              -> b -> module_type '''
+    def __init__(self, path, as_name = None):
+        self.path = path
+        self.as_name = as_name
+    
+    def convert_to_directories(self, path):
+        return path.split('.')
+    
+    def get_as_name(self):
+        if self.as_name:
+            return self.as_name
+        return self.convert_to_directories(self.path)[0]
+    
+    def find(self, dirs, current_dir):
+        path = self.convert_to_directories(self.path)
+        
+        if len(path) == 1:
+            # Top level
+            file_in_dir = path[0]
+            as_name = self.as_name if self.as_name else file_in_dir
+            if file_in_dir in dirs[current_dir]:
+                return (as_name, dirs[current_dir][file_in_dir].get_module_type())
+            else:
+                # Can't find it
+                return (as_name, BasicTypeVariable([any_type]))
+        else:
+            if self.as_name:
+                # We can just grab the module/package
+                # Check module first
+                name = path.pop()
+                path_to_module = '/'.join(path)
+                return_type = None
+                if name in dirs[path_to_module]:
+                    return (self.as_name, dirs[path_to_module][name].get_module_type())
+                else:
+                    return (self.as_name, BasicTypeVariable([any_type]))
+            else:
+                return (path[0], BasicTypeVariable([any_type]))
+                
+                
+                # First check if the last item is a module
+                if path[-1] in dirs['/'.join(path[:-1])]:
+                    current_package = {path.pop(): [dirs['/'.join(path[:-1])]].get_module_type()}
+                    
+                # Else check if there is a package
+                elif path in '/'.join(path):
+                    current_package = {path.pop(), Module_Type()}
+                else:
+                    # Can't find it
+                    return (path[0], BasicTypeVariable([any_type]))
+           #     while not path:
+           #         current_package =
+                                             
+            
+        

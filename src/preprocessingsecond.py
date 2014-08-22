@@ -94,7 +94,7 @@ class PreprocessorSecond(AstFullTraverser):
      #   print("Module vars")
      #   pprint(node.variableTypes)
         module_type = Module_Type(node.variableTypes)
-        self.source_file.set_module_type(module_type)
+        self.source_file.set_module_type(BasicTypeVariable([module_type]))
         
 
     def do_Name(self, node):

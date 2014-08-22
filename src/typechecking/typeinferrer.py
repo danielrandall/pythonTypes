@@ -54,26 +54,29 @@ class TypeInferrer(AstFullTraverser):
             TODO: Wildcard imports '''
         dependent_vars = {}
         root = file.get_source()
+        #print(file_tree)
         for dependent in root.import_dependents:
-                assert isinstance(dependent, ImportDependent)
-                name = dependent.get_module_name()
-                as_name = dependent.get_as_name()
-                directory = dependent.get_directory_no_name()
+            as_name, var = dependent.find(file_tree, file.get_path())
+            dependent_vars[as_name] = var
+      #          assert isinstance(dependent, ImportDependent)
+      #          name = dependent.get_module_name()
+      #          as_name = dependent.get_as_name()
+      #          directory = dependent.get_directory_no_name()
                # assert(directory in file_tree), "File not found"
                
                 # If can't find it then just set it to any   
-                if not directory in file_tree or name not in file_tree[directory]:
-                    dependent_vars[as_name] = BasicTypeVariable([any_type])
-                    continue
-                
-                dependent_file = file_tree[directory][name]
+          #      if not directory in file_tree or name not in file_tree[directory]:
+          #          dependent_vars[as_name] = BasicTypeVariable([any_type])
+          #          continue
+          #      
+          #      dependent_file = file_tree[directory][name]
                 # Check if a specific global_var is imported from the module
-                dependent_module = dependent_file.get_module_type()
-                if dependent.is_import_from():
-                    value = dependent_module.get_global_var(dependent.get_class_name())
-                else:
-                    value = BasicTypeVariable([dependent_module])
-                dependent_vars[as_name] = value
+          #      dependent_module = dependent_file.get_module_type()
+         #       if dependent.is_import_from():
+          #          value = dependent_module.get_global_var(dependent.get_class_name())
+       #         else:
+        #            value = BasicTypeVariable([dependent_module])
+       #         dependent_vars[as_name] = value
         return dependent_vars 
             
     def file_tree_to_list(self, file_tree):
@@ -87,9 +90,9 @@ class TypeInferrer(AstFullTraverser):
         ''' Runs the type_checking on an individual file. '''
         root = file.get_source()     
         print()
-        print("Printing module: |||||||||||||||||||||||||||||||||||************************ " + file.path + " " + file.get_name() + " *******************|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||")   
+        print("Printing module: |||||||||||||||||||||||||||||||||||************************ " + file.get_path() + " " + file.get_name() + " *******************|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||")   
         print()
-        self.module_name = file.path + " " + file.get_name()
+        self.module_name = file.get_path() + " " + file.get_name()
         self.variableTypes = root.variableTypes
         self.initialise()
    #     print("-DEPENDENTS-")
@@ -177,8 +180,8 @@ class TypeInferrer(AstFullTraverser):
             assert isinstance(value, BasicTypeVariable)
             assert isinstance(target, BasicTypeVariable)
             value.add_new_dependent(target)
-    #    print("Conduct")
-    #    self.print_types()
+   #     print("Conduct")
+   #     self.print_types()
             
     def do_Call(self, node):
         ''' Link the indentifier to a callvariable. '''
@@ -205,7 +208,7 @@ class TypeInferrer(AstFullTraverser):
             # Create constraint between value and getattr
             self.conduct_assignment([return_type], [value], node)
             # Add an output constraint to the error issuer
-            self.error_issuer.add_issue(GetAttrIssue(node, return_type, self.module_name))
+            self.error_issuer.add_issue(GetAttrIssue(node, return_type, self.module_name, node.attr))
         elif isinstance(node.ctx, ast.Del):
             # This is like del x.f . Do we care? Don't think so
             return
@@ -327,8 +330,9 @@ class TypeInferrer(AstFullTraverser):
             
         iters = self.visit(node.iter)
         # Assign to the iter target#
-        iters = [ContentsTypeVariable(list(x.get())) for x in iters]
-        self.conduct_assignment(targets, iters, node)
+        iter_contents = [ContentsTypeVariable() for x in iters]
+        self.conduct_assignment(iter_contents, iters, node)
+        self.conduct_assignment(targets, iter_contents, node)
         
         for z in node.body:
             self.visit(z)

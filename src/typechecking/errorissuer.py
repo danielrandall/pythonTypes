@@ -65,15 +65,18 @@ class BinOpIssue(BaseIssue):
 
 class GetAttrIssue(BaseIssue):
     ''' Checks whether an attribute exists. '''
-    def __init__(self, node, var, module_name):
+    def __init__(self, node, var, module_name, attr):
         super().__init__(node, var, module_name)
+        self.attr = attr
     
     def check(self):
+        if self.attr == "items":
+            pass
         if not self.var_to_check.check_output():
             self.print_error()
         
     def print_error(self):        
-        print(self.module_name + ": " + "Line " + str(self.lineno) + ": Cannot find atrribute.")
+        print(self.module_name + ": " + "Line " + str(self.lineno) + ": Cannot find atrribute: " + self.attr)
         
 class MustContainTypeIssue(BaseIssue):
     pass

@@ -33,11 +33,6 @@ class BaseType:
     def __lt__(self, other): return self.is_type(other) and (self.kind == 'Any' or other.kind == 'Any')
     def __ne__(self, other): return self.is_type(other) and self.kind != other.kind
     
-    def contains_waiting_type(self):
-        ''' Should be overriden for a type which may contain an Awaiting_Type.
-        '''
-        return False
-    
     def is_callable(self):
         ''' Should be overriden for a type which is callable. '''
         return False
@@ -52,6 +47,12 @@ class BaseType:
             return self.global_vars[var]
         else:
             return None
+        
+    def get_vars(self):
+        return self.global_vars
+    
+    def set_var(self, name, var):
+        self.global_vars[name] = var
 
 class Any_Type(BaseType):    
     def __init__(self):
@@ -79,9 +80,8 @@ class Bytes_Type(BaseType):
     def __init__(self):
         BaseType.__init__(self,'Bytes')
         
-class Callable_Type(BaseType):
-    def __init__(self, kind):
-        super().__init__(kind)
+class Callable_Type():
+    def __init__(self):
         self.supports_calling = True
         # Variables used for analysis of callable types
         self.parameter_types = []
@@ -107,46 +107,15 @@ class Attribute_Type():
 
 class Class_Base():    
     ''' The types of global class variables are kept here. '''
-    def check_contains_variable(self, var):
-        return var in self.global_vars
+    def __init__(self):
+        self.any_base_class = False
     
-    def update_vars_types(self, name, new_types):
-        ''' Name not always in there. The name can be defined at any time. '''
-        if name in self.global_vars:
-            # Return False is the update provides no new information
-            if new_types.issubset(self.global_vars[name]):
-                return False
-            self.global_vars[name] |= new_types
-        else:
-            self.global_vars[name] = new_types
-            self.global_dependents[name] = []
-        return True
-            
-    def get_var(self, var):
-        return self.global_vars[var]
     
-    def get_vars(self):
-        return self.global_vars
-    
-    def set_var(self, name, var):
-        self.global_vars[name] = var
-    
-    def create_dependent_dict(self):
-        self.global_dependents = {}
-        for glob in self.global_vars:
-            self.global_dependents[glob] = []
-      #  print("DEPENDENTS")
-      #  print(self.global_dependents)
-    
-    def update_dependents(self, var, new_dependent):
-        if new_dependent not in self.global_dependents[var]:
-            self.global_dependents[var].append(new_dependent)
-            
-    def get_var_depedent_list(self, var):
-        return self.global_dependents[var]
+    def has_any_base(self):
+        return self.any_base_class
 
 # Note: ClassType is a Python builtin.
-class Class_Type(Callable_Type, Class_Base):
+class Class_Type(Callable_Type, Class_Base, BaseType):
     ''' Class to define classes. This is always callable due to init.
     
         TODO: Bultin functions such as __class__ .
@@ -154,13 +123,14 @@ class Class_Type(Callable_Type, Class_Base):
     def __init__(self, name, global_vars, has_call_func=False):
         ''' global_vars are variables accessible outside of the class. ''' 
         kind = 'Class Def: %s' % name
-        super().__init__(kind)
+        Class_Base.__init__(self)
+        BaseType.__init__(self, kind)
+        Callable_Type.__init__(self)
         self.name = name
         self.global_vars = global_vars
         self.has_call_func = has_call_func
         self.call_param_types = None
         self.call_return_types = None
-        self.create_dependent_dict()
         self.any_base_class = False
         
     def __repr__(self):
@@ -171,9 +141,6 @@ class Class_Type(Callable_Type, Class_Base):
     
     def set_any_base(self):
         self.any_base_class = True
-        
-    def has_any_base(self):
-        return self.any_base_class
     
     def set_init_params(self, parameter_types):
         self.parameter_types = parameter_types
@@ -184,9 +151,10 @@ class Class_Type(Callable_Type, Class_Base):
     
     def get_return_types(self):
         ''' We want to return a new instance every time. '''
-        return set([Class_Instance(self.name, self.global_vars.copy(), \
-                              self.has_call_func, self.call_param_types, \
-                              self.call_return_types, self.global_dependents)])
+        return BasicTypeVariable([any_type])
+      #  return set([Class_Instance(self.name, self.global_vars.copy(), \
+      #                        self.has_call_func, self.call_param_types, \
+      #                        self.call_return_types, self.global_dependents)])
     
 class Class_Instance(Callable_Type, Class_Base):
     ''' Used to represent initialised classes. '''
@@ -205,16 +173,17 @@ class Class_Instance(Callable_Type, Class_Base):
     def __repr__(self):
         return 'Class Instance: %s' % self.name
             
-class Module_Type(BaseType):
+class Module_Type(Class_Base):
     def __init__(self, global_vars):
         kind = 'Module()'
         BaseType.__init__(self, kind, global_vars)
 
-class Def_Type(Callable_Type):    
+class Def_Type(Callable_Type, BaseType):    
     ''' TODO: deal with kind. '''
     def __init__(self, parameter_types, return_types, arg_default_length):
         kind = 'Def(%s)' % id(parameter_types)
-        super().__init__(kind)
+        BaseType.__init__(self, kind)
+        Callable_Type.__init__(self)
         self.parameter_types = parameter_types
         self.return_types = return_types
         self.arg_default_length = arg_default_length
@@ -223,12 +192,8 @@ class Inference_Failure(BaseType):
     def __init__(self, kind, node):
         BaseType.__init__(self,kind)
         u = Utils()
-        verbose = False
         self.node = node
-        node_kind = u.kind(node)
-        suppress_node = ('Assign','Attribute','Call','FunctionDef')
-        suppress_kind = ('Un_Arg',)
-        
+
     def __repr__(self):
         return self.kind
 
@@ -259,13 +224,12 @@ class Unknown_Arg_Type(Inference_Failure):
         kind = 'Unkown_Arg_Type'
         Inference_Failure.__init__(self,kind,node)
         
-class Container_Type(BaseType):
-    def __init__(self, kind, node, contents, c_types):
+class Container_Type():
+    def __init__(self, node, contents, c_types):
         ''' contents is used to for assignment and anything which may find
             knowing the elements of the list helpful. '''
         self.contents = contents 
         self.content_types = c_types
-        BaseType.__init__(self,kind)
         
     def infer_types(self):
         ''' Calculate the types contained in the list.
@@ -307,61 +271,78 @@ class ContainerUpdate():
         def is_slice(self):
             return self.slice_update
         
-class Dict_Type(Container_Type):
+class Dict_Type(Container_Type, Class_Base, BaseType):
     ''' TODO: Add values contained in a dict. '''
     def __init__(self):
         kind = 'dict(@%s)'
-        Container_Type.__init__(self, kind, None, [], set([any_type]))
+        BaseType.__init__(self, kind)
+        Class_Base.__init__(self)
+        Container_Type.__init__(self, None, [], set([any_type]))
         
         self.global_vars = {# keys returns a dict view object - not yet supported
-                            'keys' : set([Def_Type([],
-                                  set([any_type]),
+                            'keys' : BasicTypeVariable([Def_Type([],
+                                  BasicTypeVariable([any_type]),
                                   0)]),
                             # items returns a dict view object - not yet supported
-                            'items' : set([Def_Type([],
-                                  set([any_type]),
+                            'items' : BasicTypeVariable([Def_Type([],
+                                  BasicTypeVariable([any_type]),
                                   0)]),
                             # values returns a dict view object - not yet supported
-                            'values' : set([Def_Type([],
-                                  set([any_type]),
+                            'values' : BasicTypeVariable([Def_Type([],
+                                  BasicTypeVariable([any_type]),
                                   0)])
                             }
         
     def define_kind(self):
         self.kind = 'dict(%s)' % repr(self.content_types)
         
-class Set_Type(Container_Type):
+class Set_Type(Container_Type, Class_Base, BaseType):
     ''' TODO: Add new types when the function append is called or similar. '''
     def __init__(self):
         kind = 'set({})'
-        Container_Type.__init__(self, kind, None, [], set())
+        BaseType.__init__(self, kind)
+        Container_Type.__init__(self, None, [], set())
+        Class_Base.__init__(self)
         
     def define_kind(self):
         self.kind = 'set(%s)' % repr(self.content_types)
 
-class List_Type(Container_Type):
+class List_Type(BaseType, Container_Type, Class_Base):
     ''' TODO: Add new types when the function append is called or similar. '''
     def __init__(self):
         kind = 'List({})'
-        Container_Type.__init__(self, kind, None, [], set())
+        BaseType.__init__(self, kind)
+        Container_Type.__init__(self, None, [], set())
+        Class_Base.__init__(self)
+        
+        self.global_vars = {
+                            'append' : BasicTypeVariable([Def_Type([],
+                                       BasicTypeVariable([none_type]),
+                                       0)]),
+
+                            }
         
     def define_kind(self):
         self.kind = 'List(%s)' % repr(self.content_types)
         
-class Generator_Type(Container_Type):
+class Generator_Type(Container_Type, Class_Base, BaseType):
     ''' TODO: Add new types when the function append is called or similar. '''
     def __init__(self):
         kind = 'List({})'
-        Container_Type.__init__(self, kind, None, [], set())
+        Container_Type.__init__(self, None, [], set())
+        Class_Base.__init__(self)
+        BaseType.__init__(self, kind)
         
     def define_kind(self):
         self.kind = 'List(%s)' % repr(self.content_types)
     
     
-class Tuple_Type(Container_Type):
+class Tuple_Type(Container_Type, Class_Base, BaseType):
     def __init__(self):
         kind = 'Tuple({})'
-        Container_Type.__init__(self, kind, None, [], set())
+        Container_Type.__init__(self, None, [], set())
+        Class_Base.__init__(self)
+        BaseType.__init__(self, kind)
         
     def define_kind(self):
         self.kind = 'Tuple(%s)' % repr(self.content_types)
@@ -385,22 +366,25 @@ class Int_Type(Num_Type):
     def __init__(self):
         Num_Type.__init__(self, int)
         
-class String_Type(Container_Type):
+class String_Type(Container_Type, Class_Base, BaseType):
     def __init__(self):
         BaseType.__init__(self, 'String')
+        Class_Base.__init__(self)
         self.content_types = set([self])
-        
-    def infer_types(self):
-        return
-        
+               
+        self.global_vars = {'encode' : BasicTypeVariable([Def_Type([self, self],
+                                                                    BasicTypeVariable([bytes_type]),
+                                                                    2)]),
+                            'replace': BasicTypeVariable([Def_Type([self, self, int_type],
+                                                                    BasicTypeVariable([self]),
+                                                                    1)]),
+                            }
+
     def get_content_types(self):
         return self.content_types
         
     def update_content_types(self, new_types):
         return
-        
-    def contains_waiting_type(self):
-        return False
     
     def define_kind(self):
         self.kind = 'String'
