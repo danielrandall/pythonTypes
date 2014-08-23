@@ -245,9 +245,10 @@ class TypeInferrer(AstFullTraverser):
                 self.visit(z)
             for z in node.decorator_list:
                 self.visit(z)
-
-     #       print("Final types")
-     #       self.print_types()
+                
+            print()
+            print("Final types")
+            self.print_types()
         finally:
             # Restore parent variables
             self.variableTypes = node.stc_context.variableTypes
