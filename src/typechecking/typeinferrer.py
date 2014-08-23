@@ -55,9 +55,13 @@ class TypeInferrer(AstFullTraverser):
         dependent_vars = {}
         root = file.get_source()
         #print(file_tree)
+        print("dependents for " + file.path_and_name)
         for dependent in root.import_dependents:
-            as_name, var = dependent.find(file_tree, file.get_path())
-            dependent_vars[as_name] = var
+            new_vars = dependent.find(file_tree, file.get_path())
+            print(new_vars)
+            assert isinstance(new_vars, list)
+            for name, var in new_vars:
+                dependent_vars[name] = var
       #          assert isinstance(dependent, ImportDependent)
       #          name = dependent.get_module_name()
       #          as_name = dependent.get_as_name()
@@ -103,6 +107,9 @@ class TypeInferrer(AstFullTraverser):
         
     def link_imports(self, imports):
         for name, value in imports.items():
+            # Due to wildcards there may be names not yet definied
+            if name not in self.variableTypes:
+                self.variableTypes[name] = BasicTypeVariable()
             self.conduct_assignment([self.variableTypes[name]], [value], None)
     
     def visit(self, node):
@@ -166,6 +173,8 @@ class TypeInferrer(AstFullTraverser):
    
         # Special case list or double assignment
         # x = y = 6 
+       # if node:
+       #     print(node.lineno)
         if len(targets) != len(value_types):
             # Makes sure it's a single element
             assert len(value_types) == 1
@@ -180,8 +189,9 @@ class TypeInferrer(AstFullTraverser):
             assert isinstance(value, BasicTypeVariable)
             assert isinstance(target, BasicTypeVariable)
             value.add_new_dependent(target)
-   #     print("Conduct")
-   #     self.print_types()
+      #  print()
+      #  print("Conduct")
+      #  self.print_types()
             
     def do_Call(self, node):
         ''' Link the indentifier to a callvariable. '''

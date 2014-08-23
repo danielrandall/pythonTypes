@@ -173,10 +173,11 @@ class Class_Instance(Callable_Type, Class_Base):
     def __repr__(self):
         return 'Class Instance: %s' % self.name
             
-class Module_Type(Class_Base):
+class Module_Type(Class_Base, BaseType):
     def __init__(self, global_vars):
         kind = 'Module()'
         BaseType.__init__(self, kind, global_vars)
+        Class_Base.__init__(self)
 
 class Def_Type(Callable_Type, BaseType):    
     ''' TODO: deal with kind. '''

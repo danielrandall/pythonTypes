@@ -87,14 +87,15 @@ class PreprocessorSecond(AstFullTraverser):
         # Add names for imports
         for dependent in node.import_dependents:
             as_name = dependent.get_as_name()
-            if as_name not in self.variableTypes:
+            # Don't include wildcard
+            if as_name not in self.variableTypes and as_name != "*":
                 self.variableTypes[as_name] = BasicTypeVariable() 
         for z in node.body:
             self.visit(z)
      #   print("Module vars")
      #   pprint(node.variableTypes)
         module_type = Module_Type(node.variableTypes)
-        self.source_file.set_module_type(BasicTypeVariable([module_type]))
+        self.source_file.set_module_type(module_type)
         
 
     def do_Name(self, node):

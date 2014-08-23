@@ -457,6 +457,31 @@ class ControlFlowGraph(AstFullTraverser):
             
         self.use_next_block(after_try_block)     
         
+    def do_Assign(self, node):
+        ''' There's not reason we would ever want to go down here. '''
+        pass
+    
+    def do_Slice (self,node):
+        pass
+    
+    def do_ListComp(self,node):
+        pass
+            
+    def do_DictComp(self, node):
+        pass
+    
+    def do_GeneratorExp(self,node):
+        pass
+    
+    def do_Call(self,node):
+        pass
+    
+    def do_BinOp (self,node):
+        pass
+    
+    def do_arguments(self,node):
+        pass
+        
 class PrintCFG(AstFullTraverser):
     
     def __init__(self, cfg):

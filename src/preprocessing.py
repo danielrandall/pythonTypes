@@ -115,7 +115,7 @@ class Preprocessor(AstFullTraverser):
             node.targets = [node.target]
             node.transformed = True
         self.do_Assign(node)
-            
+  
 
     def do_ClassDef(self, node):
         old_globals = self.global_variables     
@@ -236,7 +236,7 @@ class Preprocessor(AstFullTraverser):
         ''' ImportFrom(module='b',names=[alias(name='*')],level=0)])'''
         for alias in node.names:
             as_name = alias.asname if alias.asname else None
-            new_import = ImportFrom(alias.name, node.module, as_name, node.level)
+            new_import = ImportFrom(alias.name, node.module if node.module else "", as_name, node.level)
             self.import_dependents.append(new_import)
     #    self.alias_helper(node, node.module)
 

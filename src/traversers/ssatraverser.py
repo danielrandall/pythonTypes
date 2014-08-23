@@ -59,8 +59,11 @@ class SSA_Traverser(AstFullTraverser):
         for statement in block.statements:
             self.visit(statement)
         dict_to_pass = self.d.copy()
+        
     #    print("Block " + str(block.start_line_no) + " to")
     #    print(block.exit_blocks)        
+    #    print(block.statements)
+        
         for an_exit in block.exit_blocks:
             self.add_to_list((an_exit, dict_to_pass))
             
@@ -94,14 +97,16 @@ class SSA_Traverser(AstFullTraverser):
             block.statements[0].phi_nodes.append(new_phi)
             
     def update_phis(self, block, predecessor_dict):
+        if not block.statements:
+            return
         for var, num in predecessor_dict.items():
             if var in block.referenced_vars:
                     # Don't add the var if it is itself!
                     if var + str(num) == block.phi_nodes[var].get_var():
                         continue
                     block.phi_nodes[var].update_targets(var + str(num))
-          #          print("Phis for: " + str(block.start_line_no))
-           #         print(block.phi_nodes)
+         #           print("Phis for: " + str(block.start_line_no))
+          #          print(block.phi_nodes)
                     
     def visit(self,node):
         '''Compute the dictionary of assignments live at any point.'''
