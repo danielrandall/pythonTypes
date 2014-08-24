@@ -505,6 +505,14 @@ class TypeInferrer(AstFullTraverser):
             t_num = float_type
         return [BasicTypeVariable([t_num])]
     
+    def do_ExceptHandler(self, node):
+        if node.type and node.name and node.name:
+            except_type = self.visit(node.type)
+            target = self.variableTypes[node.name]
+            self.conduct_assignment([target], except_type, node)
+        for z in node.body:
+            self.visit(z)
+    
     def do_Bytes(self, node):
         return [BasicTypeVariable([bytes_type])]
 

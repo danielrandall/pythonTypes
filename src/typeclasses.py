@@ -798,6 +798,8 @@ BUILTIN_TYPE_DICT = {
   # Bit of a hack
   '_' : BasicTypeVariable([any_type]),
   
+  'Exception' : BasicTypeVariable([any_type]),
+  
   # Functions
   
   # abs(n: int) -> int
@@ -1008,6 +1010,10 @@ BUILTIN_TYPE_DICT = {
   # sum(iterable: Iterable[T], start: T = None) -> T
   'sum' : BasicTypeVariable([Def_Type([BasicTypeVariable([any_type]), BasicTypeVariable([any_type])],
                                   BasicTypeVariable([any_type]),
+                                  1)]),
+                     
+  'vars':  BasicTypeVariable([Def_Type([ BasicTypeVariable([any_type]) ],
+                                  BasicTypeVariable([Dict_Type()]),
                                   1)]),
       
   # zip(iter1: Iterable[T1]) -> Iterator[Tuple[T1]]
