@@ -1,13 +1,17 @@
 from src.typeclasses import *
 
-BASE_ADD_TYPES = [List_Type(), int_type, float_type, string_type, bytes_type]
-BASE_MOD_TYPES = [List_Type(), int_type, float_type, string_type]
-BASE_POW_TYPES = [int_type, float_type]
-BASE_BITAND_TYPES = [Set_Type(), int_type, bool_type]
-BASE_BITOR_TYPES = [Set_Type(), int_type, bool_type]
-BASE_RSHIFT = [int_type]
-BASE_LSHIFT = [int_type]
-BASE_FLOOR_DIV = [int_type, bool_type, float_type]
+BASE_ADD_TYPES = BasicTypeVariable([List_Type(), int_type, float_type, string_type, bytes_type, bool_type])
+BASE_SUB_TYPES = BasicTypeVariable([int_type, float_type, string_type, bytes_type, bool_type])
+BASE_MULT_TYPES = BasicTypeVariable([List_Type(), int_type, float_type, string_type, bytes_type, bool_type])
+BASE_DIV_TYPES = BasicTypeVariable([List_Type(), int_type, float_type, string_type, bool_type])
+BASE_MOD_TYPES = BasicTypeVariable([List_Type(), int_type, float_type, string_type, bool_type])
+BASE_POW_TYPES = BasicTypeVariable([int_type, float_type, bool_type])
+BASE_BITAND_TYPES = BasicTypeVariable([Set_Type(), int_type, bool_type])
+BASE_BITOR_TYPES = BasicTypeVariable([Set_Type(), int_type, bool_type])
+BASE_BITXOR_TYPES = BasicTypeVariable([Set_Type(), int_type, bool_type])
+BASE_RSHIFT_TYPES = BasicTypeVariable([int_type, bool_type])
+BASE_LSHIFT_TYPES = BasicTypeVariable([int_type, bool_type])
+BASE_FLOORDIV_TYPES = BasicTypeVariable([int_type, bool_type, float_type, bool_type])
         
 
 # (left_type, right_type) -> return_type
@@ -34,7 +38,6 @@ SUB_DICT = { (Int_Type, Int_Type) : Int_Type,
              (Float_Type, Bool_Type) : Float_Type,
              (String_Type, String_Type) : String_Type,
              (Bytes_Type, Bytes_Type) : Bytes_Type,
-             (List_Type, List_Type) : List_Type,
              (Bool_Type, Int_Type) : Int_Type,
              (Bool_Type, Float_Type) : Float_Type,
              (Bool_Type, Bool_Type) : Int_Type,
@@ -150,6 +153,20 @@ OP_DICTS = {'Add' : ADD_DICT,
             'FloorDiv' : FLOORDIV_DICT
            }
 
+OP_BASES = {'Add' : BASE_ADD_TYPES,
+            'Sub' : BASE_SUB_TYPES,
+            'Mult' : BASE_MULT_TYPES,
+            'Div' : BASE_DIV_TYPES,
+            'Mod' : BASE_MOD_TYPES,
+            'Pow' : BASE_POW_TYPES,
+            'BitAnd' : BASE_BITAND_TYPES,
+            'BitOr' : BASE_BITOR_TYPES,
+            'BitXor' : BASE_BITXOR_TYPES,
+            'RShift' : BASE_RSHIFT_TYPES,
+            'LShift' : BASE_LSHIFT_TYPES,
+            'FloorDiv' : BASE_FLOORDIV_TYPES
+           }
+
 def get_left_return_types(op, left_type):
     op_dict = OP_DICTS[op]
     possible_combos = [(x, y) for (x, y) in op_dict if x == left_type.__class__ or x == Any_Type]
@@ -177,6 +194,4 @@ def get_return_type(op, left_type, right_type):
     return return_type
 
 def get_op_types(op):
-    pass
-
-print(get_return_type('Add', int_type, float_type))
+    return OP_BASES[op]

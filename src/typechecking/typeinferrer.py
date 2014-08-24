@@ -13,6 +13,7 @@ from src.typechecking.setattrtypevariable import SetAttrTypeVariable
 from src.typeclasses import *
 from src.traversers.astfulltraverser import AstFullTraverser
 from src.importdependent import ImportDependent
+from src.binopconstraints import get_op_types
 from src.pyfile import PyFile
 
 class TypeInferrer(AstFullTraverser):
@@ -22,7 +23,8 @@ class TypeInferrer(AstFullTraverser):
     
     def initialise(self):
         self.currently_assigning = False
-        self.fun_params = []
+        # Motions whether the param has an assignment  param -> bool
+        self.fun_params = {}
         # The class definition we are currently under
         self.current_class = None
         self.return_variable = None
@@ -44,8 +46,8 @@ class TypeInferrer(AstFullTraverser):
             
     def print_types(self):
         for key, value in self.variableTypes.items():
-          #  print(key)
-          #  print(value)
+            #  print(key)
+            #  print(value)
             print(key + ": " + str(value.get()))
             
     def check_dependents(self, file, file_tree):
@@ -189,9 +191,9 @@ class TypeInferrer(AstFullTraverser):
             assert isinstance(value, BasicTypeVariable)
             assert isinstance(target, BasicTypeVariable)
             value.add_new_dependent(target)
-      #  print()
-      #  print("Conduct")
-      #  self.print_types()
+        print()
+        print("Conduct")
+        self.print_types()
             
     def do_Call(self, node):
         ''' Link the indentifier to a callvariable. '''
@@ -234,17 +236,22 @@ class TypeInferrer(AstFullTraverser):
             TODO: Find out possible types in *karg dict. '''
         self.variableTypes = node.variableTypes
         old_return = self.return_variable
+        old_params = self.fun_params
         try:
-            self.fun_params = self.visit(node.args)
-            # Add any_type to args
-            for param in self.fun_params:
-                self.conduct_assignment([self.variableTypes[param]], [BasicTypeVariable([any_type])], node)
+            params = self.visit(node.args)
+            self.fun_params = {}
+            self.fun_params.update({self.variableTypes[param] : False for param in params})
                 
             self.return_variable = BasicTypeVariable()
             for z in node.body:
                 self.visit(z)
             for z in node.decorator_list:
                 self.visit(z)
+            
+            # Add any_type to args if we can't infer them
+            for param, assigned in self.fun_params.items():
+                if not assigned:
+                    self.conduct_assignment([param], [BasicTypeVariable([any_type])], node)
                 
       #      print()
       #      print("Final types")
@@ -256,6 +263,7 @@ class TypeInferrer(AstFullTraverser):
             # Add the new function type
             fun_type = BasicTypeVariable([any_type])
             self.conduct_assignment([self.variableTypes[node.name]], [fun_type], node)
+            self.fun_params = old_params
             
     def do_arguments(self, node):
         ''' We need to begin checking what types the args can take.
@@ -321,9 +329,19 @@ class TypeInferrer(AstFullTraverser):
     def do_BinOp (self, node):
         ''' Adding the dependents causes it to update 3 times initially.
             TODO: find a way to stop this. '''
+        op = self.kind(node.op)
         left_types = self.visit(node.left)[0]
         right_types = self.visit(node.right)[0]
-        binop_var = BinOpTypeVariable(node, left_types, right_types, self.kind(node.op))
+        
+        # Add constraints if they are function parameters
+        if left_types in self.fun_params:
+            self.conduct_assignment([left_types], [get_op_types(op)], node)
+            self.fun_params[left_types] = True
+        if right_types in self.fun_params:
+            self.conduct_assignment([right_types], [get_op_types(op)], node)
+            self.fun_params[right_types] = True
+        
+        binop_var = BinOpTypeVariable(node, left_types, right_types, op)
         # Create the dependents
         self.conduct_assignment([binop_var] * 2, [left_types, right_types], node)
         
@@ -401,16 +419,17 @@ class TypeInferrer(AstFullTraverser):
     def do_Subscript(self, node):
         ''' You can have slice assignment. e.g. x[0:2] = [1, 2]
             TODO: Allow user-defined types to index/slice. '''
-        value_types = self.visit(node.value)[0]
+        value_types = self.visit(node.value)
         self.visit(node.slice)
         
         # Will return something in the container if index
         if isinstance(node.slice, ast.Index):
-            contents_var = ContentsTypeVariable(list(value_types.get()))
+            contents_var = ContentsTypeVariable()
+            self.conduct_assignment([contents_var], value_types, node)
             return [contents_var]
         # Will return portion of the list. We don't know which
         if isinstance(node.slice, ast.Slice):
-            return [value_types]
+            return value_types
         # I don't know what an extended slice is...
         if isinstance(node.slice, ast.ExtSlice):
             return [BasicTypeVariable([any_type])]

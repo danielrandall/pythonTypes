@@ -1083,6 +1083,9 @@ BUILTIN_TYPE_DICT = {
   'object' : BasicTypeVariable([Class_Type("object", {}, False)])
 } 
 
+
+ITERATOR_TYPES = BasicTypeVariable([List_Type(), Set_Type(), Tuple_Type(), Dict_Type(), string_type, bytes_type])
+
 SLICE_TYPES = [List_Type(), string_type]
 INDEX_TYPES = [List_Type(), Dict_Type(), string_type]
 ALL_TYPES = [List_Type(), Dict_Type(), int_type, float_type, bool_type, string_type, bytes_type, builtin_type]
