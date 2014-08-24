@@ -150,6 +150,11 @@ class ControlFlowGraph(AstFullTraverser):
                 # Statement is in a try - set exits to next statement and
                 # excepts
                 self.current_block.statements.append(node)
+                
+                if isinstance(node, ast.If):
+                    # We'll be creating new blocks anyway
+                    return
+                
                 next_statement_block = self.new_block()
                 self.add_to_exits(self.current_block, next_statement_block)
                 if f_block_type == F_BLOCK_EXCEPT:
@@ -162,8 +167,8 @@ class ControlFlowGraph(AstFullTraverser):
                 # Special case
                 if isinstance(node, ast.While) or isinstance(node, ast.For):
                     break
-                print(self.current_block.start_line_no)
-                print(self.current_block.exit_blocks)
+           #     print(self.current_block.start_line_no)
+           #     print(self.current_block.exit_blocks)
                 self.use_next_block(next_statement_block)
                 break
         else:

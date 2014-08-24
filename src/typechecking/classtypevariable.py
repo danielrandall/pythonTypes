@@ -77,4 +77,4 @@ class ClassTypeVariable(BasicTypeVariable):
             if new_vars:
                 self.update_all_dependents()
                 # Add special stuff for magic methods
-                self.add_special_class_types(new_class_type_variable)
+                self.add_special_class_types()

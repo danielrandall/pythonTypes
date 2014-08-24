@@ -60,9 +60,12 @@ class SSA_Traverser(AstFullTraverser):
             self.visit(statement)
         dict_to_pass = self.d.copy()
         
-    #    print("Block " + str(block.start_line_no) + " to")
-    #    print(block.exit_blocks)        
+     #   print("Block " + str(block.start_line_no) + " to")
+     #   print(block.exit_blocks)        
     #    print(block.statements)
+        
+        if block.start_line_no == 46:
+            pass
         
         for an_exit in block.exit_blocks:
             self.add_to_list((an_exit, dict_to_pass))
@@ -117,6 +120,8 @@ class SSA_Traverser(AstFullTraverser):
         ''' If the id is True or false then ignore. WHY ARE TRUE AND FALSE
             IDENTIFIED THE SAME WAY AS VARIABLES. GAH. '''
         # We don't SSA a global variable
+        if node.id == "perpercent":
+            pass
         if isinstance(node.stc_context, ast.Module) or isinstance(node.stc_context, ast.ClassDef):
             return
         if node.id == "_":

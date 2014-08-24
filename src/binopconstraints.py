@@ -2,7 +2,7 @@ from src.typeclasses import *
 
 BASE_ADD_TYPES = BasicTypeVariable([List_Type(), int_type, float_type, string_type, bytes_type, bool_type])
 BASE_SUB_TYPES = BasicTypeVariable([int_type, float_type, string_type, bytes_type, bool_type])
-BASE_MULT_TYPES = BasicTypeVariable([List_Type(), int_type, float_type, string_type, bytes_type, bool_type])
+BASE_MULT_TYPES = BasicTypeVariable([List_Type(), Tuple_Type(), int_type, float_type, string_type, bytes_type, bool_type])
 BASE_DIV_TYPES = BasicTypeVariable([List_Type(), int_type, float_type, string_type, bool_type])
 BASE_MOD_TYPES = BasicTypeVariable([List_Type(), int_type, float_type, string_type, bool_type])
 BASE_POW_TYPES = BasicTypeVariable([int_type, float_type, bool_type])
@@ -55,6 +55,7 @@ MULT_DICT = { (Int_Type, Int_Type) : Int_Type,
              (Bytes_Type, Int_Type) : Bytes_Type,
              (List_Type, List_Type) : List_Type,
              (List_Type, Int_Type) : List_Type,
+             (Tuple_Type, Int_Type) : Tuple_Type,
              (Bool_Type, Int_Type) : Int_Type,
              (Bool_Type, Float_Type) : Float_Type,
              (Bool_Type, Bool_Type) : Int_Type,

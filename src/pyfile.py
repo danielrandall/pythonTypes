@@ -36,7 +36,7 @@ class PyFile(object):
         
         print("Generating CFG for: " + self.path_and_name)
         cfg_source = self.apply_cfg(pp_source)
-   #     PrintCFG(cfg_source)
+     #   PrintCFG(cfg_source)
         print("Finished CFG for: " + self.path_and_name)
         
         print("ssa preprocessing " + self.path_and_name)
@@ -51,7 +51,7 @@ class PyFile(object):
         pp_2_source = PyFile.apply_preprocessing_second(self, ssa_source)
         print("Finished preprocessingsecond " + self.path_and_name)
         
-       # print(utils.dump_ast(pp_2_source))
+     #   print(utils.dump_ast(pp_2_source))
         
         return pp_2_source
         

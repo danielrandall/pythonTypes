@@ -275,7 +275,7 @@ class TypeInferrer(AstFullTraverser):
             for param, assigned in self.fun_params.items():
                 if not assigned:
                     self.conduct_assignment([param], [BasicTypeVariable([any_type])], node)
-            if node.name == "f":
+            if node.name == "update":
                 print()
                 print("Final types")
                 print(node.lineno)
