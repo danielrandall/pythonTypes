@@ -48,7 +48,8 @@ class TypeInferrer(AstFullTraverser):
         for key, value in self.variableTypes.items():
             #  print(key)
             #  print(value)
-            print(key + ": " + str(value.get()))
+            if key not in BUILTIN_TYPE_DICT:
+                print(key + ": " + str(value.get()))
             
     def check_dependents(self, file, file_tree):
         ''' Extracts all of the type variables for the imports.
@@ -153,14 +154,19 @@ class TypeInferrer(AstFullTraverser):
     def do_Assign(self, node):
         ''' Set all target variables to have the type of the value of the
             assignment. '''
-        value_types = self.visit(node.value)
         targets = []
         self.currently_assigning = True
         try:
             for z in node.targets:
                 targets.extend(self.visit(z))
         finally:
-            self.currently_assigning = False  
+            self.currently_assigning = False
+        if len(targets) > 1:
+            # x = y = 5
+            value_types = self.visit(node.value)
+            assert len(value_types) == 1
+            value_types = [value_types[0]] * len(targets)
+            
         self.conduct_assignment(targets, value_types, node)
         
     def conduct_assignment(self, targets, value_types, node):
@@ -178,6 +184,11 @@ class TypeInferrer(AstFullTraverser):
        # if node:
        #     print(node.lineno)
         if len(targets) != len(value_types):
+            print(node.lineno)
+            print("targets")
+            print(targets)
+            print("values")
+            print(value_types)
             # Makes sure it's a single element
             assert len(value_types) == 1
             # Create a contentstypevariable for each target
@@ -191,9 +202,9 @@ class TypeInferrer(AstFullTraverser):
             assert isinstance(value, BasicTypeVariable)
             assert isinstance(target, BasicTypeVariable)
             value.add_new_dependent(target)
-        print()
-        print("Conduct")
-        self.print_types()
+   #     print()
+   #     print("Conduct")
+   #     self.print_types()
             
     def do_Call(self, node):
         ''' Link the indentifier to a callvariable. '''
@@ -252,11 +263,11 @@ class TypeInferrer(AstFullTraverser):
             for param, assigned in self.fun_params.items():
                 if not assigned:
                     self.conduct_assignment([param], [BasicTypeVariable([any_type])], node)
-                
-      #      print()
-      #      print("Final types")
-      #      print(node.lineno)
-      #      self.print_types()
+            if node.name == "f":
+                print()
+                print("Final types")
+                print(node.lineno)
+                self.print_types()
         finally:
             # Restore parent variables
             self.variableTypes = node.stc_context.variableTypes
