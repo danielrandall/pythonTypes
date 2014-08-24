@@ -857,6 +857,14 @@ BUILTIN_TYPE_DICT = {
     'sum' : BasicTypeVariable([Def_Type([BasicTypeVariable([any_type]), BasicTypeVariable([any_type])],
                                   BasicTypeVariable([any_type]),
                                   1)]),
+                     
+   # pow(x: int, y: int) -> Any
+   # pow(x: int, y: int, z: int) -> Any
+   # pow(x: float, y: float) -> float
+   # pow(x: float, y: float, z: float) -> float
+   'pow' : BasicTypeVariable([Def_Type([BasicTypeVariable([int_type, float_type]), BasicTypeVariable([int_type, float_type]), BasicTypeVariable([float_type])],
+                                  BasicTypeVariable([any_type]),
+                                  1)]),
     
    # map(func: Function[[T1], S], iter1: Iterable[T1]) -> Iterator[S]
    # map(func: Function[[T1, T2], S], iter1: Iterable[T1], iter2: Iterable[T2]) -> Iterator[S]
