@@ -161,12 +161,24 @@ class TypeInferrer(AstFullTraverser):
                 targets.extend(self.visit(z))
         finally:
             self.currently_assigning = False
-        if len(targets) > 1:
+            
+        if len(node.targets) > 1:
             # x = y = 5
             value_types = self.visit(node.value)
             assert len(value_types) == 1
             value_types = [value_types[0]] * len(targets)
-            
+        
+        elif isinstance(node.targets[0], ast.List) or isinstance(node.targets[0], ast.Tuple):
+            if isinstance(node.value, ast.List) or isinstance(node.value, ast.Tuple):
+                # [x, y] = [5, 2]
+                self.currently_assigning = True
+                value_types = self.visit(node.value)
+                self.currently_assigning = False
+            else:
+                value_types = self.visit(node.value)
+        else:
+            value_types = self.visit(node.value)
+
         self.conduct_assignment(targets, value_types, node)
         
     def conduct_assignment(self, targets, value_types, node):
@@ -383,8 +395,16 @@ class TypeInferrer(AstFullTraverser):
     def do_Tuple(self, node):
         names = []
         for z in node.elts:
-            names.extend(self.visit(z))
-        if self.currently_assigning:
+            # We only want to go one deep
+            if self.currently_assigning and (isinstance(z, ast.List) or isinstance(z, ast.Tuple)):
+                self.currently_assigning = False
+                try:
+                    names.extend(self.visit(z))
+                finally:
+                    self.currently_assigning = True
+            else:
+                names.extend(self.visit(z))
+        if self.currently_assigning and names:
             return names
         else:
             new_tuple = Tuple_Type()
@@ -393,8 +413,18 @@ class TypeInferrer(AstFullTraverser):
     def do_List(self, node):
         names = []
         for z in node.elts:
-            names.extend(self.visit(z))
-        if self.currently_assigning:
+            # We only want to go one deep
+            if self.currently_assigning and (isinstance(z, ast.List) or isinstance(z, ast.Tuple)):
+                self.currently_assigning = False
+                try:
+                    names.extend(self.visit(z))
+                finally:
+                    self.currently_assigning = True
+            else:
+                names.extend(self.visit(z))
+        # Only return if there's something there otherwise it's probably
+        # a list_type
+        if self.currently_assigning and names:
             return names
         else:
             new_list = List_Type()
