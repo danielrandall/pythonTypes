@@ -133,6 +133,12 @@ class Class_Type(Class_Base, Callable_Type, BaseType):
         self.call_return_types = None
         self.any_base_class = False
         
+        if "__name__" not in self.global_vars:
+            self.global_vars["__name__"] = BasicTypeVariable([any_type])
+        if "__class__" not in self.global_vars:
+            self.global_vars["__class__"] = BasicTypeVariable([any_type])
+            
+        
     def __repr__(self):
         return 'Class Dec: %s' % self.name
     
@@ -589,7 +595,7 @@ class String_Type(Container_Type, Class_Base, BaseType):
                                                                     2)]),
                             
                             # format(self, *args: Any, **kwargs: Any) -> str
-                            
+                            'format': BasicTypeVariable([Any_Type()]),
                             
                             # format_map(self, map: Mapping[str, Any]) -> str
                             'format_map': BasicTypeVariable([Def_Type([ BasicTypeVariable([Any_Type()])],
@@ -789,6 +795,15 @@ string_type = String_Type()
 any_type = Any_Type()
 
 BUILTIN_TYPE_DICT = {
+  # builtin double underscores
+  '__version__' : BasicTypeVariable([any_type]),
+  '__loader__': BasicTypeVariable([any_type]),
+  '__package__':BasicTypeVariable([any_type]),
+  '__builtins__': BasicTypeVariable([any_type]),
+  '__name__': BasicTypeVariable([any_type]),
+  '__main__': BasicTypeVariable([any_type]),
+  '__doc__': BasicTypeVariable([any_type]),
+                     
   # keywords
   'True': BasicTypeVariable([bool_type]),
   
@@ -1011,6 +1026,14 @@ BUILTIN_TYPE_DICT = {
   'sum' : BasicTypeVariable([Def_Type([BasicTypeVariable([any_type]), BasicTypeVariable([any_type])],
                                   BasicTypeVariable([any_type]),
                                   1)]),
+                     
+  'super' : BasicTypeVariable([Def_Type([BasicTypeVariable([any_type]), BasicTypeVariable([any_type])],
+                                  BasicTypeVariable([any_type]),
+                                  2)]),
+                     
+  'type' : BasicTypeVariable([Def_Type([BasicTypeVariable([any_type]), BasicTypeVariable([any_type]), BasicTypeVariable([Dict_Type()])],
+                                  BasicTypeVariable([any_type]),
+                                  2)]),
                      
   'vars':  BasicTypeVariable([Def_Type([ BasicTypeVariable([any_type]) ],
                                   BasicTypeVariable([Dict_Type()]),

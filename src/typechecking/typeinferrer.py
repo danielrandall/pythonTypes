@@ -508,8 +508,8 @@ class TypeInferrer(AstFullTraverser):
     def do_ExceptHandler(self, node):
         if node.type and node.name and node.name:
             except_type = self.visit(node.type)
-            target = self.variableTypes[node.name]
-            self.conduct_assignment([target], except_type, node)
+            target = self.visit(node.name)
+            self.conduct_assignment(target, except_type, node)
         for z in node.body:
             self.visit(z)
     

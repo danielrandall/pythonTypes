@@ -387,8 +387,7 @@ class Preprocessor(AstFullTraverser):
                 new_node = item.context_expr
             return_list.append(new_node)
         return return_list
-                
-                
+    
 
     def do_Name(self, node):
         # If node is a global variable, add it to the globals
@@ -546,9 +545,15 @@ class Preprocessor(AstFullTraverser):
         finally:
             self.current_body = old_body
             
-    def do_ExceptHandler(self,node):
+    def do_ExceptHandler(self, node):
         if node.type:
             self.visit(node.type)
+        name = node.name
+        if isinstance(name, str):
+            node.name = ast.Name()
+            node.name.id = name
+            node.name.ctx = ast.Store
+            node.name.lineno = node.lineno 
         if node.name and isinstance(node.name,ast.Name):
             self.visit(node.name)
         # body
