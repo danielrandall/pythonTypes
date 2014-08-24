@@ -62,10 +62,7 @@ class SSA_Traverser(AstFullTraverser):
         
      #   print("Block " + str(block.start_line_no) + " to")
      #   print(block.exit_blocks)        
-    #    print(block.statements)
-        
-        if block.start_line_no == 46:
-            pass
+     #   print(block.statements)
         
         for an_exit in block.exit_blocks:
             self.add_to_list((an_exit, dict_to_pass))

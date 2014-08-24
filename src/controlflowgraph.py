@@ -443,22 +443,19 @@ class ControlFlowGraph(AstFullTraverser):
         node.body[-1].last_try_body_statement = True
         for z in node.body:
             self.visit(z)
-        try_body_exit = final_block if node.finalbody else after_try_block
+        try_body_exit = orelse_block if node.orelse else final_block if node.finalbody else after_try_block
         self.check_child_exits(self.current_block, try_body_exit)
         for f in reversed(f_blocks):
             self.pop_frame_block(f[0], f[1])
         
         if node.orelse:
-            orelse_block = self.new_block()
-            # Last block in body can always go to the orelse
-            self.check_child_exits(self.current_block, orelse_block)
             self.use_block(orelse_block)
             for z in node.orelse:
                 self.visit(z)
             orelse_exit = final_block if node.finalbody else after_try_block
             self.check_child_exits(self.current_block, orelse_exit)
-        else:
-            self.check_child_exits(self.current_block, after_try_block)
+       # else:
+       #     self.check_child_exits(self.current_block, after_try_block)
             
         self.use_next_block(after_try_block)     
         
