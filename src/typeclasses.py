@@ -139,6 +139,9 @@ class Class_Type(Class_Base, Callable_Type, BaseType):
             self.global_vars["__class__"] = BasicTypeVariable([any_type])
             
         
+    def get_contents_types(self):
+        return set([any_type])
+        
     def __repr__(self):
         return 'Class Dec: %s' % self.name
     

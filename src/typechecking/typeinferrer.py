@@ -196,11 +196,11 @@ class TypeInferrer(AstFullTraverser):
        # if node:
        #     print(node.lineno)
         if len(targets) != len(value_types):
-            print(node.lineno)
-            print("targets")
-            print(targets)
-            print("values")
-            print(value_types)
+          #  print(node.lineno)
+          #  print("targets")
+          #  print(targets)
+          #  print("values")
+          #  print(value_types)
             # Makes sure it's a single element
             assert len(value_types) == 1
             # Create a contentstypevariable for each target
@@ -320,10 +320,8 @@ class TypeInferrer(AstFullTraverser):
         new_class = ClassTypeVariable(base_classes, node.variableTypes, node.name)
         # Set up constraints between the classes
         self.conduct_assignment([new_class] * len(base_classes), base_classes, node)
-            
         # Add the definition to the context of this class
         self.conduct_assignment([self.variableTypes[node.name]], [new_class], node)
-        
         # Add an base class constraint to the issuer
         self.error_issuer.add_issue(BaseClassIssue(node, new_class, self.module_name))
         
@@ -339,6 +337,7 @@ class TypeInferrer(AstFullTraverser):
     #        self.print_types()
             self.variableTypes = node.stc_context.variableTypes
             self.current_class = parent_class 
+            
             
     def move_init_to_top(self, body, node):
         assert isinstance(body, list), "Body needs to be a list."
@@ -382,6 +381,13 @@ class TypeInferrer(AstFullTraverser):
             self.currently_assigning = False
             
         iters = self.visit(node.iter)
+        
+        for it in iters:
+            if it in self.fun_params:
+                # Assign param to any in iter types
+                self.conduct_assignment([it], [ITERATOR_TYPES], node)
+                self.fun_params[it] = True
+        
         # Assign to the iter target#
         iter_contents = [ContentsTypeVariable() for x in iters]
         self.conduct_assignment(iter_contents, iters, node)

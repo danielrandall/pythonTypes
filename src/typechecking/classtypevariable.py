@@ -1,7 +1,7 @@
 from src.typechecking.basictypevariable import BasicTypeVariable
 from src.typechecking.setattrtypevariable import SetAttrTypeVariable
 from src.binopconstraints import *
-from src.typeclasses import Class_Type
+from src.typeclasses import Class_Type, ITERATOR_TYPES
 
 class ClassTypeVariable(BasicTypeVariable):
     
@@ -12,6 +12,7 @@ class ClassTypeVariable(BasicTypeVariable):
         # Contains all of the base classes which have a class type
         self.acceptable_base_classes = set()
         self.any_base_class = False
+        self.found_special_methods = set()
         
         self.initialise_vars(self_variables)
         self.class_type = Class_Type(name, self.class_variables)
@@ -19,6 +20,8 @@ class ClassTypeVariable(BasicTypeVariable):
             self.class_type.set_any_base()
         
         super().__init__([self.class_type])
+        
+        self.add_special_class_types()
         
     def check_base_classes(self):
         return [base for base in self.base_classes if base not in self.acceptable_base_classes]
@@ -59,6 +62,12 @@ class ClassTypeVariable(BasicTypeVariable):
                 self.class_variables.update(new_vars)
                 self.acceptable_base_classes.add(base_class)
          return change
+     
+    def add_special_class_types(self):
+        ''' For things like __iter__ '''
+        if self.class_type.get_global_var("__iter__") and "__iter__" not in self.found_special_methods:
+            # send type to iterators
+            self.add_new_dependent(ITERATOR_TYPES)
     
     def receive_update(self, other):
         ''' Can be updated by a base class. '''
@@ -67,3 +76,5 @@ class ClassTypeVariable(BasicTypeVariable):
             new_vars = self.check_new_vars(other)
             if new_vars:
                 self.update_all_dependents()
+                # Add special stuff for magic methods
+                self.add_special_class_types(new_class_type_variable)
