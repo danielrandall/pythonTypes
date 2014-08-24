@@ -806,6 +806,14 @@ BUILTIN_TYPE_DICT = {
                                   BasicTypeVariable([int_type]),
                                   2)]),
                      
+   'float': BasicTypeVariable([Def_Type([BasicTypeVariable(  [string_type, int_type, float_type, bytes_type]) ],
+                                  BasicTypeVariable([float_type]),
+                                  1)]),
+                     
+   'tuple': BasicTypeVariable([Def_Type([BasicTypeVariable(  [any_type]) ],
+                                  BasicTypeVariable([Tuple_Type()]),
+                                  1)]),
+                     
     # input(prompt: str = None) -> str
    'input': BasicTypeVariable([Def_Type([BasicTypeVariable([string_type])],
                                   BasicTypeVariable([string_type]),
@@ -845,6 +853,17 @@ BUILTIN_TYPE_DICT = {
    'max' : BasicTypeVariable([Def_Type([BasicTypeVariable([any_type]), BasicTypeVariable([any_type])],
                                   BasicTypeVariable([any_type]),
                                   0)]),
+    # sum(iterable: Iterable[T], start: T = None) -> T
+    'sum' : BasicTypeVariable([Def_Type([BasicTypeVariable([any_type]), BasicTypeVariable([any_type])],
+                                  BasicTypeVariable([any_type]),
+                                  1)]),
+    
+   # map(func: Function[[T1], S], iter1: Iterable[T1]) -> Iterator[S]
+   # map(func: Function[[T1, T2], S], iter1: Iterable[T1], iter2: Iterable[T2]) -> Iterator[S]
+   'map' : BasicTypeVariable([Def_Type([BasicTypeVariable([any_type]), BasicTypeVariable([any_type]), BasicTypeVariable([any_type])],
+                                  BasicTypeVariable([any_type]),
+                                  1)]),
+   
    'getattr' : BasicTypeVariable([Def_Type([BasicTypeVariable([any_type]), BasicTypeVariable([string_type]), BasicTypeVariable([any_type])],
                                   BasicTypeVariable([any_type]),
                                   1)]),

@@ -13,8 +13,6 @@ class SSA_Pre_Processor(AstFullTraverser):
         self.current_block = None
         self.in_loop_test = False
         self.ssa_exempts = set()
-        self.global_variables = set()
-        self.global_variables.union(set(BUILTIN_TYPE_DICT.keys()))
         
     def run(self, source):
         self.visit(source)
@@ -26,15 +24,16 @@ class SSA_Pre_Processor(AstFullTraverser):
         return method(node)
     
     def do_Module(self, node):
-        node.global_variables = self.global_variables
         for dependent in node.import_dependents:
             self.ssa_exempts.add(dependent.get_as_name())
-            self.global_variables.add(dependent.get_as_name())
+            
         self.process_blocks(node.initial_block)
         for z in node.body:
             self.visit(z)
+        pass
             
-    def do_ClassDef (self, node):
+    def do_ClassDef(self, node):
+        
         self.ssa_exempts.add(node.name)
         old_ssa_exempts = self.ssa_exempts.copy()
         try:
@@ -120,8 +119,7 @@ class SSA_Pre_Processor(AstFullTraverser):
         
     def do_Name(self, node):
         # Global variable
-        if isinstance(node.ctx, ast.Store) and isinstance(node.stc_context, ast.Module):
-            self.global_variables.add(node.id)
+        
         if isinstance(node.ctx, ast.Store) and (isinstance(node.stc_context, ast.Module) or isinstance(node.stc_context, ast.ClassDef)):
             self.ssa_exempts.add(node.id)
         if isinstance(node.stc_context, ast.Module):

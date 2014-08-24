@@ -157,7 +157,7 @@ class SSA_Traverser(AstFullTraverser):
         ''' - We do not assign ssa numbers to class names as it's impossible
               to track order of execution.
             - We need the global variables. Do not start with an empty d '''    
-        self.global_variables = node.global_variables
+        self.global_variables = node.global_variables | node.stc_context.global_variables
         old_d = self.d.copy()
         try:
             for z in node.body:

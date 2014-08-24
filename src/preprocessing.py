@@ -64,7 +64,7 @@ class Preprocessor(AstFullTraverser):
         if defined:
             st.defined.add(name)
 
-    def do_Attribute(self,node):
+    def do_Attribute(self, node):
         name = self.visit(node.value)
         cx = node.stc_context
         st = cx.stc_symbol_table
@@ -73,7 +73,7 @@ class Preprocessor(AstFullTraverser):
         val = node.value
         node.variable = isinstance(node.value, ast.Name)
         # Check if leftside is self
-        if name == "self":
+        if name == "self" and isinstance(node.ctx, ast.Store):
             parent_class = self.find_parent_class_def(node)
             if parent_class:
                 parent_class.self_variables.add(node.attr)
@@ -118,9 +118,10 @@ class Preprocessor(AstFullTraverser):
   
 
     def do_ClassDef(self, node):
+        self.global_variables.add(node.name)
+        
         old_globals = self.global_variables     
         node.global_variables = set()
-        node.global_variables |= self.global_variables
         self.global_variables = node.global_variables
         
         parent_cx = self.context
@@ -161,6 +162,13 @@ class Preprocessor(AstFullTraverser):
 
     def do_FunctionDef(self, node):
         ''' Doesn't need global variables. Use parent's. '''
+        # Add name to the correct scope
+        if isinstance(node.stc_context, ast.Module):
+            self.global_variables.add(node.name)
+        else:
+            parent_class = self.find_parent_class_def(node)
+            if parent_class:
+                parent_class.self_variables.add(node.name)
         
         parent_cx = self.context
         assert parent_cx == node.stc_context
@@ -230,6 +238,7 @@ class Preprocessor(AstFullTraverser):
             as_name = alias.asname if alias.asname else None
             new_import = Import(alias.name, as_name)
             self.import_dependents.append(new_import)
+            self.global_variables.add(new_import.get_as_name())
     #    self.alias_helper(node, None)
                 
     def do_ImportFrom(self,node):
@@ -238,6 +247,7 @@ class Preprocessor(AstFullTraverser):
             as_name = alias.asname if alias.asname else None
             new_import = ImportFrom(alias.name, node.module if node.module else "", as_name, node.level)
             self.import_dependents.append(new_import)
+            self.global_variables.add(new_import.get_as_name())
     #    self.alias_helper(node, node.module)
 
     def alias_helper(self, node, import_from):
@@ -382,7 +392,7 @@ class Preprocessor(AstFullTraverser):
 
     def do_Name(self, node):
         # If node is a global variable, add it to the globals
-        if isinstance(node.ctx, ast.Store) and isinstance(node.stc_context, ast.Module) or isinstance(node.stc_context, ast.ClassDef):
+        if isinstance(node.ctx, ast.Store) and (isinstance(node.stc_context, ast.Module) or isinstance(node.stc_context, ast.ClassDef)):
             self.global_variables.add(node.id)
         
         cx = node.stc_context
