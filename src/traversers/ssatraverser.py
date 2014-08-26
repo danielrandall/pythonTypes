@@ -56,6 +56,10 @@ class SSA_Traverser(AstFullTraverser):
         if not block.statements:
             return
         self.add_phi_nodes(block)
+        
+        if block.start_line_no == 8:
+            pass
+        
         for statement in block.statements:
             self.visit(statement)
         dict_to_pass = self.d.copy()
@@ -105,8 +109,8 @@ class SSA_Traverser(AstFullTraverser):
                     if var + str(num) == block.phi_nodes[var].get_var():
                         continue
                     block.phi_nodes[var].update_targets(var + str(num))
-         #           print("Phis for: " + str(block.start_line_no))
-          #          print(block.phi_nodes)
+                    print("Phis for: " + str(block.start_line_no))
+                    print(block.phi_nodes)
                     
     def visit(self,node):
         '''Compute the dictionary of assignments live at any point.'''
@@ -117,8 +121,6 @@ class SSA_Traverser(AstFullTraverser):
         ''' If the id is True or false then ignore. WHY ARE TRUE AND FALSE
             IDENTIFIED THE SAME WAY AS VARIABLES. GAH. '''
         # We don't SSA a global variable
-        if node.id == "perpercent":
-            pass
         if isinstance(node.stc_context, ast.Module) or isinstance(node.stc_context, ast.ClassDef):
             return
         if node.id == "_":
@@ -244,8 +246,9 @@ class SSA_Traverser(AstFullTraverser):
             self.visit(node.type)
         if node.name and isinstance(node.name,ast.Name):
             self.visit(node.name)
-        for z in node.body:
-            self.visit(z)
+        # We do NOT want to visit the body. These are in blocks.
+   #     for z in node.body:
+  #          self.visit(z)
             
     def do_Call(self, node):
         self.visit(node.func)
@@ -283,6 +286,9 @@ class SSA_Traverser(AstFullTraverser):
         self.visit(node.target)
         for z in node.ifs:
             self.visit(z)
+            
+    def do_Pass(self, node):
+        pass
         
 class Phi_Node():
     ''' Class used to represent a phi node in the SSA. Allows us to represent
