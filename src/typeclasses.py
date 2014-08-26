@@ -170,13 +170,15 @@ class Class_Type(Class_Base, BaseType):
     def set_init_params(self, parameter_types):
         self.parameter_types = parameter_types
         
-    def is_callable(self):
-        ''' Can always initialise a class definition. '''
-        return True
+    
     
     def set_callable_params(self, call_param_types, call_return_types):
         self.call_param_types = call_param_types
         self.call_return_types = call_return_types
+        
+    def is_callable(self):
+        ''' Can always initialise a class definition. '''
+        return True
     
     def get_return_types(self):
         ''' We want to return a new instance every time. '''
@@ -368,6 +370,17 @@ class Dict_Type(Container_Type, Class_Base, BaseType):
                                                            0)])
                             }
         
+    def is_callable(self):
+        ''' Can always initialise a class definition. '''
+        return True
+    
+    def get_return_types(self):
+        ''' We want to return a new instance every time. '''
+      #  return BasicTypeVariable([self])
+        # Need to copy as it is liable to change
+        return BasicTypeVariable([Class_Instance(self.kind, self.global_vars.copy(), \
+                              False)])
+        
     def define_kind(self):
         self.kind = 'dict(%s)' % repr(self.content_types)
         
@@ -472,6 +485,17 @@ class Set_Type(Container_Type, Class_Base, BaseType):
 
                             }
         
+    def is_callable(self):
+        ''' Can always initialise a class definition. '''
+        return True
+    
+    def get_return_types(self):
+        ''' We want to return a new instance every time. '''
+      #  return BasicTypeVariable([self])
+        # Need to copy as it is liable to change
+        return BasicTypeVariable([Class_Instance(self.kind, self.global_vars.copy(), \
+                              False)])
+        
     def define_kind(self):
         self.kind = 'set(%s)' % repr(self.content_types)
 
@@ -495,6 +519,12 @@ class List_Type(Container_Type, Class_Base, BaseType):
                             'append' : BasicTypeVariable([Def_Type([BasicTypeVariable([Any_Type()])],
                                                                     BasicTypeVariable([none_type]),
                                                                     0)]),
+                            
+                            # extend(self, iterable: Iterable[_T]) -> None
+                            'extend' : BasicTypeVariable([Def_Type([BasicTypeVariable([Any_Type()])],
+                                                                    BasicTypeVariable([none_type]),
+                                                                    0)]),
+                            
                             # pop(self, index: int = -1) -> T
                             'pop' : BasicTypeVariable([Def_Type([BasicTypeVariable([int_type])],
                                                                     BasicTypeVariable([Any_Type()]),
@@ -534,6 +564,17 @@ class List_Type(Container_Type, Class_Base, BaseType):
 
                             }
         
+    def is_callable(self):
+        ''' Can always initialise a class definition. '''
+        return True
+    
+    def get_return_types(self):
+        ''' We want to return a new instance every time. '''
+      #  return BasicTypeVariable([self])
+        # Need to copy as it is liable to change
+        return BasicTypeVariable([Class_Instance(self.kind, self.global_vars.copy(), \
+                              False)])
+        
     def define_kind(self):
         self.kind = 'List(%s)' % repr(self.content_types)
         
@@ -565,6 +606,17 @@ class Tuple_Type(Container_Type, Class_Base, BaseType):
                                                                     0)]),
 
                             }
+        
+    def is_callable(self):
+        ''' Can always initialise a class definition. '''
+        return True
+    
+    def get_return_types(self):
+        ''' We want to return a new instance every time. '''
+      #  return BasicTypeVariable([self])
+        # Need to copy as it is liable to change
+        return BasicTypeVariable([Class_Instance(self.kind, self.global_vars.copy(), \
+                              False)])
         
     def define_kind(self):
         self.kind = 'Tuple(%s)' % repr(self.content_types)
@@ -813,6 +865,17 @@ class String_Type(Container_Type, Class_Base, BaseType):
         
     def update_content_types(self, new_types):
         return
+    
+    def is_callable(self):
+        ''' Can always initialise a class definition. '''
+        return True
+    
+    def get_return_types(self):
+        ''' We want to return a new instance every time. '''
+      #  return BasicTypeVariable([self])
+        # Need to copy as it is liable to change
+        return BasicTypeVariable([Class_Instance(self.kind, self.global_vars.copy(), \
+                              False)])
     
     def define_kind(self):
         self.kind = 'String'
