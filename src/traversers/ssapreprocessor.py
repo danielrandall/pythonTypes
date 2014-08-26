@@ -64,6 +64,8 @@ class SSA_Pre_Processor(AstFullTraverser):
             self.visit(z)
         for z in node.defaults:
             self.visit(z)
+        if node.vararg:
+            self.ssa_exempts.add(node.vararg)
         if node.kwarg:
             self.ssa_exempts.add(node.kwarg)
         

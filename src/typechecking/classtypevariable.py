@@ -5,6 +5,8 @@ from src.typeclasses import Class_Type, ITERATOR_TYPES
 
 class ClassTypeVariable(BasicTypeVariable):
     
+    ''' TODO: Combine two functions into one. '''
+    
     def __init__(self, base_classes, self_variables, name):
         ''' Base classes must be given in the correct order. '''
         self.base_classes = base_classes
@@ -36,6 +38,11 @@ class ClassTypeVariable(BasicTypeVariable):
                     self.acceptable_base_classes.add(base_class)
                     self.any_base_class = True
                 if isinstance(possible_type, Class_Base):
+                    # If base class has any_base then so do we
+                    if possible_type.has_any_base():
+                        self.any_base_class = True
+                        change = True
+                    
                     # If there is a clash, the first instance will be used
                     self.class_variables.update({k:v for k,v in possible_type.get_vars().items() if k not in self.class_variables})
                     self.acceptable_base_classes.add(base_class)
@@ -55,8 +62,22 @@ class ClassTypeVariable(BasicTypeVariable):
                     change = True if not self.any_base_class else change
                     self.any_base_class = True
             if isinstance(possible_type, Class_Base):
+                # If base class has any_base then so do we
+                if possible_type.has_any_base():
+                    self.any_base_class = True
+                    change = True
+                    
                 # If there is a clash, the first instance will be used
                 new_vars = {k:v for k,v in possible_type.get_vars().items() if k not in self.class_variables}
+                
+                # If there's a clash, share the types
+                shared_keys = [k for k,_ in possible_type.get_vars().items() if k in self.class_variables]
+                for k in shared_keys:
+                    their_shared_var = possible_type.get_vars()[k]
+                    this_shared_var = self.class_variables[k]
+                    their_shared_var.add_new_dependent(this_shared_var)
+                    this_shared_var.add_new_dependent(their_shared_var)
+                
                 if new_vars:
                     change = True
                 self.class_variables.update(new_vars)

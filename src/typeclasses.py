@@ -86,15 +86,277 @@ class Bytes_Type(BaseType):
     def __init__(self):
         BaseType.__init__(self,'Bytes')
         
-        self.global_vars = { 
+        self.global_vars = { # capitalize(self) -> str
+                            'capitalize' : BasicTypeVariable([Def_Type([],
+                                                                    BasicTypeVariable([self]),
+                                                                    0)]),
+                            
+                            # center(self, width: int, fillchar: str = ' ') -> str
+                            'center' : BasicTypeVariable([Def_Type([BasicTypeVariable([Int_Type()]), BasicTypeVariable([self])],
+                                                                    BasicTypeVariable([self]),
+                                                                    1)]),
+                            # count(self, x: str) -> int
+                            'count' : BasicTypeVariable([Def_Type([BasicTypeVariable([self])],
+                                                                    BasicTypeVariable([Int_Type()]),
+                                                                    0)]),
+                            
+                            # decode(self, encoding: str = 'utf-8', errors: str = 'strict') -> str
+                    #        'decode' : BasicTypeVariable([Def_Type([BasicTypeVariable([String_Type(), String_Type()]), BasicTypeVariable([self])],
+                     #                                               BasicTypeVariable([String_Type()]),
+                     #                                               2)]),
+                            
+                            # endswith(self, suffix: str, start: int = 0, end: int = None) -> bool
+                            'endswith': BasicTypeVariable([Def_Type([ BasicTypeVariable([self]), BasicTypeVariable([Int_Type()]), BasicTypeVariable([Int_Type()])],
+                                                                    BasicTypeVariable([bool_type]),
+                                                                    2)]),
+                            
+                            # expandtabs(self, tabsize: int = 8) -> str
+                            'expandtabs': BasicTypeVariable([Def_Type([ BasicTypeVariable([Int_Type()])],
+                                                                    BasicTypeVariable([self]),
+                                                                    1)]),
+                            
+                            # find(self, sub: str, start: int = 0, end: int = 0) -> int:
+                            'find': BasicTypeVariable([Def_Type([ BasicTypeVariable([self]), BasicTypeVariable([Int_Type()]), BasicTypeVariable([Int_Type()])],
+                                                                    BasicTypeVariable([self]),
+                                                                    2)]),
+                            
+                            # format(self, *args: Any, **kwargs: Any) -> str
+                            'format': BasicTypeVariable([Any_Type()]),
+                            
+                            # format_map(self, map: Mapping[str, Any]) -> str
+                            'format_map': BasicTypeVariable([Def_Type([ BasicTypeVariable([Any_Type()])],
+                                                                    BasicTypeVariable([self]),
+                                                                    0)]),
+                            
+                            # index(self, sub: str, start: int = 0, end: int = 0) -> int
+                            'index': BasicTypeVariable([Def_Type([ BasicTypeVariable([self]), BasicTypeVariable([Int_Type()]), BasicTypeVariable([Int_Type()])],
+                                                                    BasicTypeVariable([Int_Type()]),
+                                                                    2)]),
+                            
+                            # isalnum(self) -> bool
+                            'isalnum': BasicTypeVariable([Def_Type([ ],
+                                                                    BasicTypeVariable([bool_type]),
+                                                                    0)]),
+                            
+                            # isalpha(self) -> bool
+                            'isalpha': BasicTypeVariable([Def_Type([ ],
+                                                                    BasicTypeVariable([bool_type]),
+                                                                    0)]),
+                            
+                            # isdecimal(self) -> bool
+                            'isdecimal': BasicTypeVariable([Def_Type([ ],
+                                                                    BasicTypeVariable([bool_type]),
+                                                                    0)]),
+                            
+                            # isdigit(self) -> bool
+                            'isdigit': BasicTypeVariable([Def_Type([ ],
+                                                                    BasicTypeVariable([bool_type]),
+                                                                    0)]),
+                            
+                            # isidentifier(self) -> bool
+                            'isidentifier': BasicTypeVariable([Def_Type([ ],
+                                                                    BasicTypeVariable([bool_type]),
+                                                                    0)]),
+                            
+                            # islower(self) -> bool
+                            'islower': BasicTypeVariable([Def_Type([ ],
+                                                                    BasicTypeVariable([bool_type]),
+                                                                    0)]),
+                            
+                            # isnumeric(self) -> bool
+                            'isnumeric': BasicTypeVariable([Def_Type([ ],
+                                                                    BasicTypeVariable([bool_type]),
+                                                                    0)]),
+                            
+                            # isprintable(self) -> bool
+                            'isprintable': BasicTypeVariable([Def_Type([ ],
+                                                                    BasicTypeVariable([bool_type]),
+                                                                    0)]),
+                            
+                            # isspace(self) -> bool
+                            'isspace': BasicTypeVariable([Def_Type([ ],
+                                                                    BasicTypeVariable([bool_type]),
+                                                                    0)]),
+                            
+                            # istitle(self) -> bool
+                            'istitle': BasicTypeVariable([Def_Type([ ],
+                                                                    BasicTypeVariable([bool_type]),
+                                                                    0)]),
+                            
+                            # isupper(self) -> bool
+                            'isupper': BasicTypeVariable([Def_Type([ ],
+                                                                    BasicTypeVariable([bool_type]),
+                                                                    0)]),
                       
                             #  join(self, iterable: Iterable[str]) -> str:
                             'join': BasicTypeVariable([Def_Type([BasicTypeVariable([Any_Type()])],
                                                                     BasicTypeVariable([self]),
                                                                     0)]),
                             
+                            # ljust(self, width: int, fillchar: str = ' ') -> str
+                            'ljust': BasicTypeVariable([Def_Type([  BasicTypeVariable([Int_Type()]),   BasicTypeVariable([self])],
+                                                                    BasicTypeVariable([self]),
+                                                                    1)]),
+                            
+                            # lower(self) -> str
+                            'lower': BasicTypeVariable([Def_Type([ ],
+                                                                    BasicTypeVariable([self]),
+                                                                    0)]),
+                            
+                            # lstrip(self, chars: str = None) -> str
+                            'lstrip': BasicTypeVariable([Def_Type([ BasicTypeVariable([self]) ],
+                                                                    BasicTypeVariable([self]),
+                                                                    1)]),
+                            
+                            # partition(self, sep: str) -> Tuple[str, str, str]
+                            'lstrip': BasicTypeVariable([Def_Type([ BasicTypeVariable([self]) ],
+                                                                    BasicTypeVariable([Tuple_Type()]),
+                                                                    0)]),
+                            
+                            # replace(self, old: str, new: str, count: int = -1) -> str
+                            'replace': BasicTypeVariable([Def_Type([BasicTypeVariable([self]), BasicTypeVariable([self]), BasicTypeVariable([Int_Type()])],
+                                                                    BasicTypeVariable([self]),
+                                                                    1)]),
+                            
+                            # rfind(self, sub: str, start: int = 0, end: int = 0) -> int
+                            'rfind': BasicTypeVariable([Def_Type([BasicTypeVariable([self]), BasicTypeVariable([Int_Type()]), BasicTypeVariable([Int_Type()])],
+                                                                    BasicTypeVariable([Int_Type()]),
+                                                                    2)]),
+                            
+                            # rindex(self, sub: str, start: int = 0, end: int = 0) -> int
+                            'rindex': BasicTypeVariable([Def_Type([BasicTypeVariable([self]), BasicTypeVariable([Int_Type()]), BasicTypeVariable([Int_Type()])],
+                                                                    BasicTypeVariable([Int_Type()]),
+                                                                    2)]),         
+                            
+                            # rjust(self, width: int, fillchar: str = ' ') -> str
+                            'rindex': BasicTypeVariable([Def_Type([  BasicTypeVariable([Int_Type()]),  BasicTypeVariable([self])  ],
+                                                                    BasicTypeVariable([self]),
+                                                                    1)]),                  
+                            
+                            # rpartition(self, sep: str) -> Tuple[str, str, str]
+                            'rpartition': BasicTypeVariable([Def_Type([  BasicTypeVariable([self])  ],
+                                                                    BasicTypeVariable([Tuple_Type()]),
+                                                                    0)]),   
+                            
+                            # rsplit(self, sep: str = None, maxsplit: int = -1) -> List[str]
+                            'rsplit': BasicTypeVariable([Def_Type([  BasicTypeVariable([self]), BasicTypeVariable([Int_Type()]) ],
+                                                                    BasicTypeVariable([List_Type()]),
+                                                                    2)]),   
+                            
+                            # rstrip(self, chars: str = None) -> str
+                            'rstrip': BasicTypeVariable([Def_Type([  BasicTypeVariable([self])  ],
+                                                                    BasicTypeVariable([self]),
+                                                                    1)]),  
+                            
+                            # split(self, sep: str = None, maxsplit: int = -1) -> List[str]
+                            'split': BasicTypeVariable([Def_Type([BasicTypeVariable([self]), BasicTypeVariable([Int_Type()])],
+                                                                    BasicTypeVariable([List_Type()]),
+                                                                    2)]),
+                            
+                            # splitlines(self, keepends: bool = False) -> List[str]
+                            'splitlines': BasicTypeVariable([Def_Type([  BasicTypeVariable([bool_type])  ],
+                                                                    BasicTypeVariable([List_Type()]),
+                                                                    1)]),
+                            
+                            # startswith(self, prefix: str, start: int = 0, end: int = None) -> bool
+                            'startswith': BasicTypeVariable([Def_Type([  BasicTypeVariable([self]), BasicTypeVariable([Int_Type()]), BasicTypeVariable([Int_Type()])  ],
+                                                                    BasicTypeVariable([ bool_type ]),
+                                                                    2)]),
+                            
+                            # strip(self, chars: str = None) -> str
+                            'strip': BasicTypeVariable([Def_Type([  BasicTypeVariable([self])  ],
+                                                                    BasicTypeVariable([self]),
+                                                                    1)]),  
+                            
+                            # swapcase(self) -> str
+                            'swapcase': BasicTypeVariable([Def_Type([  ],
+                                                                    BasicTypeVariable([self]),
+                                                                    0)]),
+                            
+                            # title(self) -> str
+                            'title': BasicTypeVariable([Def_Type([  ],
+                                                                    BasicTypeVariable([self]),
+                                                                    0)]),  
+                            
+                            # translate(self, table: Dict[int, Any]) -> str
+                            'translate': BasicTypeVariable([Def_Type([ BasicTypeVariable([Dict_Type()]) ],
+                                                                    BasicTypeVariable([self]),
+                                                                    0)]),  
+                            
+                            # upper(self) -> str
+                            'upper': BasicTypeVariable([Def_Type([ ],
+                                                                    BasicTypeVariable([self]),
+                                                                    0)]),
+                            
+                            # zfill(self, width: int) -> str
+                            'zfill': BasicTypeVariable([Def_Type([  BasicTypeVariable([Int_Type()]) ],
+                                                                    BasicTypeVariable([self]),
+                                                                    0)]), 
+                            
+                            # __getitem__(self, i: Union[int, slice]) -> str
+                            '__getitem__' : BasicTypeVariable([Def_Type([Any_Type()],
+                                                                    BasicTypeVariable([self]),
+                                                                    0)]),
+                            
+                            # __add__(self, s: str) -> str
+                            '__add__' : BasicTypeVariable([Def_Type([self],
+                                                                    BasicTypeVariable([self]),
+                                                                    0)]),
+                            
+                            # __len__(self) -> int
+                            '__len__' : BasicTypeVariable([Def_Type([ ],
+                                                                    BasicTypeVariable([Int_Type()]),
+                                                                    0)]),
+                            
+                            # __contains__(self, s: object) -> bool
+                            '__contains__' : BasicTypeVariable([Def_Type([ Any_Type() ],
+                                                                    BasicTypeVariable([Bool_Type()]),
+                                                                    0)]),
+                            
+                            # __iter__(self) -> Iterator[str]
+                            '__iter__' : BasicTypeVariable([Def_Type([],
+                                                                    BasicTypeVariable([Any_Type()]),
+                                                                    0)]),
+                            
+                            # __str__(self) -> str
+                            '__str__' : BasicTypeVariable([Def_Type([],
+                                                                    BasicTypeVariable([self]),
+                                                                    0)]),
+                            
+                            # __repr__(self) -> str
+                            '__repr__' : BasicTypeVariable([Def_Type([],
+                                                                    BasicTypeVariable([self]),
+                                                                    0)]),
+                            
+                            # __int__(self) -> int
+                            '__int__' : BasicTypeVariable([Def_Type([],
+                                                                    BasicTypeVariable([Int_Type()]),
+                                                                    0)]),
+                            
+                            # __float__(self) -> float
+                            '__float__' : BasicTypeVariable([Def_Type([],
+                                                                    BasicTypeVariable([Float_Type()]),
+                                                                    0)]),
+                            
+                            # __hash__(self) -> int
+                            '__hash__' : BasicTypeVariable([Def_Type([],
+                                                                    BasicTypeVariable([Int_Type()]),
+                                                                    0)]),
+                            
+                            
+                            '__dict__' : BasicTypeVariable([Any_Type()]),
 
                             }
+        
+    def is_callable(self):
+        ''' Can always initialise a class definition. '''
+        return True
+        
+    def get_return_types(self):
+        ''' We want to return a new instance every time. '''
+        #  return BasicTypeVariable([self])
+        # Need to copy as it is liable to change
+        return BasicTypeVariable([self])
         
 class Callable_Type():
     def __init__(self):
@@ -152,6 +414,16 @@ class Class_Type(Class_Base, BaseType):
             self.global_vars["__name__"] = BasicTypeVariable([any_type])
         if "__class__" not in self.global_vars:
             self.global_vars["__class__"] = BasicTypeVariable([any_type])
+        if "__dict__" not in self.global_vars:
+            self.global_vars["__class__"] = BasicTypeVariable([any_type])
+        if "__doc__" not in self.global_vars:
+            self.global_vars["__class__"] = BasicTypeVariable([any_type])
+        if "__weakref__" not in self.global_vars:
+            self.global_vars["__class__"] = BasicTypeVariable([any_type])
+        if "__init__" not in self.global_vars:
+            self.global_vars["__class__"] = BasicTypeVariable([any_type])
+        if "__module__" not in self.global_vars:
+            self.global_vars["__class__"] = BasicTypeVariable([any_type])
         
             
         
@@ -206,6 +478,12 @@ class Class_Instance(Class_Base, BaseType):
     def get_return_types(self):
         if "__call__" in self.global_vars:
             return self.global_vars["__call__"]
+        
+    def get_contents_types(self):
+        if "__getitem__" in self.global_vars:
+            return set([any_type])
+        else:
+            return BaseType.get_contents_types(self)
             
 class Module_Type(Class_Base, BaseType):
     def __init__(self, global_vars):
@@ -320,7 +598,7 @@ class Dict_Type(Container_Type, Class_Base, BaseType):
         self.global_vars = {
                             # clear(self) -> None
                             'clear' : BasicTypeVariable([Def_Type([  ],
-                                                         BasicTypeVariable([none_type]),
+                                                         BasicTypeVariable([None_Type()]),
                                                           0)]),
                             
                             # copy(self) -> Dict[KT, VT]
@@ -350,7 +628,7 @@ class Dict_Type(Container_Type, Class_Base, BaseType):
                             
                             # update(self, m: Mapping[KT, VT]) -> None
                             'update' : BasicTypeVariable([Def_Type([ BasicTypeVariable([Any_Type()]) ],
-                                                         BasicTypeVariable([none_type]),
+                                                         BasicTypeVariable([None_Type()]),
                                                           0)]),
             
                             
@@ -367,7 +645,51 @@ class Dict_Type(Container_Type, Class_Base, BaseType):
                             # values returns a dict view object - not yet supported
                             'values' : BasicTypeVariable([Def_Type([],
                                                            BasicTypeVariable([Any_Type()]),
-                                                           0)])
+                                                           0)]),
+                            
+                            # fromkeys(seq: Sequence[_T]) -> Dict[_T, Any]: pass  # TODO: Actually a class method
+                            # fromkeys(seq: Sequence[_T], value: _S) -> Dict[_T, _S]
+                            'fromKeys' : BasicTypeVariable([Def_Type([Any_Type() ],
+                                                           BasicTypeVariable([Any_Type()]),
+                                                           0)]),
+                            
+                            # __len__(self) -> int
+                            '__len__' : BasicTypeVariable([Def_Type([ ],
+                                                           BasicTypeVariable([Int_Type()]),
+                                                           0)]),
+                            
+                            # __getitem__(self, k: _KT) -> _VT: pass
+                            '__getitem__' : BasicTypeVariable([Def_Type([Any_Type()],
+                                                           BasicTypeVariable([Any_Type()]),
+                                                           0)]),
+                            
+                            # __setitem__(self, k: _KT, v: _VT) -> None
+                            '__setitem__' : BasicTypeVariable([Def_Type([ Any_Type(), Any_Type() ],
+                                                           BasicTypeVariable([None_Type()]),
+                                                           0)]),
+                            
+                            # __delitem__(self, v: _KT) -> None
+                            '__delitem__' : BasicTypeVariable([Def_Type([ Any_Type() ],
+                                                           BasicTypeVariable([None_Type()]),
+                                                           0)]),
+                            
+                            # __contains__(self, o: object) -> bool
+                            '__contains__' : BasicTypeVariable([Def_Type([Any_Type()],
+                                                           BasicTypeVariable([Bool_Type()]),
+                                                           0)]),
+                            
+                            # __iter__(self) -> Iterator[_KT]
+                            '__iter__' : BasicTypeVariable([Def_Type([ ],
+                                                           BasicTypeVariable([Any_Type()]),
+                                                           0)]),
+                            
+                            # __str__(self) -> str
+                            #'__str__' : BasicTypeVariable([Def_Type([ ],
+                             #                              BasicTypeVariable([String_Type()]),
+                              #                             0)]),
+                            
+                            
+                            '__dict__' : BasicTypeVariable([Any_Type()]),
                             }
         
     def is_callable(self):
@@ -378,8 +700,7 @@ class Dict_Type(Container_Type, Class_Base, BaseType):
         ''' We want to return a new instance every time. '''
       #  return BasicTypeVariable([self])
         # Need to copy as it is liable to change
-        return BasicTypeVariable([Class_Instance(self.kind, self.global_vars.copy(), \
-                              False)])
+        return BasicTypeVariable([self])
         
     def define_kind(self):
         self.kind = 'dict(%s)' % repr(self.content_types)
@@ -478,10 +799,32 @@ class Set_Type(Container_Type, Class_Base, BaseType):
                                                                     BasicTypeVariable([none_type]),
                                                                     0)]),
                             
+                            # __len__(self) -> int
+                            '__len__' : BasicTypeVariable([Def_Type([ ],
+                                                                    BasicTypeVariable([Int_Type()]),
+                                                                    0)]),
+                            
+                            # __contains__(self, o: object) -> bool
+                            '__contains__' : BasicTypeVariable([Def_Type([ Any_Type() ],
+                                                                    BasicTypeVariable([Bool_Type()]),
+                                                                    0)]),
+                            
                             # __iter__(self) -> Iterator[T]
-                            '__iter__' : BasicTypeVariable([Def_Type([],
+                            '__iter__' : BasicTypeVariable([Def_Type([ ],
                                                                     BasicTypeVariable([Any_Type()]),
                                                                     0)]),
+                            
+                            # __str__(self) -> str
+                            '__str__' : BasicTypeVariable([Def_Type([ ],
+                                                                    BasicTypeVariable([String_Type()]),
+                                                                    0)]),      
+                            
+                            # __and__(self, s: AbstractSet[Any]) -> set[_T]
+                             '__and__' : BasicTypeVariable([Def_Type([ Any_Type() ],
+                                                                    BasicTypeVariable([ self ]),
+                                                                    0)]),                   
+                            
+                            '__dict__' : BasicTypeVariable([Any_Type()]),
 
                             }
         
@@ -493,8 +836,7 @@ class Set_Type(Container_Type, Class_Base, BaseType):
         ''' We want to return a new instance every time. '''
       #  return BasicTypeVariable([self])
         # Need to copy as it is liable to change
-        return BasicTypeVariable([Class_Instance(self.kind, self.global_vars.copy(), \
-                              False)])
+        return BasicTypeVariable([self])
         
     def define_kind(self):
         self.kind = 'set(%s)' % repr(self.content_types)
@@ -509,7 +851,7 @@ class List_Type(Container_Type, Class_Base, BaseType):
         
         self.global_vars = {#clear(self) -> None
                             'clear' : BasicTypeVariable([Def_Type([],
-                                                                    BasicTypeVariable([none_type]),
+                                                                    BasicTypeVariable([None_Type()]),
                                                                     0)]),
                             # copy(self) -> List[T]
                             'copy' : BasicTypeVariable([Def_Type([],
@@ -517,50 +859,95 @@ class List_Type(Container_Type, Class_Base, BaseType):
                                                                     0)]),
                             # append(self, object: T) -> None
                             'append' : BasicTypeVariable([Def_Type([BasicTypeVariable([Any_Type()])],
-                                                                    BasicTypeVariable([none_type]),
+                                                                    BasicTypeVariable([None_Type()]),
                                                                     0)]),
                             
                             # extend(self, iterable: Iterable[_T]) -> None
                             'extend' : BasicTypeVariable([Def_Type([BasicTypeVariable([Any_Type()])],
-                                                                    BasicTypeVariable([none_type]),
+                                                                    BasicTypeVariable([None_Type()]),
                                                                     0)]),
                             
                             # pop(self, index: int = -1) -> T
-                            'pop' : BasicTypeVariable([Def_Type([BasicTypeVariable([int_type])],
+                            'pop' : BasicTypeVariable([Def_Type([BasicTypeVariable([Int_Type()])],
                                                                     BasicTypeVariable([Any_Type()]),
                                                                     1)]),
                             # index(self, object: T, start: int = 0, stop: int = Undefined(int)) -> int
-                            'index' : BasicTypeVariable([Def_Type([BasicTypeVariable([Any_Type()]), BasicTypeVariable([int_type]), BasicTypeVariable([int_type])],
-                                                                    BasicTypeVariable([int_type]),
+                            'index' : BasicTypeVariable([Def_Type([BasicTypeVariable([Any_Type()]), BasicTypeVariable([Int_Type()]), BasicTypeVariable([Int_Type()])],
+                                                                    BasicTypeVariable([Int_Type()]),
                                                                     2)]),
                             # count(self, object: T) -> int
                             'count' : BasicTypeVariable([Def_Type([BasicTypeVariable([Any_Type()])],
-                                                                    BasicTypeVariable([int_type]),
+                                                                    BasicTypeVariable([Int_Type()]),
                                                                     0)]),
                             # insert(self, index: int, object: T) -> None
-                            'insert' : BasicTypeVariable([Def_Type([BasicTypeVariable([int_type]), BasicTypeVariable([Any_Type()])],
-                                                                    BasicTypeVariable([none_type]),
+                            'insert' : BasicTypeVariable([Def_Type([BasicTypeVariable([Int_Type()]), BasicTypeVariable([Any_Type()])],
+                                                                    BasicTypeVariable([None_Type()]),
                                                                     0)]),
                             # remove(self, object: T) -> None
                             'remove' : BasicTypeVariable([Def_Type([BasicTypeVariable([Any_Type()])],
-                                                                    BasicTypeVariable([none_type]),
+                                                                    BasicTypeVariable([None_Type()]),
                                                                     0)]),
                             # reverse(self) -> None
                             'remove' : BasicTypeVariable([Def_Type([],
-                                                                    BasicTypeVariable([none_type]),
+                                                                    BasicTypeVariable([None_Type()]),
                                                                     0)]),
                             # sort(self, *, key: Function[[T], Any] = None, reverse: bool = False) -> None
+                            'sort' : BasicTypeVariable([Any_Type()]),
                             
+                            # __len__(self) -> int
+                            '__len__': BasicTypeVariable([Def_Type([],
+                                                                    BasicTypeVariable([Int_Type()]),
+                                                                    0)]),                            
                             
                             # __iter__(self) -> Iterator[T]
                             '__iter__' : BasicTypeVariable([Def_Type([],
                                                                     BasicTypeVariable([Any_Type()]),
                                                                     0)]),
                             
-                            # __len__(self) -> int
-                            '__len__': BasicTypeVariable([Def_Type([],
-                                                                    BasicTypeVariable([int_type]),
+                            # __str__(self) -> str
+                   #         '__str__' : BasicTypeVariable([Def_Type([ ],
+                    #                                                BasicTypeVariable([String_Type()]),
+                    #                                                0)]),
+                            
+                           # __hash__(self) -> int
+                           '__str__' : BasicTypeVariable([Def_Type([ ],
+                                                                    BasicTypeVariable([Int_Type()]),
                                                                     0)]),
+                            
+                           # __getitem__(self, i: int) -> _T
+                           # __getitem__(self, s: slice) -> List[_T]
+                           '__getitem__': BasicTypeVariable([Def_Type([Any_Type()],
+                                                                    BasicTypeVariable([Any_Type()]),
+                                                                    0)]),
+                            
+                            # __setitem__(self, i: int, o: _T) -> None: pass
+                            # __setitem__(self, s: slice, o: Sequence[_T]) -> None
+                            '__setitem__': BasicTypeVariable([Def_Type([ Any_Type(), Any_Type() ],
+                                                                    BasicTypeVariable([None_Type()]),
+                                                                    0)]),
+                            
+                           # __delitem__(self, i: int) -> None
+                           # __delitem__(self, s: slice) -> None
+                           '__delitem__': BasicTypeVariable([Def_Type([ Any_Type() ],
+                                                                    BasicTypeVariable([None_Type()]),
+                                                                    0)]),
+                            
+                            # __add__(self, x: List[_T]) -> List[_T]
+                            '__add__': BasicTypeVariable([Def_Type([ self ],
+                                                                    BasicTypeVariable([self]),
+                                                                    0)]),
+                            
+                            # __iadd__(self, x: Iterable[_T]) -> List[_T]
+                            '__iadd__': BasicTypeVariable([Def_Type([ Any_Type() ],
+                                                                    BasicTypeVariable([self]),
+                                                                    0)]),
+                            
+                            # __contains__(self, o: object) -> bool
+                            '__contains__': BasicTypeVariable([Def_Type([ Any_Type() ],
+                                                                    BasicTypeVariable([Bool_Type()]),
+                                                                    0)]),
+                            
+                            '__dict__' : BasicTypeVariable([Any_Type()]),
 
                             }
         
@@ -572,8 +959,7 @@ class List_Type(Container_Type, Class_Base, BaseType):
         ''' We want to return a new instance every time. '''
       #  return BasicTypeVariable([self])
         # Need to copy as it is liable to change
-        return BasicTypeVariable([Class_Instance(self.kind, self.global_vars.copy(), \
-                              False)])
+        return BasicTypeVariable([self])
         
     def define_kind(self):
         self.kind = 'List(%s)' % repr(self.content_types)
@@ -598,12 +984,38 @@ class Tuple_Type(Container_Type, Class_Base, BaseType):
         BaseType.__init__(self, kind)
         
         self.global_vars = {
+                            # __getitem__(self, x: int) -> Any
+                            '__getitem__' : BasicTypeVariable([Def_Type([Int_Type()],
+                                                                    BasicTypeVariable([Any_Type()]),
+                                                                    0)]),
+
+                            # __len__(self) -> int
+                            '__len__' : BasicTypeVariable([Def_Type([],
+                                                                    BasicTypeVariable([Int_Type()]),
+                                                                    0)]),
                             
+                            # __contains__(self, x: object) -> bool
+                            '__contains__' : BasicTypeVariable([Def_Type([ Any_Type() ],
+                                                                    BasicTypeVariable([Bool_Type()]),
+                                                                    0)]),
+                            
+                            # __getitem__(self, x: int) -> Any
+                            # __getitem__(self, x: slice) -> tuple
+                            '__getitem__' : BasicTypeVariable([Def_Type([ Any_Type() ],
+                                                                    BasicTypeVariable([Any_Type()]),
+                                                                    0)]),
                             
                             # __iter__(self) -> Iterator[T]
                             '__iter__' : BasicTypeVariable([Def_Type([],
                                                                     BasicTypeVariable([Any_Type()]),
                                                                     0)]),
+                            
+                            # __add__(self, x: tuple) -> tuple
+                            '__add__' : BasicTypeVariable([Def_Type([self],
+                                                                    BasicTypeVariable([self]),
+                                                                    0)]),
+                            
+                            '__dict__' : BasicTypeVariable([Any_Type()]),
 
                             }
         
@@ -615,8 +1027,7 @@ class Tuple_Type(Container_Type, Class_Base, BaseType):
         ''' We want to return a new instance every time. '''
       #  return BasicTypeVariable([self])
         # Need to copy as it is liable to change
-        return BasicTypeVariable([Class_Instance(self.kind, self.global_vars.copy(), \
-                              False)])
+        return BasicTypeVariable([self])
         
     def define_kind(self):
         self.kind = 'Tuple(%s)' % repr(self.content_types)
@@ -652,31 +1063,31 @@ class String_Type(Container_Type, Class_Base, BaseType):
                                                                     0)]),
                             
                             # center(self, width: int, fillchar: str = ' ') -> str
-                            'center' : BasicTypeVariable([Def_Type([BasicTypeVariable([int_type]), BasicTypeVariable([self])],
+                            'center' : BasicTypeVariable([Def_Type([BasicTypeVariable([Int_Type()]), BasicTypeVariable([self])],
                                                                     BasicTypeVariable([self]),
                                                                     1)]),
                             # count(self, x: str) -> int
                             'count' : BasicTypeVariable([Def_Type([BasicTypeVariable([self])],
-                                                                    BasicTypeVariable([int_type]),
+                                                                    BasicTypeVariable([Int_Type()]),
                                                                     0)]),
                             
                             # encode(self, encoding: str = 'utf-8', errors: str = 'strict') -> bytes
                             'encode' : BasicTypeVariable([Def_Type([BasicTypeVariable([self]), BasicTypeVariable([self])],
-                                                                    BasicTypeVariable([bytes_type]),
+                                                                    BasicTypeVariable([Bytes_Type()]),
                                                                     2)]),
                             
                             # endswith(self, suffix: str, start: int = 0, end: int = None) -> bool
-                            'endswith': BasicTypeVariable([Def_Type([ BasicTypeVariable([self]), BasicTypeVariable([int_type]), BasicTypeVariable([int_type])],
+                            'endswith': BasicTypeVariable([Def_Type([ BasicTypeVariable([self]), BasicTypeVariable([Int_Type()]), BasicTypeVariable([Int_Type()])],
                                                                     BasicTypeVariable([bool_type]),
                                                                     2)]),
                             
                             # expandtabs(self, tabsize: int = 8) -> str
-                            'expandtabs': BasicTypeVariable([Def_Type([ BasicTypeVariable([int_type])],
+                            'expandtabs': BasicTypeVariable([Def_Type([ BasicTypeVariable([Int_Type()])],
                                                                     BasicTypeVariable([self]),
                                                                     1)]),
                             
                             # find(self, sub: str, start: int = 0, end: int = 0) -> int:
-                            'find': BasicTypeVariable([Def_Type([ BasicTypeVariable([self]), BasicTypeVariable([int_type]), BasicTypeVariable([int_type])],
+                            'find': BasicTypeVariable([Def_Type([ BasicTypeVariable([self]), BasicTypeVariable([Int_Type()]), BasicTypeVariable([Int_Type()])],
                                                                     BasicTypeVariable([self]),
                                                                     2)]),
                             
@@ -689,8 +1100,8 @@ class String_Type(Container_Type, Class_Base, BaseType):
                                                                     0)]),
                             
                             # index(self, sub: str, start: int = 0, end: int = 0) -> int
-                            'index': BasicTypeVariable([Def_Type([ BasicTypeVariable([self]), BasicTypeVariable([int_type]), BasicTypeVariable([int_type])],
-                                                                    BasicTypeVariable([int_type]),
+                            'index': BasicTypeVariable([Def_Type([ BasicTypeVariable([self]), BasicTypeVariable([Int_Type()]), BasicTypeVariable([Int_Type()])],
+                                                                    BasicTypeVariable([Int_Type()]),
                                                                     2)]),
                             
                             # isalnum(self) -> bool
@@ -754,7 +1165,7 @@ class String_Type(Container_Type, Class_Base, BaseType):
                                                                     0)]),
                             
                             # ljust(self, width: int, fillchar: str = ' ') -> str
-                            'ljust': BasicTypeVariable([Def_Type([  BasicTypeVariable([int_type]),   BasicTypeVariable([self])],
+                            'ljust': BasicTypeVariable([Def_Type([  BasicTypeVariable([Int_Type()]),   BasicTypeVariable([self])],
                                                                     BasicTypeVariable([self]),
                                                                     1)]),
                             
@@ -774,22 +1185,22 @@ class String_Type(Container_Type, Class_Base, BaseType):
                                                                     0)]),
                             
                             # replace(self, old: str, new: str, count: int = -1) -> str
-                            'replace': BasicTypeVariable([Def_Type([BasicTypeVariable([self]), BasicTypeVariable([self]), BasicTypeVariable([int_type])],
+                            'replace': BasicTypeVariable([Def_Type([BasicTypeVariable([self]), BasicTypeVariable([self]), BasicTypeVariable([Int_Type()])],
                                                                     BasicTypeVariable([self]),
                                                                     1)]),
                             
                             # rfind(self, sub: str, start: int = 0, end: int = 0) -> int
-                            'rfind': BasicTypeVariable([Def_Type([BasicTypeVariable([self]), BasicTypeVariable([int_type]), BasicTypeVariable([int_type])],
-                                                                    BasicTypeVariable([int_type]),
+                            'rfind': BasicTypeVariable([Def_Type([BasicTypeVariable([self]), BasicTypeVariable([Int_Type()]), BasicTypeVariable([Int_Type()])],
+                                                                    BasicTypeVariable([Int_Type()]),
                                                                     2)]),
                             
                             # rindex(self, sub: str, start: int = 0, end: int = 0) -> int
-                            'rindex': BasicTypeVariable([Def_Type([BasicTypeVariable([self]), BasicTypeVariable([int_type]), BasicTypeVariable([int_type])],
-                                                                    BasicTypeVariable([int_type]),
+                            'rindex': BasicTypeVariable([Def_Type([BasicTypeVariable([self]), BasicTypeVariable([Int_Type()]), BasicTypeVariable([Int_Type()])],
+                                                                    BasicTypeVariable([Int_Type()]),
                                                                     2)]),         
                             
                             # rjust(self, width: int, fillchar: str = ' ') -> str
-                            'rindex': BasicTypeVariable([Def_Type([  BasicTypeVariable([int_type]),  BasicTypeVariable([self])  ],
+                            'rindex': BasicTypeVariable([Def_Type([  BasicTypeVariable([Int_Type()]),  BasicTypeVariable([self])  ],
                                                                     BasicTypeVariable([self]),
                                                                     1)]),                  
                             
@@ -799,7 +1210,7 @@ class String_Type(Container_Type, Class_Base, BaseType):
                                                                     0)]),   
                             
                             # rsplit(self, sep: str = None, maxsplit: int = -1) -> List[str]
-                            'rsplit': BasicTypeVariable([Def_Type([  BasicTypeVariable([self]), BasicTypeVariable([int_type]) ],
+                            'rsplit': BasicTypeVariable([Def_Type([  BasicTypeVariable([self]), BasicTypeVariable([Int_Type()]) ],
                                                                     BasicTypeVariable([List_Type()]),
                                                                     2)]),   
                             
@@ -809,7 +1220,7 @@ class String_Type(Container_Type, Class_Base, BaseType):
                                                                     1)]),  
                             
                             # split(self, sep: str = None, maxsplit: int = -1) -> List[str]
-                            'split': BasicTypeVariable([Def_Type([BasicTypeVariable([self]), BasicTypeVariable([int_type])],
+                            'split': BasicTypeVariable([Def_Type([BasicTypeVariable([self]), BasicTypeVariable([Int_Type()])],
                                                                     BasicTypeVariable([List_Type()]),
                                                                     2)]),
                             
@@ -819,7 +1230,7 @@ class String_Type(Container_Type, Class_Base, BaseType):
                                                                     1)]),
                             
                             # startswith(self, prefix: str, start: int = 0, end: int = None) -> bool
-                            'startswith': BasicTypeVariable([Def_Type([  BasicTypeVariable([self]), BasicTypeVariable([int_type]), BasicTypeVariable([int_type])  ],
+                            'startswith': BasicTypeVariable([Def_Type([  BasicTypeVariable([self]), BasicTypeVariable([Int_Type()]), BasicTypeVariable([Int_Type()])  ],
                                                                     BasicTypeVariable([ bool_type ]),
                                                                     2)]),
                             
@@ -852,11 +1263,61 @@ class String_Type(Container_Type, Class_Base, BaseType):
                             'zfill': BasicTypeVariable([Def_Type([  BasicTypeVariable([int_type]) ],
                                                                     BasicTypeVariable([self]),
                                                                     0)]), 
+                                        
+                            # __getitem__(self, i: Union[int, slice]) -> str
+                            '__getitem__' : BasicTypeVariable([Def_Type([Any_Type()],
+                                                                    BasicTypeVariable([self]),
+                                                                    0)]),
+                            
+                            # __add__(self, s: str) -> str
+                            '__add__' : BasicTypeVariable([Def_Type([self],
+                                                                    BasicTypeVariable([self]),
+                                                                    0)]),
+                            
+                            # __len__(self) -> int
+                            '__len__' : BasicTypeVariable([Def_Type([ ],
+                                                                    BasicTypeVariable([Int_Type()]),
+                                                                    0)]),
+                            
+                            # __contains__(self, s: object) -> bool
+                            '__contains__' : BasicTypeVariable([Def_Type([ Any_Type() ],
+                                                                    BasicTypeVariable([Bool_Type()]),
+                                                                    0)]),
                             
                             # __iter__(self) -> Iterator[str]
                             '__iter__' : BasicTypeVariable([Def_Type([],
                                                                     BasicTypeVariable([Any_Type()]),
                                                                     0)]),
+                            
+                            # __str__(self) -> str
+                            '__str__' : BasicTypeVariable([Def_Type([],
+                                                                    BasicTypeVariable([self]),
+                                                                    0)]),
+                            
+                            # __repr__(self) -> str
+                            '__repr__' : BasicTypeVariable([Def_Type([],
+                                                                    BasicTypeVariable([self]),
+                                                                    0)]),
+                            
+                            # __int__(self) -> int
+                            '__int__' : BasicTypeVariable([Def_Type([],
+                                                                    BasicTypeVariable([Int_Type()]),
+                                                                    0)]),
+                            
+                            # __float__(self) -> float
+                            '__float__' : BasicTypeVariable([Def_Type([],
+                                                                    BasicTypeVariable([Float_Type()]),
+                                                                    0)]),
+                            
+                            # __hash__(self) -> int
+                            '__hash__' : BasicTypeVariable([Def_Type([],
+                                                                    BasicTypeVariable([Int_Type()]),
+                                                                    0)]),
+                            
+                            
+                            '__dict__' : BasicTypeVariable([Any_Type()]),
+                            
+                            
 
                             }
 
@@ -874,8 +1335,7 @@ class String_Type(Container_Type, Class_Base, BaseType):
         ''' We want to return a new instance every time. '''
       #  return BasicTypeVariable([self])
         # Need to copy as it is liable to change
-        return BasicTypeVariable([Class_Instance(self.kind, self.global_vars.copy(), \
-                              False)])
+        return BasicTypeVariable([self])
     
     def define_kind(self):
         self.kind = 'String'
@@ -900,6 +1360,7 @@ BUILTIN_TYPE_DICT = {
   '__name__': BasicTypeVariable([any_type]),
   '__main__': BasicTypeVariable([any_type]),
   '__doc__': BasicTypeVariable([any_type]),
+  '__file__': BasicTypeVariable([any_type]),
   
   # __import__(name: str, globals: Dict[str, Any] = {}, locals: Dict[str, Any] = {}, fromlist: List[str] = [], level: int = -1) -> Any
   '__import__': BasicTypeVariable([Def_Type([  BasicTypeVariable([  string_type, Dict_Type(), Dict_Type(), List_Type(), int_type])  ],
@@ -1028,6 +1489,8 @@ BUILTIN_TYPE_DICT = {
   'dir':  BasicTypeVariable([Def_Type([  BasicTypeVariable([any_type])  ],
                                   BasicTypeVariable([List_Type()]),
                                   1)]),
+                     
+  'enumerate' : BasicTypeVariable([any_type]),
                      
   # divmod(a: _N, b: _N) -> Tuple[_N, _N]
   'divmod':  BasicTypeVariable([Def_Type([  BasicTypeVariable([any_type]), BasicTypeVariable([any_type])  ],

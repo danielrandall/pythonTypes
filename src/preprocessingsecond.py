@@ -66,6 +66,8 @@ class PreprocessorSecond(AstFullTraverser):
             self.visit(z)
         for z in node.defaults:
             self.visit(z)
+        if node.vararg:
+            self.variableTypes[node.vararg] = BasicTypeVariable()
         if node.kwarg:
             self.variableTypes[node.kwarg] = BasicTypeVariable()
 

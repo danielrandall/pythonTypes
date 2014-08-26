@@ -64,9 +64,9 @@ class SSA_Traverser(AstFullTraverser):
             self.visit(statement)
         dict_to_pass = self.d.copy()
         
-        print("Block " + str(block.start_line_no) + " to")
-        print(block.exit_blocks)        
-        print(block.statements)
+   #     print("Block " + str(block.start_line_no) + " to")
+   #     print(block.exit_blocks)        
+   #     print(block.statements)
         
         for an_exit in block.exit_blocks:
             self.add_to_list((an_exit, dict_to_pass))
@@ -109,8 +109,8 @@ class SSA_Traverser(AstFullTraverser):
                     if var + str(num) == block.phi_nodes[var].get_var():
                         continue
                     block.phi_nodes[var].update_targets(var + str(num))
-                    print("Phis for: " + str(block.start_line_no))
-                    print(block.phi_nodes)
+         #           print("Phis for: " + str(block.start_line_no))
+         #           print(block.phi_nodes)
                     
     def visit(self,node):
         '''Compute the dictionary of assignments live at any point.'''
@@ -242,13 +242,11 @@ class SSA_Traverser(AstFullTraverser):
         pass
     
     def do_ExceptHandler(self,node):
+        # We do NOT want to visit the body. These are in blocks.
         if node.type:
             self.visit(node.type)
         if node.name and isinstance(node.name,ast.Name):
             self.visit(node.name)
-        # We do NOT want to visit the body. These are in blocks.
-   #     for z in node.body:
-  #          self.visit(z)
             
     def do_Call(self, node):
         self.visit(node.func)

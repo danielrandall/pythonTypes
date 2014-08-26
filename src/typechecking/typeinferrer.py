@@ -162,13 +162,13 @@ class TypeInferrer(AstFullTraverser):
         finally:
             self.currently_assigning = False
             
-        if len(node.targets) > 1:
+    #    if len(node.targets) > 1:
             # x = y = 5
-            value_types = self.visit(node.value)
-            assert len(value_types) == 1
-            value_types = [value_types[0]] * len(targets)
+    #        value_types = self.visit(node.value)
+    #        assert len(value_types) == 1
+    #        value_types = [value_types[0]] * len(targets)
         
-        elif isinstance(node.targets[0], ast.List) or isinstance(node.targets[0], ast.Tuple):
+        if isinstance(node.targets[0], ast.List) or isinstance(node.targets[0], ast.Tuple):
             if isinstance(node.value, ast.List) or isinstance(node.value, ast.Tuple):
                 # [x, y] = [5, 2]
                 self.currently_assigning = True
@@ -206,9 +206,9 @@ class TypeInferrer(AstFullTraverser):
             # Create a contentstypevariable for each target
             value_types = value_types[0]
             # Hack
-            if value_types.get() and isinstance(list(value_types.get())[0], Container_Type):
-                value_types = ContentsTypeVariable(list(value_types.get()))
-            value_types = [value_types] * len(targets)
+            container = ContentsTypeVariable([])
+            self.conduct_assignment([container], [value_types], node)
+            value_types = [container] * len(targets)
             
         for target, value in zip(targets, value_types):
             assert isinstance(value, BasicTypeVariable)
@@ -300,6 +300,9 @@ class TypeInferrer(AstFullTraverser):
         args = []
         for z in node.args:
             args.extend(self.visit(z))
+        # Always a tuple
+        if node.vararg:
+            self.conduct_assignment([self.variableTypes[node.vararg]], [BasicTypeVariable([Tuple_Type()])], node)
         # Always a dict
         if node.kwarg:
             self.conduct_assignment([self.variableTypes[node.kwarg]], [BasicTypeVariable([Dict_Type()])], node)
@@ -320,8 +323,6 @@ class TypeInferrer(AstFullTraverser):
         self.variableTypes = node.variableTypes
 
         parent_class = self.current_class
-        # Deal with inheritance.
-        inherited_vars = {}
         base_classes = []
         for base in node.bases:
             base_classes.append(self.visit(base)[0])
@@ -363,6 +364,9 @@ class TypeInferrer(AstFullTraverser):
         op = self.kind(node.op)
         left_types = self.visit(node.left)[0]
         right_types = self.visit(node.right)[0]
+        
+        if node.lineno == 90:
+            pass
         
         # Add constraints if they are function parameters
         if left_types in self.fun_params:

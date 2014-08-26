@@ -99,7 +99,7 @@ class InitNoneIssue(BaseIssue):
     
     def check(self):
         for possible_type in self.var_to_check.get():
-            if not isinstance(possible_type, NoneType):
+            if not isinstance(possible_type, None_Type):
                 self.print_error()
         
         

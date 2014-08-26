@@ -23,6 +23,7 @@ class GetAttrTypeVariable(BasicTypeVariable):
     def extract_class_attrs(self):
         any_base = False
         extracted = set()
+        new_dependents = set()
         for possible_type in self.value:
             if isinstance(possible_type, Any_Type):
                 extracted.add(any_type)
@@ -32,10 +33,13 @@ class GetAttrTypeVariable(BasicTypeVariable):
                 # Need to add it in case this attribute updates as the
                 # class will not update when a member changes
                 self.found_attributes.add(has_attr)
-                has_attr.add_new_dependent(self)
+                new_dependents.add(has_attr)
+                #has_attr.add_new_dependent(self)
                 extracted |= has_attr.types
             else:
                 any_base = True if possible_type.has_any_base() else any_base
+        for new_dep in new_dependents:
+            new_dep.add_new_dependent(self)
         # If the attr hasn't been found but has any base then
         # it might be there but we can't see it! any_type
         if not extracted and any_base:

@@ -158,10 +158,11 @@ class ControlFlowGraph(AstFullTraverser):
                     # Need to check or it will add it twice
                     if not hasattr(node, "last_try_body_statement"):
                         self.add_to_exits(self.current_block, f_block)
-                # Special case - we don't need to create new blocks here.
+                # Special cases - we don't need to create new blocks here as they diverge.
                 if isinstance(node, ast.While) or isinstance(node, ast.For) \
                 or isinstance(node, ast.If) or isinstance(node, ast.Continue) \
-                or isinstance(node, ast.Break) or isinstance(node, ast.Try):
+                or isinstance(node, ast.Break) or isinstance(node, ast.Return) \
+                 or isinstance(node, ast.Try):
                     break
            #     print(self.current_block.start_line_no)
            #     print(self.current_block.exit_blocks)
