@@ -424,6 +424,7 @@ class ControlFlowGraph(AstFullTraverser):
             assert isinstance(handler, ast.ExceptHandler)
             initial_handler_block = self.new_block()
             self.use_block(initial_handler_block)
+            initial_handler_block.statements.append(handler)
             for z in handler.body:
                 self.visit(z)
             self.check_child_exits(self.current_block, handler_exit)

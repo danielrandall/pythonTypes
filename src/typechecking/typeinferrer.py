@@ -275,7 +275,13 @@ class TypeInferrer(AstFullTraverser):
             for param, assigned in self.fun_params.items():
                 if not assigned:
                     self.conduct_assignment([param], [BasicTypeVariable([any_type])], node)
-            if node.name == "update":
+                    
+            # Create error issue for init. Should only return None
+            if node.name == "__init__":
+                self.error_issuer.add_issue(InitNoneIssue(node, self.return_variable, self.module_name))
+                
+                
+            if node.name == "f":
                 print()
                 print("Final types")
                 print(node.lineno)
@@ -284,7 +290,7 @@ class TypeInferrer(AstFullTraverser):
             # Restore parent variables
             self.variableTypes = node.stc_context.variableTypes
             # Add the new function type
-            fun_type = BasicTypeVariable([any_type])
+            fun_type = BasicTypeVariable([Def_Type(None, self.return_variable, 0)])
             self.conduct_assignment([self.variableTypes[node.name]], [fun_type], node)
             self.fun_params = old_params
             

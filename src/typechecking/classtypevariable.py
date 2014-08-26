@@ -35,7 +35,7 @@ class ClassTypeVariable(BasicTypeVariable):
                     # What the hell do I do here?
                     self.acceptable_base_classes.add(base_class)
                     self.any_base_class = True
-                if isinstance(possible_type, Class_Type):
+                if isinstance(possible_type, Class_Base):
                     # If there is a clash, the first instance will be used
                     self.class_variables.update({k:v for k,v in possible_type.get_vars().items() if k not in self.class_variables})
                     self.acceptable_base_classes.add(base_class)
@@ -54,7 +54,7 @@ class ClassTypeVariable(BasicTypeVariable):
                     # Only update change if we've not already seen a any
                     change = True if not self.any_base_class else change
                     self.any_base_class = True
-            if isinstance(possible_type, Class_Type):
+            if isinstance(possible_type, Class_Base):
                 # If there is a clash, the first instance will be used
                 new_vars = {k:v for k,v in possible_type.get_vars().items() if k not in self.class_variables}
                 if new_vars:

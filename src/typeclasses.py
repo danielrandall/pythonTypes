@@ -48,11 +48,17 @@ class BaseType:
         else:
             return None
         
+    def has_any_base(self):
+        return False
+        
     def get_vars(self):
         return self.global_vars
     
     def set_var(self, name, var):
         self.global_vars[name] = var
+        
+    def get_return_types(self):
+        return None
 
 class Any_Type(BaseType):    
     def __init__(self):
@@ -79,6 +85,16 @@ class Builtin_Type(BaseType):
 class Bytes_Type(BaseType):    
     def __init__(self):
         BaseType.__init__(self,'Bytes')
+        
+        self.global_vars = { 
+                      
+                            #  join(self, iterable: Iterable[str]) -> str:
+                            'join': BasicTypeVariable([Def_Type([BasicTypeVariable([Any_Type()])],
+                                                                    BasicTypeVariable([self]),
+                                                                    0)]),
+                            
+
+                            }
         
 class Callable_Type():
     def __init__(self):
@@ -115,7 +131,7 @@ class Class_Base():
         return self.any_base_class
 
 # Note: ClassType is a Python builtin.
-class Class_Type(Class_Base, Callable_Type, BaseType):
+class Class_Type(Class_Base, BaseType):
     ''' Class to define classes. This is always callable due to init.
     
         TODO: Bultin functions such as __class__ .
@@ -125,7 +141,6 @@ class Class_Type(Class_Base, Callable_Type, BaseType):
         kind = 'Class Def: %s' % name
         Class_Base.__init__(self)
         BaseType.__init__(self, kind)
-        Callable_Type.__init__(self)
         self.name = name
         self.global_vars = global_vars
         self.has_call_func = has_call_func
@@ -137,6 +152,7 @@ class Class_Type(Class_Base, Callable_Type, BaseType):
             self.global_vars["__name__"] = BasicTypeVariable([any_type])
         if "__class__" not in self.global_vars:
             self.global_vars["__class__"] = BasicTypeVariable([any_type])
+        
             
         
     def get_contents_types(self):
@@ -153,6 +169,10 @@ class Class_Type(Class_Base, Callable_Type, BaseType):
     
     def set_init_params(self, parameter_types):
         self.parameter_types = parameter_types
+        
+    def is_callable(self):
+        ''' Can always initialise a class definition. '''
+        return True
     
     def set_callable_params(self, call_param_types, call_return_types):
         self.call_param_types = call_param_types
@@ -160,27 +180,30 @@ class Class_Type(Class_Base, Callable_Type, BaseType):
     
     def get_return_types(self):
         ''' We want to return a new instance every time. '''
-        return BasicTypeVariable([any_type])
-      #  return set([Class_Instance(self.name, self.global_vars.copy(), \
-      #                        self.has_call_func, self.call_param_types, \
-      #                        self.call_return_types, self.global_dependents)])
+      #  return BasicTypeVariable([self])
+        # Need to copy as it is liable to change
+        return BasicTypeVariable([Class_Instance(self.name, self.global_vars.copy(), \
+                              self.has_any_base())])
     
-class Class_Instance(Callable_Type, Class_Base):
+class Class_Instance(Class_Base, BaseType):
     ''' Used to represent initialised classes. '''
-    def __init__(self, name, global_vars, has_call_func, call_parameter_types, \
-                 call_return_types, global_dependents):
+    def __init__(self, name, global_vars, any_base):
         kind = 'Class Instance: %s' % name
-        super().__init__(kind)
+        Class_Base.__init__(self)
+        BaseType.__init__(self, kind)
         self.name = name
         self.global_vars = global_vars
-        self.supports_calling = has_call_func
-        self.parameter_types = call_parameter_types
-        self.return_types = call_return_types
-        self.global_dependents = global_dependents
-        
+        self.any_base_class = any_base
     
     def __repr__(self):
         return 'Class Instance: %s' % self.name
+    
+    def is_callable(self):
+        return "__call__" in self.global_vars
+    
+    def get_return_types(self):
+        if "__call__" in self.global_vars:
+            return self.global_vars["__call__"]
             
 class Module_Type(Class_Base, BaseType):
     def __init__(self, global_vars):
@@ -197,6 +220,9 @@ class Def_Type(Callable_Type, BaseType):
         self.parameter_types = parameter_types
         self.return_types = return_types
         self.arg_default_length = arg_default_length
+        
+    def get_return_types(self):
+        return self.return_types
 
 class Inference_Failure(BaseType):
     def __init__(self, kind, node):
@@ -826,6 +852,7 @@ BUILTIN_TYPE_DICT = {
   # Bit of a hack
   '_' : BasicTypeVariable([any_type]),
   
+  'BaseException' : BasicTypeVariable([any_type]),
   'Exception' : BasicTypeVariable([any_type]),
   
   # Functions
@@ -1074,31 +1101,21 @@ BUILTIN_TYPE_DICT = {
                      
   'str':  BasicTypeVariable([Def_Type([BasicTypeVariable([any_type]), BasicTypeVariable([string_type]), BasicTypeVariable([string_type])],
                                   BasicTypeVariable([string_type]),
-                                  2)]),
-                     
-  'list':  BasicTypeVariable([Def_Type([BasicTypeVariable([any_type])],
-                                  BasicTypeVariable([List_Type()]),
-                                  1)]),                
+                                  2)]),            
                      
   'range':  BasicTypeVariable([Def_Type([BasicTypeVariable([int_type]), BasicTypeVariable([int_type]), BasicTypeVariable([int_type])],
                                     BasicTypeVariable([ List_Type() ]),
                                     2)]),
                      
+  'list':  BasicTypeVariable([ List_Type() ]),    
+                     
             # Should this be a function or class?
-  'set': BasicTypeVariable([Def_Type([BasicTypeVariable([List_Type()])],
-                                  BasicTypeVariable([Set_Type()]),
-                                  1)]),
+  'set': BasicTypeVariable([ Set_Type() ]),
                      
-  'dict': BasicTypeVariable([Def_Type([BasicTypeVariable([any_type])],
-                                  BasicTypeVariable([any_type]),
-                                  1)]),
+  'dict': BasicTypeVariable([ Dict_Type() ]),
                      
-  'bytes' : BasicTypeVariable([Def_Type([BasicTypeVariable([any_type])],
-                                  BasicTypeVariable([bytes_type]),
-                                  1)]),
-  'bool' : BasicTypeVariable([Def_Type([BasicTypeVariable([any_type])],
-                                  BasicTypeVariable([bool_type]),
-                                  1)]),
+  'bytes' : BasicTypeVariable([ Bytes_Type() ]),
+  'bool' : BasicTypeVariable([ Bool_Type() ] ),
             # Classes
   'object' : BasicTypeVariable([Class_Type("object", {}, False)])
 } 

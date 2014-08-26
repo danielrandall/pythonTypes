@@ -60,9 +60,9 @@ class SSA_Traverser(AstFullTraverser):
             self.visit(statement)
         dict_to_pass = self.d.copy()
         
-     #   print("Block " + str(block.start_line_no) + " to")
-     #   print(block.exit_blocks)        
-     #   print(block.statements)
+        print("Block " + str(block.start_line_no) + " to")
+        print(block.exit_blocks)        
+        print(block.statements)
         
         for an_exit in block.exit_blocks:
             self.add_to_list((an_exit, dict_to_pass))
@@ -238,6 +238,14 @@ class SSA_Traverser(AstFullTraverser):
     def do_Try(self, node):
         ''' body/finally/excepts are in their own blocks. '''
         pass
+    
+    def do_ExceptHandler(self,node):
+        if node.type:
+            self.visit(node.type)
+        if node.name and isinstance(node.name,ast.Name):
+            self.visit(node.name)
+        for z in node.body:
+            self.visit(z)
             
     def do_Call(self, node):
         self.visit(node.func)

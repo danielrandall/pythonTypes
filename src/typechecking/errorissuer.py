@@ -1,3 +1,5 @@
+from src.typeclasses import None_Type
+
 class ErrorIssuer():
     def __init__(self):
         self.issues = []
@@ -70,14 +72,37 @@ class GetAttrIssue(BaseIssue):
         self.attr = attr
     
     def check(self):
-        if self.attr == "items":
-            pass
         if not self.var_to_check.check_output():
             self.print_error()
         
     def print_error(self):        
         print(self.module_name + ": " + "Line " + str(self.lineno) + ": Cannot find atrribute: " + self.attr)
         
+class IteratorIssue(BaseIssue):
+    ''' Checks whether the given type is an iterator. '''
+    def __init__(self, node, var, module_name):
+        super().__init__(node, var, module_name)
+    
+    #def check(self):
+    #    possible_types - self.var_to_check.get()
+        
+        
+    def print_error(self):        
+        print(self.module_name + ": " + "Line " + str(self.lineno) + ": Not an iterator")
+        
 class MustContainTypeIssue(BaseIssue):
     pass
+
+class InitNoneIssue(BaseIssue):
+    def __init__(self, node, var, module_name):
+        super().__init__(node, var, module_name)
+    
+    def check(self):
+        for possible_type in self.var_to_check.get():
+            if not isinstance(possible_type, NoneType):
+                self.print_error()
+        
+        
+    def print_error(self):        
+        print(self.module_name + ": " + "Line " + str(self.lineno) + ": __init__ should only return None")
 

@@ -2,7 +2,11 @@ from src.typechecking.basictypevariable import BasicTypeVariable
 
 class CallTypeVariable(BasicTypeVariable):
     ''' Must work for modules and classes.
-        self.types represents the types the attribute can take '''
+        self.types represents the types the attribute can take.
+        
+        If type is a class def then check __init__
+        If function - obvious
+        If class instance - call '''
     def __init__(self, args, node):
         self.lineno = node.lineno
         self.has_callable_type = False

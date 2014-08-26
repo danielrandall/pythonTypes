@@ -26,16 +26,16 @@ class GetAttrTypeVariable(BasicTypeVariable):
         for possible_type in self.value:
             if isinstance(possible_type, Any_Type):
                 extracted.add(any_type)
-            if isinstance(possible_type, Class_Base):
-                has_attr = possible_type.get_global_var(self.attr)
-                if has_attr:
-                    # Need to add it in case this attribute updates as the
-                    # class will not update when a member changes
-                    self.found_attributes.add(has_attr)
-                    has_attr.add_new_dependent(self)
-                    extracted |= has_attr.types
-                else:
-                    any_base = True if possible_type.has_any_base() else any_base
+                continue
+            has_attr = possible_type.get_global_var(self.attr)
+            if has_attr:
+                # Need to add it in case this attribute updates as the
+                # class will not update when a member changes
+                self.found_attributes.add(has_attr)
+                has_attr.add_new_dependent(self)
+                extracted |= has_attr.types
+            else:
+                any_base = True if possible_type.has_any_base() else any_base
         # If the attr hasn't been found but has any base then
         # it might be there but we can't see it! any_type
         if not extracted and any_base:
