@@ -151,12 +151,6 @@ class ControlFlowGraph(AstFullTraverser):
                 # excepts
                 self.current_block.statements.append(node)
                 
-                if isinstance(node, ast.If):
-                    # We'll be creating new blocks anyway
-                    return
-                
-                next_statement_block = self.new_block()
-                self.add_to_exits(self.current_block, next_statement_block)
                 if f_block_type == F_BLOCK_EXCEPT:
                     for handler in f_block:
                         self.add_to_exits(self.current_block, handler)
@@ -164,11 +158,15 @@ class ControlFlowGraph(AstFullTraverser):
                     # Need to check or it will add it twice
                     if not hasattr(node, "last_try_body_statement"):
                         self.add_to_exits(self.current_block, f_block)
-                # Special case
-                if isinstance(node, ast.While) or isinstance(node, ast.For):
+                # Special case - we don't need to create new blocks here.
+                if isinstance(node, ast.While) or isinstance(node, ast.For) \
+                or isinstance(node, ast.If) or isinstance(node, ast.Continue) \
+                or isinstance(node, ast.Break) or isinstance(node, ast.Try):
                     break
            #     print(self.current_block.start_line_no)
            #     print(self.current_block.exit_blocks)
+                next_statement_block = self.new_block()
+                self.add_to_exits(self.current_block, next_statement_block)
                 self.use_next_block(next_statement_block)
                 break
         else:
@@ -345,11 +343,11 @@ class ControlFlowGraph(AstFullTraverser):
             TODO: Fix this up.  '''
         if not self.frame_blocks:
             self.error("'continue' not properly in loop", node)
-        current_block, block = self.frame_blocks[-1]
-        if current_block == F_BLOCK_LOOP:
+        top_block, block = self.frame_blocks[-1]
+        if top_block == F_BLOCK_LOOP:
             self.add_to_exits(self.current_block, block)
-        elif current_block == F_BLOCK_EXCEPT or \
-                current_block == F_BLOCK_FINALLY:
+        elif top_block == F_BLOCK_EXCEPT or \
+                top_block == F_BLOCK_FINALLY:
             # Find the loop
             for i in range(len(self.frame_blocks) - 2, -1, -1):
                 f_type, block = self.frame_blocks[i]
@@ -362,7 +360,7 @@ class ControlFlowGraph(AstFullTraverser):
             else:
                 self.error("'continue' not properly in loop", node)
                 return
-        elif current_block == F_BLOCK_FINALLY_END:
+        elif top_block == F_BLOCK_FINALLY_END:
             self.error("'continue' not supported inside 'finally' clause", node)
         self.current_block.has_return = True
     
