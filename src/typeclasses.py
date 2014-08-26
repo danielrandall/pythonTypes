@@ -806,6 +806,11 @@ BUILTIN_TYPE_DICT = {
   '__name__': BasicTypeVariable([any_type]),
   '__main__': BasicTypeVariable([any_type]),
   '__doc__': BasicTypeVariable([any_type]),
+  
+  # __import__(name: str, globals: Dict[str, Any] = {}, locals: Dict[str, Any] = {}, fromlist: List[str] = [], level: int = -1) -> Any
+  '__import__': BasicTypeVariable([Def_Type([  BasicTypeVariable([  string_type, Dict_Type(), Dict_Type(), List_Type(), int_type])  ],
+                                  BasicTypeVariable([any_type]),
+                                  5)]),
                      
   # keywords
   'True': BasicTypeVariable([bool_type]),
