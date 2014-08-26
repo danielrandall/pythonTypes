@@ -60,6 +60,14 @@ class PreprocessorSecond(AstFullTraverser):
             
     def do_arg(self, node):
         self.variableTypes[node.arg] = BasicTypeVariable()
+        
+    def do_arguments(self,node):
+        for z in node.args:
+            self.visit(z)
+        for z in node.defaults:
+            self.visit(z)
+        if node.kwarg:
+            self.variableTypes[node.kwarg] = BasicTypeVariable()
 
     def do_FunctionDef(self, node):    
         if node.name not in self.variableTypes:

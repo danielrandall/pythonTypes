@@ -58,6 +58,14 @@ class SSA_Pre_Processor(AstFullTraverser):
             self.process_blocks(node.initial_block)
         finally:
             self.ssa_exempts = old_ssa_exempts 
+            
+    def do_arguments(self,node):
+        for z in node.args:
+            self.visit(z)
+        for z in node.defaults:
+            self.visit(z)
+        if node.kwarg:
+            self.ssa_exempts.add(node.kwarg)
         
     def do_arg(self, node):
         self.ssa_exempts.add(node.arg)

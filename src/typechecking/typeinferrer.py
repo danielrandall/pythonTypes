@@ -264,7 +264,7 @@ class TypeInferrer(AstFullTraverser):
             params = self.visit(node.args)
             self.fun_params = {}
             self.fun_params.update({self.variableTypes[param] : False for param in params})
-                
+
             self.return_variable = BasicTypeVariable()
             for z in node.body:
                 self.visit(z)
@@ -294,6 +294,9 @@ class TypeInferrer(AstFullTraverser):
         args = []
         for z in node.args:
             args.extend(self.visit(z))
+        # Always a dict
+        if node.kwarg:
+            self.conduct_assignment([self.variableTypes[node.kwarg]], [BasicTypeVariable([Dict_Type()])], node)
         return args
             
     def do_arg(self, node):

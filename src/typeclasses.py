@@ -500,6 +500,11 @@ class List_Type(Container_Type, Class_Base, BaseType):
                             '__iter__' : BasicTypeVariable([Def_Type([],
                                                                     BasicTypeVariable([Any_Type()]),
                                                                     0)]),
+                            
+                            # __len__(self) -> int
+                            '__len__': BasicTypeVariable([Def_Type([],
+                                                                    BasicTypeVariable([int_type]),
+                                                                    0)]),
 
                             }
         
@@ -1086,6 +1091,13 @@ BUILTIN_TYPE_DICT = {
                      
   'dict': BasicTypeVariable([Def_Type([BasicTypeVariable([any_type])],
                                   BasicTypeVariable([any_type]),
+                                  1)]),
+                     
+  'bytes' : BasicTypeVariable([Def_Type([BasicTypeVariable([any_type])],
+                                  BasicTypeVariable([bytes_type]),
+                                  1)]),
+  'bool' : BasicTypeVariable([Def_Type([BasicTypeVariable([any_type])],
+                                  BasicTypeVariable([bool_type]),
                                   1)]),
             # Classes
   'object' : BasicTypeVariable([Class_Type("object", {}, False)])
