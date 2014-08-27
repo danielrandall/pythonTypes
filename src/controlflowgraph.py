@@ -55,7 +55,7 @@ class Block():
      #       copy_to.predecessors += dependent.predecessors
             dependent.__dict__ = copy_to.__dict__
     #    copy_to.predecessors += self.predecessors
-        copy_to.dependents = self.dependents + [self]
+        copy_to.dependents += self.dependents + [self]
         self.__dict__ = copy_to.__dict__
         
 # These are frame blocks.
