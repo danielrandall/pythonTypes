@@ -136,8 +136,8 @@ class ControlFlowGraph(AstFullTraverser):
         if isinstance(node, ast.FunctionDef) or isinstance(node, ast.ClassDef):
             return
         # We only want the 'top level' statements
-        if self.current_line_num >= node.lineno:
-            return   
+  #      if self.current_line_num >= node.lineno:
+  #          return   
         # Special cases - test must be in its own block
         if isinstance(node, ast.While) or isinstance(node, ast.For):
             if not self.is_empty_block(self.current_block):
@@ -332,8 +332,6 @@ class ControlFlowGraph(AstFullTraverser):
         ''' End the current block here.
             No statements in this block after this are valid.
             In a try, returns go to the finally block. '''
-        if node.value:
-            self.visit(node.value)
         # Check if the block is an try-finally.
         for f_block_type, f_block in reversed(self.frame_blocks):
             if f_block_type == F_BLOCK_FINALLY:
@@ -464,6 +462,13 @@ class ControlFlowGraph(AstFullTraverser):
             
         self.use_next_block(after_try_block)     
         
+        
+        
+        
+        
+        
+        
+        
     def do_Assign(self, node):
         ''' There's not reason we would ever want to go down here. '''
         pass
@@ -488,6 +493,160 @@ class ControlFlowGraph(AstFullTraverser):
     
     def do_arguments(self,node):
         pass
+    
+    def do_Attribute(self,node):
+        pass
+    
+    def do_Compare(self,node):
+        pass
+    
+    def do_comprehension(self,node):
+        pass
+    
+    def do_Expr(self,node):   
+        pass
+
+    def do_Expression(self,node):
+        pass
+    
+    def do_Bytes(self,node): 
+        pass # Python 3.x only.
+        
+    def do_Ellipsis(self,node):
+        pass
+        
+    def do_Num(self,node):
+        pass # Num(object n) # a number as a PyObject.
+        
+    def do_Str(self,node):
+        pass # represents a string constant.
+    
+    def do_str(self, node):
+        pass
+    
+    def do_Set(self, node):
+        pass
+            
+    def do_arg(self,node):
+        pass
+
+
+    def do_BoolOp (self,node): 
+        pass
+
+    def do_Dict(self,node):
+        pass
+
+
+    def do_ExtSlice (self,node):
+        pass
+
+    def do_IfExp (self,node):
+        pass
+
+    def do_Index (self,node):  
+        pass
+
+    def do_keyword(self,node):
+        pass
+
+    def do_List(self,node):
+        pass
+
+
+    def do_Name(self,node):
+        # self.visit(node.ctx)
+        pass
+
+
+    def do_Subscript(self,node):
+        pass
+
+    def do_Tuple(self,node):
+        pass
+        
+    def do_UnaryOp (self,node):
+        pass
+
+    def do_alias (self,node):
+        pass
+
+    def do_Assert(self,node):
+        pass
+
+
+    def do_AugAssign(self,node):
+        ''' Augassign gets transformed into an assign and binop. '''
+        pass
+
+    def do_ClassDef (self,node):
+        for z in node.bases:
+            self.visit(z)
+        for z in node.body:
+            self.visit(z)
+        for z in node.decorator_list:
+            self.visit(z)
+            
+    def do_Delete(self,node):
+        pass
+
+#    def do_ExceptHandler(self,node):
+#        if node.type:
+#            self.visit(node.type)
+#        if node.name and isinstance(node.name,ast.Name):
+#            self.visit(node.name)
+#        for z in node.body:
+#            self.visit(z)
+
+
+    def do_Global(self,node):
+        pass
+
+    def do_Import(self,node):
+        pass
+
+
+    def do_ImportFrom(self,node):
+        pass
+
+    def do_Lambda(self,node):
+        self.visit(node.args)
+        self.visit(node.body)
+
+
+    def do_Pass(self,node):
+        pass
+
+    def do_Print(self,node):
+        pass
+
+    def do_Raise(self,node):
+        pass
+
+
+
+
+    def do_TryExcept(self, node):
+        ''' I don't think these are ever entered. '''
+        self.do_Try(node)
+
+    def do_TryFinally(self, node):
+        ''' I don't think these are ever entered. '''
+        self.do_Try(node)
+
+            
+   # def do_With(self, node):
+   #     for z in node.items:
+   #         self.visit(z)
+   #     for z in node.body:
+   #         self.visit(z)
+            
+   # def do_withitem(self, node):
+   #     self.visit(node.context_expr)
+   #     if node.optional_vars:
+   #         self.visit(node.optional_vars)
+
+
         
 class PrintCFG(AstFullTraverser):
     
