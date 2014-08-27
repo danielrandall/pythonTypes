@@ -14,22 +14,14 @@ class SSA_Traverser(AstFullTraverser):
     '''
     def __init__(self):
         AstFullTraverser.__init__(self)
-            
-    def changed_dicts(self, newDict, oldDict):
-        ''' The order of the parameters is important.
-            Adds keys in newDict but in oldDict to oldDict with value 0. A 
-            bit of a hack but makes it easier. '''
-        newKeys = set(newDict.keys())
-        oldKeys = set(oldDict.keys())
-        intersection = newKeys.intersection(oldKeys)
-        added = newKeys - oldKeys
-        return set(o for o in intersection if oldDict[o] != newDict[o]) | added
-
+        
     def run(self, root):
-        self.u = Utils()
         self.global_variables = None
         self.global_var_edits = None
-        self.d = {}
+        self.local_variables = None
+        self.function_ssa_tracker = {}
+        self.block_tracker = {}
+        self.in_function = False
             # Keys are names, values are lists of a.values
             # where a is an assignment. 
         self.breaks = []
@@ -48,6 +40,8 @@ class SSA_Traverser(AstFullTraverser):
         
     def process_block(self, block):
         ''' TODO: Handle infinite loops '''
+        if not self.in_function:
+            return
         if block.ssa_mark:
             return
         block.ssa_mark = True
@@ -55,18 +49,20 @@ class SSA_Traverser(AstFullTraverser):
             return
         if not block.statements:
             return
-        self.add_phi_nodes(block)
         
-        if block.start_line_no == 8:
+        if block.start_line_no == 21:
             pass
         
+        self.block_tracker = block.d
+        # Update all but those created by phis
+        self.block_tracker.update({k:v for k,v in self.function_ssa_tracker.items() if k not in self.block_tracker})
         for statement in block.statements:
             self.visit(statement)
-        dict_to_pass = self.d.copy()
+        dict_to_pass = self.block_tracker.copy()
         
-   #     print("Block " + str(block.start_line_no) + " to")
-   #     print(block.exit_blocks)        
-   #     print(block.statements)
+     #   print("Block " + str(block.start_line_no) + " to")
+     #   print(block.exit_blocks)        
+     #   print(block.statements)
         
         for an_exit in block.exit_blocks:
             self.add_to_list((an_exit, dict_to_pass))
@@ -85,75 +81,95 @@ class SSA_Traverser(AstFullTraverser):
             test_num = self.blocks_to_process[i][0].start_line_no
         self.blocks_to_process.insert(i, item)
         
+    def add_all_phi_nodes(self, block, local_variables):
+        if block.start_line_no == "Exit":
+            return
+        if not block.statements:
+            return
+        if block.has_phi_nodes:
+            return
+        self.add_phi_nodes(block, local_variables)
+        for an_exit in block.exit_blocks:
+            self.add_all_phi_nodes(an_exit, local_variables)
             
-    def add_phi_nodes(self, block):
+    def add_phi_nodes(self, block, local_variables):
         ''' Only add phi nodes with blocks with more than entry point. '''
         block.phi_nodes = {}
+        block.d = {}
         block.statements[0].phi_nodes = []
-        for ref_var in block.referenced_vars:
-            if ref_var in self.d:  # Needed for before when var may not yet exist
-                self.d[ref_var] += 1
-            else:
-                self.d[ref_var] = 1
-            new_phi = Phi_Node(ref_var + str(self.d[ref_var]), set())
+        for ref_var in local_variables:
+            new_phi = self.create_new_phi_node(ref_var, block)
             new_phi.lineno = block.statements[0].lineno
             block.phi_nodes[ref_var] = new_phi
             block.statements[0].phi_nodes.append(new_phi)
+    #        print("Phi created for block " + str(block.start_line_no))
+    #        print(block.phi_nodes)
+        block.has_phi_nodes = True
             
     def update_phis(self, block, predecessor_dict):
-        if not block.statements:
+        if block.start_line_no == "Exit":
             return
         for var, num in predecessor_dict.items():
-            if var in block.referenced_vars:
+            if var not in self.global_variables:
+                    # If it doesn't exist yet - can happen when transforming global to local -
+                    # add it
+                    if var not in block.phi_nodes:
+                        new_phi = self.create_new_phi_node(var, block)
+                        block.phi_nodes[var] = new_phi
                     # Don't add the var if it is itself!
                     if var + str(num) == block.phi_nodes[var].get_var():
                         continue
                     block.phi_nodes[var].update_targets(var + str(num))
-         #           print("Phis for: " + str(block.start_line_no))
-         #           print(block.phi_nodes)
+     #               print("Phis for: " + str(block.start_line_no))
+     #               print(block.phi_nodes)
                     
-    def visit(self,node):
+    def create_new_phi_node(self, var, block):
+        if var in self.function_ssa_tracker:  # Needed for before when var may not yet exist
+            self.function_ssa_tracker[var] += 1
+        else:
+            self.function_ssa_tracker[var] = 1
+        block.d[var] = self.function_ssa_tracker[var]
+        new_phi = Phi_Node(var + str(self.function_ssa_tracker[var]), set())
+        new_phi.lineno = block.statements[0].lineno
+        return new_phi
+                    
+    def visit(self, node):
         '''Compute the dictionary of assignments live at any point.'''
         method = getattr(self,'do_' + node.__class__.__name__)
         return method(node)
         
     def do_Name(self, node):
-        ''' If the id is True or false then ignore. WHY ARE TRUE AND FALSE
-            IDENTIFIED THE SAME WAY AS VARIABLES. GAH. '''
         # We don't SSA a global variable
         if isinstance(node.stc_context, ast.Module) or isinstance(node.stc_context, ast.ClassDef):
             return
-        if node.id == "_":
+        if node.id == "self" or node.id == "cls":
             return
-        if node.id == "True" or node.id == "False":
-            return
-        if node.id == "None":
-            return
-        if node.id == "self":
-            return
+        # A load will refer to the global namespace if its not a local
         if node.id in self.global_variables and isinstance(node.ctx, ast.Load):
             return
+        # In no way will we rename a node with combination
         if node.id in self.global_variables and node.id in self.global_var_edits:
             return
         # Becomes local variable in this context
-        if node.id in self.global_variables and isinstance(node.ctx, ast.Store):
+        if node.id in self.global_variables and node.id not in self.global_var_edits and isinstance(node.ctx, ast.Store):
             self.global_variables.remove(node.id)
         if not hasattr(node, 'originalId'):
             node.originalId = node.id
         # If the variable is being assigned a new value
         if isinstance(node.ctx, ast.Store):
-            if node.originalId in self.d:
-                self.d[node.originalId] += 1
+            if node.originalId in self.function_ssa_tracker:
+                self.function_ssa_tracker[node.originalId] += 1
             else:
-                self.d[node.originalId] = 1
+                self.function_ssa_tracker[node.originalId] = 1
+            self.block_tracker[node.originalId] = self.function_ssa_tracker[node.originalId]
         # If it's x.y attribute and a ast.Load then for now we assume that it's already present
         ''' TODO: Check all possible attributes. '''
         if isinstance(node.ctx, ast.Load) and isinstance(node, ast.Attribute):
             return
                 
-       # pprint(self.d)
+       # pprint(self.function_ssa_tracker)
         try:
-            node.id = node.originalId + str(self.d[node.originalId])
+            node.id = node.originalId + str(self.block_tracker[node.originalId])
         except:
             pass
 
@@ -162,12 +178,12 @@ class SSA_Traverser(AstFullTraverser):
               to track order of execution.
             - We need the global variables. Do not start with an empty d '''    
         self.global_variables = node.global_variables | node.stc_context.global_variables
-        old_d = self.d.copy()
+        old_tracker = self.function_ssa_tracker.copy()
         try:
             for z in node.body:
                 self.visit(z)
         finally:
-            self.d = old_d
+            self.function_ssa_tracker = old_tracker
             self.global_variables = node.stc_context.global_variables
 
     def do_FunctionDef (self, node):
@@ -175,8 +191,10 @@ class SSA_Traverser(AstFullTraverser):
         # Store d so we can eradicate local variables
     #    old_args = self.fun_args.copy()
         old_globals = self.global_variables.copy()
+        old_locals = self.local_variables
         self.global_var_edits = node.global_var_edits
-        old_d = self.d.copy()
+        old_tracker = self.function_ssa_tracker.copy()
+        old_in_function = self.in_function
         
     #    args = self.visit(node.args)
     #    self.fun_args += args
@@ -184,10 +202,15 @@ class SSA_Traverser(AstFullTraverser):
        # self.visit(node.args)
     #    print("ssa-ing function: " + node.name)
         try:
+            self.in_function = True
+            self.local_variables = node.local_variables
+            self.add_all_phi_nodes(node.initial_block, node.local_variables)
             self.blocks_to_process.append((node.initial_block, None))
             self.process_block_list()
         finally:
-            self.d = old_d
+            self.in_function = old_in_function
+            self.function_ssa_tracker = old_tracker
+            self.local_variables = old_locals
             self.global_variables = old_globals
      #   self.fun_args = old_args
         
@@ -201,10 +224,10 @@ class SSA_Traverser(AstFullTraverser):
         return [node.arg]
 
     def do_Lambda(self, node):
-        old_d = self.d.copy()
+        old_tracker = self.function_ssa_tracker.copy()
         self.visit(node.args)
         self.visit(node.body)
-        self.d = old_d
+        self.function_ssa_tracker = old_tracker
 
     def do_Module (self, node):
    #     print("ssa-ing for Module code")

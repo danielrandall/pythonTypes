@@ -13,6 +13,7 @@ class SSA_Pre_Processor(AstFullTraverser):
         self.current_block = None
         self.in_loop_test = False
         self.ssa_exempts = set()
+        self.local_variables = None
         
     def run(self, source):
         self.visit(source)
@@ -49,6 +50,9 @@ class SSA_Pre_Processor(AstFullTraverser):
     
     def do_FunctionDef(self, node):
         node.global_var_edits = set()
+        old_locals = self.local_variables
+        node.local_variables = set()
+        self.local_variables = node.local_variables
         
         self.ssa_exempts.add(node.name)
         old_ssa_exempts = self.ssa_exempts.copy()
@@ -57,6 +61,10 @@ class SSA_Pre_Processor(AstFullTraverser):
             self.visit(node.args)
             self.process_blocks(node.initial_block)
         finally:
+            self.local_variables -= node.global_var_edits
+            print("Local variables for " + node.name)
+            print(self.local_variables)
+            self.local_variables = old_locals
             self.ssa_exempts = old_ssa_exempts 
             
     def do_arguments(self,node):
@@ -122,32 +130,28 @@ class SSA_Pre_Processor(AstFullTraverser):
             self.visit(z)
             
     def do_Global(self, node):
-        assert isinstance(node.stc_context, ast.FunctionDef), "Global can be outside of function"
+        assert isinstance(node.stc_context, ast.FunctionDef), "Global can't be outside of function"
         for identifier in node.names:
             assert isinstance(identifier, str)
             node.stc_context.global_var_edits.add(identifier)
         
     def do_Name(self, node):
         # Global variable
-        
         if isinstance(node.ctx, ast.Store) and (isinstance(node.stc_context, ast.Module) or isinstance(node.stc_context, ast.ClassDef)):
             self.ssa_exempts.add(node.id)
         if isinstance(node.stc_context, ast.Module):
             return
         if isinstance(node.stc_context, ast.ClassDef):
             return
-        if node.id == "_":
-            return
-        if node.id == "True" or node.id == "False":
-            return
-        if node.id == "None":
-            return
-        if node.id == "self":
+        if node.id == "self" or node.id == "cls":
             return
         if node.id in BUILTIN_TYPE_DICT:
             return
         if node.id in self.ssa_exempts:
             return
+        # Calculate local variables
+        if isinstance(node.ctx, ast.Store) and isinstance(node.stc_context, ast.FunctionDef):
+            self.local_variables.add(node.id)
         self.current_block.referenced_vars.add(node.id)
         
         
