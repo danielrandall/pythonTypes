@@ -30,6 +30,7 @@ class Block():
         self.marked = False
         self.ssa_mark = False
         self.ssa_prepro_mark = False
+        self.has_phi_nodes = False
         # Used to describe special blocks
         self.tag = Block.NORMAL
         # Block which have been absorbed into this one
@@ -235,21 +236,25 @@ class ControlFlowGraph(AstFullTraverser):
             self.visit(z)
 
     def do_FunctionDef(self, node):
-        block = self.new_block()
-        self.use_block(block)
-        node.initial_block = block
-        self.exit_block = self.new_block()
-        # Special case
-        self.exit_block.start_line_no = "Exit"
-        for z in node.body:
-            self.visit(z)
-        # Here there's a chance that the last block already points the exit.
-        # Such as yields and returns
-        for e in self.current_block.exit_blocks:
-            if e.start_line_no == "Exit":
-                return
-        else:
-            self.check_child_exits(self.current_block, self.exit_block)
+        old_block = self.current_block
+        try:
+            block = self.new_block()
+            self.use_block(block)
+            node.initial_block = block
+            self.exit_block = self.new_block()
+            # Special case
+            self.exit_block.start_line_no = "Exit"
+            for z in node.body:
+                self.visit(z)
+            # Here there's a chance that the last block already points the exit.
+            # Such as yields and returns
+            for e in self.current_block.exit_blocks:
+                if e.start_line_no == "Exit":
+                    return
+            else:
+                self.check_child_exits(self.current_block, self.exit_block)
+        finally:
+            self.current_block = old_block
             
     def do_If(self, node):
         ''' If an if statement is the last in a straight line then an empty
