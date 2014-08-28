@@ -65,13 +65,13 @@ class Any_Type(BaseType):
         BaseType.__init__(self,'Any')
         
     def get_contents_types(self):
-        return set([any_type])
+        return set([Any_Type()])
     
     def is_callable(self):
         return True
     
     def get_return_types(self):
-        return BasicTypeVariable([any_type])
+        return BasicTypeVariable([Any_Type()])
 
 class Bool_Type(BaseType):    
     ''' Contains no varibles/functions. '''
@@ -107,7 +107,7 @@ class Bytes_Type(BaseType):
                             
                             # endswith(self, suffix: str, start: int = 0, end: int = None) -> bool
                             'endswith': BasicTypeVariable([Def_Type([ BasicTypeVariable([self]), BasicTypeVariable([Int_Type()]), BasicTypeVariable([Int_Type()])],
-                                                                    BasicTypeVariable([bool_type]),
+                                                                    BasicTypeVariable([Bool_Type()]),
                                                                     2)]),
                             
                             # expandtabs(self, tabsize: int = 8) -> str
@@ -135,57 +135,57 @@ class Bytes_Type(BaseType):
                             
                             # isalnum(self) -> bool
                             'isalnum': BasicTypeVariable([Def_Type([ ],
-                                                                    BasicTypeVariable([bool_type]),
+                                                                    BasicTypeVariable([Bool_Type()]),
                                                                     0)]),
                             
                             # isalpha(self) -> bool
                             'isalpha': BasicTypeVariable([Def_Type([ ],
-                                                                    BasicTypeVariable([bool_type]),
+                                                                    BasicTypeVariable([Bool_Type()]),
                                                                     0)]),
                             
                             # isdecimal(self) -> bool
                             'isdecimal': BasicTypeVariable([Def_Type([ ],
-                                                                    BasicTypeVariable([bool_type]),
+                                                                    BasicTypeVariable([Bool_Type()]),
                                                                     0)]),
                             
                             # isdigit(self) -> bool
                             'isdigit': BasicTypeVariable([Def_Type([ ],
-                                                                    BasicTypeVariable([bool_type]),
+                                                                    BasicTypeVariable([Bool_Type()]),
                                                                     0)]),
                             
                             # isidentifier(self) -> bool
                             'isidentifier': BasicTypeVariable([Def_Type([ ],
-                                                                    BasicTypeVariable([bool_type]),
+                                                                    BasicTypeVariable([Bool_Type()]),
                                                                     0)]),
                             
                             # islower(self) -> bool
                             'islower': BasicTypeVariable([Def_Type([ ],
-                                                                    BasicTypeVariable([bool_type]),
+                                                                    BasicTypeVariable([Bool_Type()]),
                                                                     0)]),
                             
                             # isnumeric(self) -> bool
                             'isnumeric': BasicTypeVariable([Def_Type([ ],
-                                                                    BasicTypeVariable([bool_type]),
+                                                                    BasicTypeVariable([Bool_Type()]),
                                                                     0)]),
                             
                             # isprintable(self) -> bool
                             'isprintable': BasicTypeVariable([Def_Type([ ],
-                                                                    BasicTypeVariable([bool_type]),
+                                                                    BasicTypeVariable([Bool_Type()]),
                                                                     0)]),
                             
                             # isspace(self) -> bool
                             'isspace': BasicTypeVariable([Def_Type([ ],
-                                                                    BasicTypeVariable([bool_type]),
+                                                                    BasicTypeVariable([Bool_Type()]),
                                                                     0)]),
                             
                             # istitle(self) -> bool
                             'istitle': BasicTypeVariable([Def_Type([ ],
-                                                                    BasicTypeVariable([bool_type]),
+                                                                    BasicTypeVariable([Bool_Type()]),
                                                                     0)]),
                             
                             # isupper(self) -> bool
                             'isupper': BasicTypeVariable([Def_Type([ ],
-                                                                    BasicTypeVariable([bool_type]),
+                                                                    BasicTypeVariable([Bool_Type()]),
                                                                     0)]),
                       
                             #  join(self, iterable: Iterable[str]) -> str:
@@ -254,13 +254,13 @@ class Bytes_Type(BaseType):
                                                                     2)]),
                             
                             # splitlines(self, keepends: bool = False) -> List[str]
-                            'splitlines': BasicTypeVariable([Def_Type([  BasicTypeVariable([bool_type])  ],
+                            'splitlines': BasicTypeVariable([Def_Type([  BasicTypeVariable([Bool_Type()])  ],
                                                                     BasicTypeVariable([List_Type()]),
                                                                     1)]),
                             
                             # startswith(self, prefix: str, start: int = 0, end: int = None) -> bool
                             'startswith': BasicTypeVariable([Def_Type([  BasicTypeVariable([self]), BasicTypeVariable([Int_Type()]), BasicTypeVariable([Int_Type()])  ],
-                                                                    BasicTypeVariable([ bool_type ]),
+                                                                    BasicTypeVariable([ Bool_Type() ]),
                                                                     2)]),
                             
                             # strip(self, chars: str = None) -> str
@@ -411,24 +411,24 @@ class Class_Type(Class_Base, BaseType):
         self.any_base_class = False
         
         if "__name__" not in self.global_vars:
-            self.global_vars["__name__"] = BasicTypeVariable([any_type])
+            self.global_vars["__name__"] = BasicTypeVariable([Any_Type()])
         if "__class__" not in self.global_vars:
-            self.global_vars["__class__"] = BasicTypeVariable([any_type])
+            self.global_vars["__class__"] = BasicTypeVariable([Any_Type()])
         if "__dict__" not in self.global_vars:
-            self.global_vars["__class__"] = BasicTypeVariable([any_type])
+            self.global_vars["__class__"] = BasicTypeVariable([Any_Type()])
         if "__doc__" not in self.global_vars:
-            self.global_vars["__class__"] = BasicTypeVariable([any_type])
+            self.global_vars["__class__"] = BasicTypeVariable([Any_Type()])
         if "__weakref__" not in self.global_vars:
-            self.global_vars["__class__"] = BasicTypeVariable([any_type])
+            self.global_vars["__class__"] = BasicTypeVariable([Any_Type()])
         if "__init__" not in self.global_vars:
-            self.global_vars["__class__"] = BasicTypeVariable([any_type])
+            self.global_vars["__class__"] = BasicTypeVariable([Any_Type()])
         if "__module__" not in self.global_vars:
-            self.global_vars["__class__"] = BasicTypeVariable([any_type])
+            self.global_vars["__class__"] = BasicTypeVariable([Any_Type()])
         
             
         
     def get_contents_types(self):
-        return set([any_type])
+        return set([Any_Type()])
         
     def __repr__(self):
         return 'Class Dec: %s' % self.name
@@ -481,7 +481,7 @@ class Class_Instance(Class_Base, BaseType):
         
     def get_contents_types(self):
         if "__getitem__" in self.global_vars:
-            return set([any_type])
+            return set([Any_Type()])
         else:
             return BaseType.get_contents_types(self)
             
@@ -550,7 +550,7 @@ class Container_Type():
     def infer_types(self):
         ''' Calculate the types contained in the list.
             Check if any element is a list and calculate their types. '''
-        self.content_types = set([any_type])
+        self.content_types = set([Any_Type()])
         # Don't infer it's already been done
      #   if not self.content_types:
          # All elements are sets.
@@ -565,7 +565,7 @@ class Container_Type():
         self.define_kind()
         
     def get_contents_types(self):
-        return set([any_type])
+        return set([Any_Type()])
         
     def update_content_types(self, new_types):
         self.content_types |= new_types
@@ -716,12 +716,12 @@ class Set_Type(Container_Type, Class_Base, BaseType):
         self.global_vars = {
                             # add(self, element: T) -> None
                             'add' : BasicTypeVariable([Def_Type([ BasicTypeVariable([Any_Type()]) ],
-                                                         BasicTypeVariable([none_type]),
+                                                         BasicTypeVariable([None_Type()]),
                                                           0)]),
                             
                             # clear(self) -> None
                             'clear' : BasicTypeVariable([Def_Type([],
-                                                                    BasicTypeVariable([none_type]),
+                                                                    BasicTypeVariable([None_Type()]),
                                                                     0)]),
                             
                             # copy(self) -> set[T]
@@ -736,12 +736,12 @@ class Set_Type(Container_Type, Class_Base, BaseType):
                             
                             # difference_update(self, s: Iterable[Any]) -> None
                             'difference_update' : BasicTypeVariable([Def_Type([  BasicTypeVariable([Any_Type()])  ],
-                                                                    BasicTypeVariable([none_type]),
+                                                                    BasicTypeVariable([None_Type()]),
                                                                     0)]),
                             
                             # discard(self, element: T) -> None
                             'discard' : BasicTypeVariable([Def_Type([  BasicTypeVariable([Any_Type()])  ],
-                                                                    BasicTypeVariable([none_type]),
+                                                                    BasicTypeVariable([None_Type()]),
                                                                     0)]),
                             
                             # intersection(self, s: Iterable[Any]) -> set[T]
@@ -751,22 +751,22 @@ class Set_Type(Container_Type, Class_Base, BaseType):
                             
                             # intersection_update(self, s: Iterable[Any]) -> None
                             'intersection_update' : BasicTypeVariable([Def_Type([  BasicTypeVariable([Any_Type()])  ],
-                                                                    BasicTypeVariable([none_type]),
+                                                                    BasicTypeVariable([None_Type()]),
                                                                     0)]),
                             
                             # isdisjoint(self, s: AbstractSet[Any]) -> bool
                             'isdisjoint' : BasicTypeVariable([Def_Type([  BasicTypeVariable([Any_Type()])  ],
-                                                                    BasicTypeVariable([bool_type]),
+                                                                    BasicTypeVariable([Bool_Type()]),
                                                                     0)]),
                             
                             # issubset(self, s: AbstractSet[Any]) -> bool
                             'isdisjoint' : BasicTypeVariable([Def_Type([  BasicTypeVariable([Any_Type()])  ],
-                                                                    BasicTypeVariable([bool_type]),
+                                                                    BasicTypeVariable([Bool_Type()]),
                                                                     0)]),
                             
                             # issuperset(self, s: AbstractSet[Any]) -> bool
                             'issuperset' : BasicTypeVariable([Def_Type([  BasicTypeVariable([Any_Type()])  ],
-                                                                    BasicTypeVariable([bool_type]),
+                                                                    BasicTypeVariable([Bool_Type()]),
                                                                     0)]),
                             
                             # pop(self) -> T
@@ -776,7 +776,7 @@ class Set_Type(Container_Type, Class_Base, BaseType):
                             
                             # remove(self, element: T) -> None
                             'remove' : BasicTypeVariable([Def_Type([  BasicTypeVariable([Any_Type()])  ],
-                                                                    BasicTypeVariable([none_type]),
+                                                                    BasicTypeVariable([None_Type()]),
                                                                     0)]),
                             
                             # symmetric_difference(self, s: Iterable[T]) -> set[T]
@@ -786,7 +786,7 @@ class Set_Type(Container_Type, Class_Base, BaseType):
                             
                             # symmetric_difference_update(self, s: Iterable[T]) -> None
                             'symmetric_difference_update' : BasicTypeVariable([Def_Type([  BasicTypeVariable([Any_Type()])  ],
-                                                                    BasicTypeVariable([none_type]),
+                                                                    BasicTypeVariable([None_Type()]),
                                                                     0)]),
                             
                             # union(self, s: Iterable[T]) -> set[T]
@@ -796,7 +796,7 @@ class Set_Type(Container_Type, Class_Base, BaseType):
                             
                             # update(self, s: Iterable[T]) -> None
                             'update' : BasicTypeVariable([Def_Type([  BasicTypeVariable([Any_Type()])  ],
-                                                                    BasicTypeVariable([none_type]),
+                                                                    BasicTypeVariable([None_Type()]),
                                                                     0)]),
                             
                             # __len__(self) -> int
@@ -1078,7 +1078,7 @@ class String_Type(Container_Type, Class_Base, BaseType):
                             
                             # endswith(self, suffix: str, start: int = 0, end: int = None) -> bool
                             'endswith': BasicTypeVariable([Def_Type([ BasicTypeVariable([self]), BasicTypeVariable([Int_Type()]), BasicTypeVariable([Int_Type()])],
-                                                                    BasicTypeVariable([bool_type]),
+                                                                    BasicTypeVariable([Bool_Type()]),
                                                                     2)]),
                             
                             # expandtabs(self, tabsize: int = 8) -> str
@@ -1106,57 +1106,57 @@ class String_Type(Container_Type, Class_Base, BaseType):
                             
                             # isalnum(self) -> bool
                             'isalnum': BasicTypeVariable([Def_Type([ ],
-                                                                    BasicTypeVariable([bool_type]),
+                                                                    BasicTypeVariable([Bool_Type()]),
                                                                     0)]),
                             
                             # isalpha(self) -> bool
                             'isalpha': BasicTypeVariable([Def_Type([ ],
-                                                                    BasicTypeVariable([bool_type]),
+                                                                    BasicTypeVariable([Bool_Type()]),
                                                                     0)]),
                             
                             # isdecimal(self) -> bool
                             'isdecimal': BasicTypeVariable([Def_Type([ ],
-                                                                    BasicTypeVariable([bool_type]),
+                                                                    BasicTypeVariable([Bool_Type()]),
                                                                     0)]),
                             
                             # isdigit(self) -> bool
                             'isdigit': BasicTypeVariable([Def_Type([ ],
-                                                                    BasicTypeVariable([bool_type]),
+                                                                    BasicTypeVariable([Bool_Type()]),
                                                                     0)]),
                             
                             # isidentifier(self) -> bool
                             'isidentifier': BasicTypeVariable([Def_Type([ ],
-                                                                    BasicTypeVariable([bool_type]),
+                                                                    BasicTypeVariable([Bool_Type()]),
                                                                     0)]),
                             
                             # islower(self) -> bool
                             'islower': BasicTypeVariable([Def_Type([ ],
-                                                                    BasicTypeVariable([bool_type]),
+                                                                    BasicTypeVariable([Bool_Type()]),
                                                                     0)]),
                             
                             # isnumeric(self) -> bool
                             'isnumeric': BasicTypeVariable([Def_Type([ ],
-                                                                    BasicTypeVariable([bool_type]),
+                                                                    BasicTypeVariable([Bool_Type()]),
                                                                     0)]),
                             
                             # isprintable(self) -> bool
                             'isprintable': BasicTypeVariable([Def_Type([ ],
-                                                                    BasicTypeVariable([bool_type]),
+                                                                    BasicTypeVariable([Bool_Type()]),
                                                                     0)]),
                             
                             # isspace(self) -> bool
                             'isspace': BasicTypeVariable([Def_Type([ ],
-                                                                    BasicTypeVariable([bool_type]),
+                                                                    BasicTypeVariable([Bool_Type()]),
                                                                     0)]),
                             
                             # istitle(self) -> bool
                             'istitle': BasicTypeVariable([Def_Type([ ],
-                                                                    BasicTypeVariable([bool_type]),
+                                                                    BasicTypeVariable([Bool_Type()]),
                                                                     0)]),
                             
                             # isupper(self) -> bool
                             'isupper': BasicTypeVariable([Def_Type([ ],
-                                                                    BasicTypeVariable([bool_type]),
+                                                                    BasicTypeVariable([Bool_Type()]),
                                                                     0)]),
                       
                             #  join(self, iterable: Iterable[str]) -> str:
@@ -1225,13 +1225,13 @@ class String_Type(Container_Type, Class_Base, BaseType):
                                                                     2)]),
                             
                             # splitlines(self, keepends: bool = False) -> List[str]
-                            'splitlines': BasicTypeVariable([Def_Type([  BasicTypeVariable([bool_type])  ],
+                            'splitlines': BasicTypeVariable([Def_Type([  BasicTypeVariable([Bool_Type()])  ],
                                                                     BasicTypeVariable([List_Type()]),
                                                                     1)]),
                             
                             # startswith(self, prefix: str, start: int = 0, end: int = None) -> bool
                             'startswith': BasicTypeVariable([Def_Type([  BasicTypeVariable([self]), BasicTypeVariable([Int_Type()]), BasicTypeVariable([Int_Type()])  ],
-                                                                    BasicTypeVariable([ bool_type ]),
+                                                                    BasicTypeVariable([ Bool_Type() ]),
                                                                     2)]),
                             
                             # strip(self, chars: str = None) -> str
@@ -1260,7 +1260,7 @@ class String_Type(Container_Type, Class_Base, BaseType):
                                                                     0)]),
                             
                             # zfill(self, width: int) -> str
-                            'zfill': BasicTypeVariable([Def_Type([  BasicTypeVariable([int_type]) ],
+                            'zfill': BasicTypeVariable([Def_Type([  BasicTypeVariable([Int_Type()]) ],
                                                                     BasicTypeVariable([self]),
                                                                     0)]), 
                                         
@@ -1342,108 +1342,100 @@ class String_Type(Container_Type, Class_Base, BaseType):
         
         
 # Create singleton instances of simple types.
-bool_type = Bool_Type()
-builtin_type = Builtin_Type()
-bytes_type = Bytes_Type()
-float_type = Float_Type()
-int_type = Int_Type()
-none_type = None_Type()
-string_type = String_Type()
-any_type = Any_Type()
 
 BUILTIN_TYPE_DICT = {
   # builtin double underscores
-  '__version__' : BasicTypeVariable([any_type]),
-  '__loader__': BasicTypeVariable([any_type]),
-  '__package__':BasicTypeVariable([any_type]),
-  '__builtins__': BasicTypeVariable([any_type]),
-  '__name__': BasicTypeVariable([any_type]),
-  '__main__': BasicTypeVariable([any_type]),
-  '__doc__': BasicTypeVariable([any_type]),
-  '__file__': BasicTypeVariable([any_type]),
+  '__version__' : BasicTypeVariable([Any_Type()]),
+  '__loader__': BasicTypeVariable([Any_Type()]),
+  '__package__':BasicTypeVariable([Any_Type()]),
+  '__builtins__': BasicTypeVariable([Any_Type()]),
+  '__name__': BasicTypeVariable([Any_Type()]),
+  '__main__': BasicTypeVariable([Any_Type()]),
+  '__doc__': BasicTypeVariable([Any_Type()]),
+  '__file__': BasicTypeVariable([Any_Type()]),
   
   # __import__(name: str, globals: Dict[str, Any] = {}, locals: Dict[str, Any] = {}, fromlist: List[str] = [], level: int = -1) -> Any
-  '__import__': BasicTypeVariable([Def_Type([  BasicTypeVariable([  string_type, Dict_Type(), Dict_Type(), List_Type(), int_type])  ],
-                                  BasicTypeVariable([any_type]),
+  '__import__': BasicTypeVariable([Def_Type([  BasicTypeVariable([  String_Type(), Dict_Type(), Dict_Type(), List_Type(), Int_Type()])  ],
+                                  BasicTypeVariable([Any_Type()]),
                                   5)]),
                      
   # keywords
-  'True': BasicTypeVariable([bool_type]),
+  'True': BasicTypeVariable([Bool_Type()]),
   
-  'False': BasicTypeVariable([bool_type]),
+  'False': BasicTypeVariable([Bool_Type()]),
   
-  'None': BasicTypeVariable([none_type]),
+  'None': BasicTypeVariable([None_Type()]),
   # Bit of a hack
-  '_' : BasicTypeVariable([any_type]),
+  '_' : BasicTypeVariable([Any_Type()]),
   
   # Exceptions/Errors
-  'BaseException' : BasicTypeVariable([any_type]),
-  'Exception' : BasicTypeVariable([any_type]),
-  'KeyError' : BasicTypeVariable([any_type]),
-  'AttributeError' : BasicTypeVariable([any_type]),
-  'ZeroDivisionError' : BasicTypeVariable([any_type]),
-  'NameError' : BasicTypeVariable([any_type]),
-  'TypeError' : BasicTypeVariable([any_type]),
-  'ValueError' : BasicTypeVariable([any_type]),
-  'RuntimeError' : BasicTypeVariable([any_type]),
-  'IOError' : BasicTypeVariable([any_type]),
-  'KeyboardInterrupt' : BasicTypeVariable([any_type]),
-  'OSError' : BasicTypeVariable([any_type]),
-  'StandardError' : BasicTypeVariable([any_type]),
-  'ArithmeticError' : BasicTypeVariable([any_type]),
-  'BufferError' : BasicTypeVariable([any_type]),
-  'LookupError' : BasicTypeVariable([any_type]),
-  'EnvironmentError' : BasicTypeVariable([any_type]),
-  'AssertionError' : BasicTypeVariable([any_type]),
-  'EOFError' : BasicTypeVariable([any_type]),
-  'FloatingPointError' : BasicTypeVariable([any_type]),
-  'GeneratorExit' : BasicTypeVariable([any_type]),
-  'ImportError' : BasicTypeVariable([any_type]),
-  'IndexError' : BasicTypeVariable([any_type]),
-  'MemoryError' : BasicTypeVariable([any_type]),
-  'NotImplementedError' : BasicTypeVariable([any_type]),
-  'OverflowError' : BasicTypeVariable([any_type]),
-  'ReferenceError' : BasicTypeVariable([any_type]),
-  'StopIteration' : BasicTypeVariable([any_type]),
-  'SyntaxError' : BasicTypeVariable([any_type]),
-  'IndentationError' : BasicTypeVariable([any_type]),
-  'TabError' : BasicTypeVariable([any_type]),
-  'SystemError' : BasicTypeVariable([any_type]),
-  'SystemExit' : BasicTypeVariable([any_type]),
-  'UnboundLocalError' : BasicTypeVariable([any_type]),
-  'UnicodeError' : BasicTypeVariable([any_type]),
-  'UnicodeEncodeError' : BasicTypeVariable([any_type]),
-  'UnicodeDecodeError' : BasicTypeVariable([any_type]),
-  'UnicodeTranslateError' : BasicTypeVariable([any_type]),
-  'BlockingIOError' : BasicTypeVariable([any_type]),
-  'ChildProcessError' : BasicTypeVariable([any_type]),
-  'ConnectionError' : BasicTypeVariable([any_type]),
-  'BrokenPipeError' : BasicTypeVariable([any_type]),
-  'ConnectionAbortedError' : BasicTypeVariable([any_type]),
-  'ConnectionRefusedError' : BasicTypeVariable([any_type]),
-  'ConnectionResetError' : BasicTypeVariable([any_type]),
-  'FileExistsError' : BasicTypeVariable([any_type]),
-  'FileNotFoundError' : BasicTypeVariable([any_type]),
-  'InterruptedError' : BasicTypeVariable([any_type]),
-  'IsADirectoryError' : BasicTypeVariable([any_type]),
-  'NotADirectoryError' : BasicTypeVariable([any_type]),
-  'PermissionError' : BasicTypeVariable([any_type]),
-  'ProcessLookupError' : BasicTypeVariable([any_type]),
-  'TimeoutError' : BasicTypeVariable([any_type]),
+  'BaseException' : BasicTypeVariable([Any_Type()]),
+  'Exception' : BasicTypeVariable([Any_Type()]),
+  'KeyError' : BasicTypeVariable([Any_Type()]),
+  'AttributeError' : BasicTypeVariable([Any_Type()]),
+  'ZeroDivisionError' : BasicTypeVariable([Any_Type()]),
+  'NameError' : BasicTypeVariable([Any_Type()]),
+  'TypeError' : BasicTypeVariable([Any_Type()]),
+  'ValueError' : BasicTypeVariable([Any_Type()]),
+  'RuntimeError' : BasicTypeVariable([Any_Type()]),
+  'IOError' : BasicTypeVariable([Any_Type()]),
+  'KeyboardInterrupt' : BasicTypeVariable([Any_Type()]),
+  'OSError' : BasicTypeVariable([Any_Type()]),
+  'StandardError' : BasicTypeVariable([Any_Type()]),
+  'ArithmeticError' : BasicTypeVariable([Any_Type()]),
+  'BufferError' : BasicTypeVariable([Any_Type()]),
+  'LookupError' : BasicTypeVariable([Any_Type()]),
+  'EnvironmentError' : BasicTypeVariable([Any_Type()]),
+  'AssertionError' : BasicTypeVariable([Any_Type()]),
+  'EOFError' : BasicTypeVariable([Any_Type()]),
+  'FloatingPointError' : BasicTypeVariable([Any_Type()]),
+  'GeneratorExit' : BasicTypeVariable([Any_Type()]),
+  'ImportError' : BasicTypeVariable([Any_Type()]),
+  'IndexError' : BasicTypeVariable([Any_Type()]),
+  'MemoryError' : BasicTypeVariable([Any_Type()]),
+  'NotImplementedError' : BasicTypeVariable([Any_Type()]),
+  'OverflowError' : BasicTypeVariable([Any_Type()]),
+  'ReferenceError' : BasicTypeVariable([Any_Type()]),
+  'StopIteration' : BasicTypeVariable([Any_Type()]),
+  'SyntaxError' : BasicTypeVariable([Any_Type()]),
+  'IndentationError' : BasicTypeVariable([Any_Type()]),
+  'TabError' : BasicTypeVariable([Any_Type()]),
+  'SystemError' : BasicTypeVariable([Any_Type()]),
+  'SystemExit' : BasicTypeVariable([Any_Type()]),
+  'UnboundLocalError' : BasicTypeVariable([Any_Type()]),
+  'UnicodeError' : BasicTypeVariable([Any_Type()]),
+  'UnicodeEncodeError' : BasicTypeVariable([Any_Type()]),
+  'UnicodeDecodeError' : BasicTypeVariable([Any_Type()]),
+  'UnicodeTranslateError' : BasicTypeVariable([Any_Type()]),
+  'BlockingIOError' : BasicTypeVariable([Any_Type()]),
+  'ChildProcessError' : BasicTypeVariable([Any_Type()]),
+  'ConnectionError' : BasicTypeVariable([Any_Type()]),
+  'BrokenPipeError' : BasicTypeVariable([Any_Type()]),
+  'ConnectionAbortedError' : BasicTypeVariable([Any_Type()]),
+  'ConnectionRefusedError' : BasicTypeVariable([Any_Type()]),
+  'ConnectionResetError' : BasicTypeVariable([Any_Type()]),
+  'FileExistsError' : BasicTypeVariable([Any_Type()]),
+  'FileNotFoundError' : BasicTypeVariable([Any_Type()]),
+  'InterruptedError' : BasicTypeVariable([Any_Type()]),
+  'IsADirectoryError' : BasicTypeVariable([Any_Type()]),
+  'NotADirectoryError' : BasicTypeVariable([Any_Type()]),
+  'PermissionError' : BasicTypeVariable([Any_Type()]),
+  'ProcessLookupError' : BasicTypeVariable([Any_Type()]),
+  'TimeoutError' : BasicTypeVariable([Any_Type()]),
   
   # Warnings
   
-  'Warning' : BasicTypeVariable([any_type]),
-  'UserWarning' : BasicTypeVariable([any_type]),
-  'DeprecationWarning' : BasicTypeVariable([any_type]),
-  'PendingDeprecationWarning' : BasicTypeVariable([any_type]),
-  'SyntaxWarning' : BasicTypeVariable([any_type]),
-  'RuntimeWarning' : BasicTypeVariable([any_type]),
-  'FutureWarning' : BasicTypeVariable([any_type]),
-  'ImportWarning' : BasicTypeVariable([any_type]),
-  'UnicodeWarning' : BasicTypeVariable([any_type]),
-  'BytesWarning' : BasicTypeVariable([any_type]),
-  'ResourceWarning' : BasicTypeVariable([any_type]),
+  'Warning' : BasicTypeVariable([Any_Type()]),
+  'UserWarning' : BasicTypeVariable([Any_Type()]),
+  'DeprecationWarning' : BasicTypeVariable([Any_Type()]),
+  'PendingDeprecationWarning' : BasicTypeVariable([Any_Type()]),
+  'SyntaxWarning' : BasicTypeVariable([Any_Type()]),
+  'RuntimeWarning' : BasicTypeVariable([Any_Type()]),
+  'FutureWarning' : BasicTypeVariable([Any_Type()]),
+  'ImportWarning' : BasicTypeVariable([Any_Type()]),
+  'UnicodeWarning' : BasicTypeVariable([Any_Type()]),
+  'BytesWarning' : BasicTypeVariable([Any_Type()]),
+  'ResourceWarning' : BasicTypeVariable([Any_Type()]),
   
   
   # Functions
@@ -1451,70 +1443,72 @@ BUILTIN_TYPE_DICT = {
   # abs(n: int) -> int
   # abs(n: float) -> float
   # abs(n: SupportsAbs[T]) -> T
-  'abs': BasicTypeVariable([Def_Type([  BasicTypeVariable([int_type, float_type])  ],
-                                  BasicTypeVariable([int_type, float_type]),
+  'abs': BasicTypeVariable([Def_Type([  BasicTypeVariable([Int_Type(), Float_Type()])  ],
+                                  BasicTypeVariable([Int_Type(), Float_Type()]),
                                   0)]),
                      
   # all(i: Iterable) -> bool
-  'all': BasicTypeVariable([Def_Type([  BasicTypeVariable([any_type])  ],
-                                  BasicTypeVariable([bool_type]),
+  'all': BasicTypeVariable([Def_Type([  BasicTypeVariable([Any_Type()])  ],
+                                  BasicTypeVariable([Bool_Type()]),
                                   0)]),
                      
   # any(i: Iterable) -> bool
-  'any': BasicTypeVariable([Def_Type([  BasicTypeVariable([any_type])  ],
-                                  BasicTypeVariable([bool_type]),
+  'any': BasicTypeVariable([Def_Type([  BasicTypeVariable([Any_Type()])  ],
+                                  BasicTypeVariable([Bool_Type()]),
                                   0)]),
                      
   # ascii(o: object) -> str
-  'ascii': BasicTypeVariable([Def_Type([  BasicTypeVariable([any_type])  ],
-                                  BasicTypeVariable([string_type]),
+  'ascii': BasicTypeVariable([Def_Type([  BasicTypeVariable([Any_Type()])  ],
+                                  BasicTypeVariable([String_Type()]),
                                   0)]),
                      
   # callable(o: object) -> bool
-  'callable': BasicTypeVariable([Def_Type([  BasicTypeVariable([any_type])  ],
-                                  BasicTypeVariable([string_type]),
+  'callable': BasicTypeVariable([Def_Type([  BasicTypeVariable([Any_Type()])  ],
+                                  BasicTypeVariable([String_Type()]),
                                   0)]),
 
   # chr(code: int) -> str
-  'chr':  BasicTypeVariable([Def_Type([BasicTypeVariable([int_type])],
-                                  BasicTypeVariable([string_type]),
+  'chr':  BasicTypeVariable([Def_Type([BasicTypeVariable([Int_Type()])],
+                                  BasicTypeVariable([String_Type()]),
                                   0)]),
                      
   # delattr(o: Any, name: str) -> None
-  'delattr':  BasicTypeVariable([Def_Type([  BasicTypeVariable([int_type]), BasicTypeVariable([string_type])  ],
-                                  BasicTypeVariable([none_type]),
+  'delattr':  BasicTypeVariable([Def_Type([  BasicTypeVariable([Int_Type()]), BasicTypeVariable([String_Type()])  ],
+                                  BasicTypeVariable([None_Type()]),
                                   0)]),
                      
   # dir(o: object = None) -> List[str]
-  'dir':  BasicTypeVariable([Def_Type([  BasicTypeVariable([any_type])  ],
+  'dir':  BasicTypeVariable([Def_Type([  BasicTypeVariable([Any_Type()])  ],
                                   BasicTypeVariable([List_Type()]),
                                   1)]),
                      
-  'enumerate' : BasicTypeVariable([any_type]),
+  'enumerate' : BasicTypeVariable([Any_Type()]),
+  
+  'exit' : BasicTypeVariable([Any_Type()]),
                      
   # divmod(a: _N, b: _N) -> Tuple[_N, _N]
-  'divmod':  BasicTypeVariable([Def_Type([  BasicTypeVariable([any_type]), BasicTypeVariable([any_type])  ],
+  'divmod':  BasicTypeVariable([Def_Type([  BasicTypeVariable([Any_Type()]), BasicTypeVariable([Any_Type()])  ],
                                   BasicTypeVariable([Tuple_Type()]),
                                   1)]),
                      
   # eval(source: str, globals: Dict[str, Any] = None, locals: Mapping[str, Any] = None) -> Any  
-  'eval': BasicTypeVariable([Def_Type([  BasicTypeVariable([string_type]), BasicTypeVariable([Dict_Type()]), BasicTypeVariable([any_type])  ],
-                                  BasicTypeVariable([any_type]),
+  'eval': BasicTypeVariable([Def_Type([  BasicTypeVariable([String_Type()]), BasicTypeVariable([Dict_Type()]), BasicTypeVariable([Any_Type()])  ],
+                                  BasicTypeVariable([Any_Type()]),
                                   2)]),
                      
   # filter(function: Function[[T], Any], iterable: Iterable[T]) -> Iterator[T]
-  'filter': BasicTypeVariable([Def_Type([  BasicTypeVariable([any_type]), BasicTypeVariable([any_type]) ],
-                                  BasicTypeVariable([any_type]),
+  'filter': BasicTypeVariable([Def_Type([  BasicTypeVariable([Any_Type()]), BasicTypeVariable([Any_Type()]) ],
+                                  BasicTypeVariable([Any_Type()]),
                                   0)]),
                      
   # format(o: object, format_spec: str = '') -> str
-  'format': BasicTypeVariable([Def_Type([  BasicTypeVariable([any_type]), BasicTypeVariable([string_type]) ],
-                                  BasicTypeVariable([string_type]),
+  'format': BasicTypeVariable([Def_Type([  BasicTypeVariable([Any_Type()]), BasicTypeVariable([String_Type()]) ],
+                                  BasicTypeVariable([String_Type()]),
                                   1)]),
                      
   # getattr(o: Any, name: str, default: Any = None) -> Any
-  'getattr' : BasicTypeVariable([Def_Type([BasicTypeVariable([any_type]), BasicTypeVariable([string_type]), BasicTypeVariable([any_type])],
-                                  BasicTypeVariable([any_type]),
+  'getattr' : BasicTypeVariable([Def_Type([BasicTypeVariable([Any_Type()]), BasicTypeVariable([String_Type()]), BasicTypeVariable([Any_Type()])],
+                                  BasicTypeVariable([Any_Type()]),
                                   1)]),
                      
   # globals() -> Dict[str, Any]
@@ -1523,50 +1517,50 @@ BUILTIN_TYPE_DICT = {
                                   0)]),
                      
   # hasattr(o: Any, name: str) -> bool
-  'hasattr' : BasicTypeVariable([Def_Type([ BasicTypeVariable([any_type]), BasicTypeVariable([string_type]) ],
-                                  BasicTypeVariable([bool_type]),
+  'hasattr' : BasicTypeVariable([Def_Type([ BasicTypeVariable([Any_Type()]), BasicTypeVariable([String_Type()]) ],
+                                  BasicTypeVariable([Bool_Type()]),
                                   0)]),                  
                      
   # hash(o: object) -> int
-  'hash' : BasicTypeVariable([Def_Type([ BasicTypeVariable([any_type]) ],
-                                  BasicTypeVariable([int_type]),
+  'hash' : BasicTypeVariable([Def_Type([ BasicTypeVariable([Any_Type()]) ],
+                                  BasicTypeVariable([Int_Type()]),
                                   0)]),        
                      
   # hex(i: int) -> str
-  'hex' : BasicTypeVariable([Def_Type([ BasicTypeVariable([int_type]) ],
-                                  BasicTypeVariable([string_type]),
+  'hex' : BasicTypeVariable([Def_Type([ BasicTypeVariable([Int_Type()]) ],
+                                  BasicTypeVariable([String_Type()]),
                                   0)]),
           
   # id(o: object) -> int           
-  'id':   BasicTypeVariable([Def_Type([BasicTypeVariable([any_type])],
-                                  BasicTypeVariable([int_type]),
+  'id':   BasicTypeVariable([Def_Type([BasicTypeVariable([Any_Type()])],
+                                  BasicTypeVariable([Int_Type()]),
                                   0)]),
                      
   # input(prompt: str = None) -> str
-  'input': BasicTypeVariable([Def_Type([BasicTypeVariable([string_type])],
-                                  BasicTypeVariable([string_type]),
+  'input': BasicTypeVariable([Def_Type([BasicTypeVariable([String_Type()])],
+                                  BasicTypeVariable([String_Type()]),
                                   1)]),
                      
   # iter(iterable: Iterable[T]) -> Iterator[T]: pass
   # iter(function: Function[[], T], sentinel: T) -> Iterator[T]
-  'iter': BasicTypeVariable([Def_Type([ BasicTypeVariable([any_type]), BasicTypeVariable([any_type])],
-                                  BasicTypeVariable([any_type]),
+  'iter': BasicTypeVariable([Def_Type([ BasicTypeVariable([Any_Type()]), BasicTypeVariable([Any_Type()])],
+                                  BasicTypeVariable([Any_Type()]),
                                   1)]),
   
   # isinstance(o: object, t: Union[type, tuple]) -> bool
-  'isinstance': BasicTypeVariable([Def_Type([BasicTypeVariable([any_type]), BasicTypeVariable([any_type])],
-                                  BasicTypeVariable([bool_type]),
+  'isinstance': BasicTypeVariable([Def_Type([BasicTypeVariable([Any_Type()]), BasicTypeVariable([Any_Type()])],
+                                  BasicTypeVariable([Bool_Type()]),
                                   0)]),  
                      
   # issubclass(cls: type, classinfo: type) -> bool
-  'issubclass': BasicTypeVariable([Def_Type([BasicTypeVariable([any_type]), BasicTypeVariable([any_type])],
-                                  BasicTypeVariable([bool_type]),
+  'issubclass': BasicTypeVariable([Def_Type([BasicTypeVariable([Any_Type()]), BasicTypeVariable([Any_Type()])],
+                                  BasicTypeVariable([Bool_Type()]),
                                   0)]), 
                    
   # len(o: Sized) -> int
   # len(o: tuple) -> int  
-  'len':  BasicTypeVariable([Def_Type([BasicTypeVariable([any_type])],
-                                  BasicTypeVariable([int_type]),
+  'len':  BasicTypeVariable([Def_Type([BasicTypeVariable([Any_Type()])],
+                                  BasicTypeVariable([Int_Type()]),
                                   0)]),
                      
   # locals() -> Dict[str, Any]
@@ -1576,99 +1570,99 @@ BUILTIN_TYPE_DICT = {
                      
   # map(func: Function[[T1], S], iter1: Iterable[T1]) -> Iterator[S]
   # map(func: Function[[T1, T2], S], iter1: Iterable[T1], iter2: Iterable[T2]) -> Iterator[S]
-  'map' : BasicTypeVariable([Def_Type([BasicTypeVariable([any_type]), BasicTypeVariable([any_type]), BasicTypeVariable([any_type])],
-                                  BasicTypeVariable([any_type]),
+  'map' : BasicTypeVariable([Def_Type([BasicTypeVariable([Any_Type()]), BasicTypeVariable([Any_Type()]), BasicTypeVariable([Any_Type()])],
+                                  BasicTypeVariable([Any_Type()]),
                                   1)]),
                      
   # max(iterable: Iterable[T]) -> T
   # max(arg1: T, arg2: T, *args: T) -> T
-  'max' : BasicTypeVariable([Def_Type([BasicTypeVariable([any_type]), BasicTypeVariable([any_type])],
-                                  BasicTypeVariable([any_type]),
+  'max' : BasicTypeVariable([Def_Type([BasicTypeVariable([Any_Type()]), BasicTypeVariable([Any_Type()])],
+                                  BasicTypeVariable([Any_Type()]),
                                   0)]),
                
   # min(iterable: Iterable[T]) -> T: pass
   # min(arg1: T, arg2: T, *args: T) -> T      
-  'min' : BasicTypeVariable([Def_Type([BasicTypeVariable([any_type]), BasicTypeVariable([any_type])],
-                                  BasicTypeVariable([any_type]),
+  'min' : BasicTypeVariable([Def_Type([BasicTypeVariable([Any_Type()]), BasicTypeVariable([Any_Type()])],
+                                  BasicTypeVariable([Any_Type()]),
                                   0)]),
                      
   # next(i: Iterator[T]) -> T
   # nexxt(i: Iterator[T], default: T) -> T
-  'next': BasicTypeVariable([Def_Type([  BasicTypeVariable([any_type]), BasicTypeVariable([any_type]) ],
-                                  BasicTypeVariable([ any_type ]),
+  'next': BasicTypeVariable([Def_Type([  BasicTypeVariable([Any_Type()]), BasicTypeVariable([Any_Type()]) ],
+                                  BasicTypeVariable([ Any_Type() ]),
                                   1)]),   
                      
   # oct(i: int) -> str
-  'oct': BasicTypeVariable([Def_Type([BasicTypeVariable([int_type])],
-                                  BasicTypeVariable([ string_type ]),
+  'oct': BasicTypeVariable([Def_Type([BasicTypeVariable([Int_Type()])],
+                                  BasicTypeVariable([ String_Type() ]),
                                   0)]),      
    
   # open(file: Union[str, bytes, int], mode: str = 'r', buffering: int = -1, encoding: str = None, errors: str = None, newline: str = None, closefd: bool = True) -> IO[Any]
-  'open': BasicTypeVariable([Def_Type([BasicTypeVariable([string_type]), BasicTypeVariable([string_type]), BasicTypeVariable([int_type]), BasicTypeVariable([string_type]), BasicTypeVariable([string_type]), BasicTypeVariable([string_type]), BasicTypeVariable([bool_type]), BasicTypeVariable([any_type])],
-                                  BasicTypeVariable([any_type]),
+  'open': BasicTypeVariable([Def_Type([BasicTypeVariable([String_Type()]), BasicTypeVariable([String_Type()]), BasicTypeVariable([Int_Type()]), BasicTypeVariable([String_Type()]), BasicTypeVariable([String_Type()]), BasicTypeVariable([String_Type()]), BasicTypeVariable([Bool_Type()]), BasicTypeVariable([Any_Type()])],
+                                  BasicTypeVariable([Any_Type()]),
                                   7)]),
                      
   # ord(c: Union[str, bytes, bytearray]) -> int
-  'ord':  BasicTypeVariable([Def_Type([BasicTypeVariable([string_type, bytes_type])],
-                                  BasicTypeVariable([int_type]),
+  'ord':  BasicTypeVariable([Def_Type([BasicTypeVariable([String_Type(), Bytes_Type()])],
+                                  BasicTypeVariable([Int_Type()]),
                                   0)]),
                      
   # print(*values: Any, sep: str = ' ', end: str = '\n', file: IO[str] = None) -> None
-  'print': BasicTypeVariable([Def_Type([BasicTypeVariable([any_type])],
-                                  BasicTypeVariable([none_type]),
+  'print': BasicTypeVariable([Def_Type([BasicTypeVariable([Any_Type()])],
+                                  BasicTypeVariable([None_Type()]),
                                   0)]),
                      
   # pow(x: int, y: int) -> Any
   # pow(x: int, y: int, z: int) -> Any
   # pow(x: float, y: float) -> float
   # pow(x: float, y: float, z: float) -> float
-  'pow' : BasicTypeVariable([Def_Type([BasicTypeVariable([int_type, float_type]), BasicTypeVariable([int_type, float_type]), BasicTypeVariable([float_type])],
-                                  BasicTypeVariable([any_type]),
+  'pow' : BasicTypeVariable([Def_Type([BasicTypeVariable([Int_Type(), Float_Type()]), BasicTypeVariable([Int_Type(), Float_Type()]), BasicTypeVariable([Float_Type()])],
+                                  BasicTypeVariable([Any_Type()]),
                                   1)]),
         
   # reversed(object: Reversible[T]) -> Iterator[T]: pass
   # reversed(object: Sequence[T]) -> Iterator[T]             
-  'reversed': BasicTypeVariable([Def_Type([BasicTypeVariable([any_type])],
-                                  BasicTypeVariable([any_type]),
+  'reversed': BasicTypeVariable([Def_Type([BasicTypeVariable([Any_Type()])],
+                                  BasicTypeVariable([Any_Type()]),
                                   0)]),
                      
   # repr(o: object) -> str
-  'repr' : BasicTypeVariable([Def_Type([BasicTypeVariable([any_type])],
-                                  BasicTypeVariable([ string_type ]),
+  'repr' : BasicTypeVariable([Def_Type([BasicTypeVariable([Any_Type()])],
+                                  BasicTypeVariable([ String_Type() ]),
                                   0)]),
         
   # round(number: float) -> int
   # round(number: float, ndigits: int) -> float
   # round(number: SupportsRound[T]) -> T
   # round(number: SupportsRound[T], ndigits: int) -> T
-  'round': BasicTypeVariable([Def_Type([  BasicTypeVariable([any_type]) ],
-                                  BasicTypeVariable([any_type]),
+  'round': BasicTypeVariable([Def_Type([  BasicTypeVariable([Any_Type()]) ],
+                                  BasicTypeVariable([Any_Type()]),
                                   0)]),
                      
   # setattr(object: Any, name: str, value: Any) -> None
-  'setattr': BasicTypeVariable([Def_Type([  BasicTypeVariable([any_type]), BasicTypeVariable([string_type]), BasicTypeVariable([any_type]) ],
-                                  BasicTypeVariable([none_type]),
+  'setattr': BasicTypeVariable([Def_Type([  BasicTypeVariable([Any_Type()]), BasicTypeVariable([String_Type()]), BasicTypeVariable([Any_Type()]) ],
+                                  BasicTypeVariable([None_Type()]),
                                   0)]),
             
   # sorted(iterable: Iterable[T], *, key: Function[[T], Any] = None, reverse: bool = False) -> List[T]         
-  'sorted': BasicTypeVariable([Def_Type([BasicTypeVariable([List_Type()]), BasicTypeVariable([any_type]), BasicTypeVariable([bool_type])],
+  'sorted': BasicTypeVariable([Def_Type([BasicTypeVariable([List_Type()]), BasicTypeVariable([Any_Type()]), BasicTypeVariable([Bool_Type()])],
                                   BasicTypeVariable([List_Type()]),
                                   2)]),
                      
   # sum(iterable: Iterable[T], start: T = None) -> T
-  'sum' : BasicTypeVariable([Def_Type([BasicTypeVariable([any_type]), BasicTypeVariable([any_type])],
-                                  BasicTypeVariable([any_type]),
+  'sum' : BasicTypeVariable([Def_Type([BasicTypeVariable([Any_Type()]), BasicTypeVariable([Any_Type()])],
+                                  BasicTypeVariable([Any_Type()]),
                                   1)]),
                      
-  'super' : BasicTypeVariable([Def_Type([BasicTypeVariable([any_type]), BasicTypeVariable([any_type])],
-                                  BasicTypeVariable([any_type]),
+  'super' : BasicTypeVariable([Def_Type([BasicTypeVariable([Any_Type()]), BasicTypeVariable([Any_Type()])],
+                                  BasicTypeVariable([Any_Type()]),
                                   2)]),
                      
-  'type' : BasicTypeVariable([Def_Type([BasicTypeVariable([any_type]), BasicTypeVariable([any_type]), BasicTypeVariable([Dict_Type()])],
-                                  BasicTypeVariable([any_type]),
+  'type' : BasicTypeVariable([Def_Type([BasicTypeVariable([Any_Type()]), BasicTypeVariable([Any_Type()]), BasicTypeVariable([Dict_Type()])],
+                                  BasicTypeVariable([Any_Type()]),
                                   2)]),
                      
-  'vars':  BasicTypeVariable([Def_Type([ BasicTypeVariable([any_type]) ],
+  'vars':  BasicTypeVariable([Def_Type([ BasicTypeVariable([Any_Type()]) ],
                                   BasicTypeVariable([Dict_Type()]),
                                   1)]),
       
@@ -1676,27 +1670,27 @@ BUILTIN_TYPE_DICT = {
   # zip(iter1: Iterable[T1], iter2: Iterable[T2]) -> Iterator[Tuple[T1, T2]]
   # zip(iter1: Iterable[T1], iter2: Iterable[T2], iter3: Iterable[T3]) -> Iterator[Tuple[T1, T2, T3]]
   # zip(iter1: Iterable[T1], iter2: Iterable[T2], iter3: Iterable[T3], iter4: Iterable[T4]) -> Iterator[Tuple[T1, T2, T3, T4]]               
-  'zip': BasicTypeVariable([Def_Type([BasicTypeVariable([any_type]), BasicTypeVariable([any_type]), BasicTypeVariable([any_type]), BasicTypeVariable([any_type])],
-                                  BasicTypeVariable([any_type]),
+  'zip': BasicTypeVariable([Def_Type([BasicTypeVariable([Any_Type()]), BasicTypeVariable([Any_Type()]), BasicTypeVariable([Any_Type()]), BasicTypeVariable([Any_Type()])],
+                                  BasicTypeVariable([Any_Type()]),
                                   3)]),
                      
-  'int': BasicTypeVariable([Def_Type([BasicTypeVariable([string_type, int_type, float_type, bytes_type]), BasicTypeVariable([int_type])],
-                                  BasicTypeVariable([int_type]),
+  'int': BasicTypeVariable([Def_Type([BasicTypeVariable([String_Type(), Int_Type(), Float_Type(), Bytes_Type()]), BasicTypeVariable([Int_Type()])],
+                                  BasicTypeVariable([Int_Type()]),
                                   2)]),
                      
-  'float': BasicTypeVariable([Def_Type([BasicTypeVariable(  [string_type, int_type, float_type, bytes_type]) ],
-                                  BasicTypeVariable([float_type]),
+  'float': BasicTypeVariable([Def_Type([BasicTypeVariable(  [String_Type(), Int_Type(), Float_Type(), Bytes_Type()]) ],
+                                  BasicTypeVariable([Float_Type()]),
                                   1)]),
                      
-  'tuple': BasicTypeVariable([Def_Type([BasicTypeVariable(  [any_type]) ],
+  'tuple': BasicTypeVariable([Def_Type([BasicTypeVariable(  [Any_Type()]) ],
                                   BasicTypeVariable([Tuple_Type()]),
                                   1)]),
                      
-  'str':  BasicTypeVariable([Def_Type([BasicTypeVariable([any_type]), BasicTypeVariable([string_type]), BasicTypeVariable([string_type])],
-                                  BasicTypeVariable([string_type]),
+  'str':  BasicTypeVariable([Def_Type([BasicTypeVariable([Any_Type()]), BasicTypeVariable([String_Type()]), BasicTypeVariable([String_Type()])],
+                                  BasicTypeVariable([String_Type()]),
                                   2)]),            
                      
-  'range':  BasicTypeVariable([Def_Type([BasicTypeVariable([int_type]), BasicTypeVariable([int_type]), BasicTypeVariable([int_type])],
+  'range':  BasicTypeVariable([Def_Type([BasicTypeVariable([Int_Type()]), BasicTypeVariable([Int_Type()]), BasicTypeVariable([Int_Type()])],
                                     BasicTypeVariable([ List_Type() ]),
                                     2)]),
                      
@@ -1708,14 +1702,16 @@ BUILTIN_TYPE_DICT = {
   'dict': BasicTypeVariable([ Dict_Type() ]),
                      
   'bytes' : BasicTypeVariable([ Bytes_Type() ]),
+  # TODO: Support this
+  'bytearray' : BasicTypeVariable([ Any_Type() ]),
   'bool' : BasicTypeVariable([ Bool_Type() ] ),
             # Classes
   'object' : BasicTypeVariable([Class_Type("object", {}, False)])
 } 
 
 
-ITERATOR_TYPES = BasicTypeVariable([List_Type(), Set_Type(), Tuple_Type(), Dict_Type(), string_type, bytes_type])
+ITERATOR_TYPES = BasicTypeVariable([List_Type(), Set_Type(), Tuple_Type(), Dict_Type(), String_Type(), Bytes_Type()])
 
-SLICE_TYPES = [List_Type(), string_type]
-INDEX_TYPES = [List_Type(), Dict_Type(), string_type]
-ALL_TYPES = [List_Type(), Dict_Type(), int_type, float_type, bool_type, string_type, bytes_type, builtin_type]
+SLICE_TYPES = [List_Type(), String_Type()]
+INDEX_TYPES = [List_Type(), Dict_Type(), String_Type()]
+ALL_TYPES = [List_Type(), Dict_Type(), Int_Type(), Float_Type(), Bool_Type(), String_Type(), Bytes_Type()]

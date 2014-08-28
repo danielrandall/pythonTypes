@@ -59,6 +59,8 @@ class TypeInferrer(AstFullTraverser):
         root = file.get_source()
         #print(file_tree)
         print("dependents for " + file.path_and_name)
+        if file.get_name() == "glances_monitor_list":
+            pass
         for dependent in root.import_dependents:
             new_vars = dependent.find(file_tree, file.get_path())
             print(new_vars)
@@ -73,7 +75,7 @@ class TypeInferrer(AstFullTraverser):
                
                 # If can't find it then just set it to any   
           #      if not directory in file_tree or name not in file_tree[directory]:
-          #          dependent_vars[as_name] = BasicTypeVariable([any_type])
+          #          dependent_vars[as_name] = BasicTypeVariable([Any_Type()])
           #          continue
           #      
           #      dependent_file = file_tree[directory][name]
@@ -127,15 +129,15 @@ class TypeInferrer(AstFullTraverser):
     def do_Name(self, node):
         ''' TODO: Add True/False/None to builtins. '''
         if node.id == "True" or node.id == "False":
-            return [BasicTypeVariable([bool_type])]
+            return [BasicTypeVariable([Bool_Type()])]
         if node.id == "None":
-            return [BasicTypeVariable([none_type])]
-        if node.id == "self":
+            return [BasicTypeVariable([None_Type()])]
+        if node.id == "self"  or node.id == "cls":
             if self.current_class:
                 return [self.current_class]
             else:
                 # Then we have to treat this like a regular parameter. Make sure it's a function parameter
-                return [BasicTypeVariable([any_type])]
+                return [BasicTypeVariable([Any_Type()])]
         return [self.variableTypes[node.id]]
     
     def do_Phi_Node(self, node):
@@ -234,6 +236,8 @@ class TypeInferrer(AstFullTraverser):
     def do_Attribute(self, node):
         return_type = None
         value = self.visit(node.value)[0]
+        if node.attr == "host":
+            pass
         if isinstance(node.ctx, ast.Store):
             return_type = SetAttrTypeVariable(value, node.attr, node)
             # Create constraint between value and setattr
@@ -270,11 +274,14 @@ class TypeInferrer(AstFullTraverser):
                 self.visit(z)
             for z in node.decorator_list:
                 self.visit(z)
-            
-            # Add any_type to args if we can't infer them
+                
+            if node.name == "__init__":
+                pass    
+                
+            # Add Any_Type() to args if we can't infer them
             for param, assigned in self.fun_params.items():
                 if not assigned:
-                    self.conduct_assignment([param], [BasicTypeVariable([any_type])], node)
+                    self.conduct_assignment([param], [BasicTypeVariable([Any_Type()])], node)
                     
             # Create error issue for init. Should only return None
             if node.name == "__init__":
@@ -309,12 +316,14 @@ class TypeInferrer(AstFullTraverser):
         return args
             
     def do_arg(self, node):
+        if node.arg == "self" or node.arg == "cls":
+            return []
         return [node.arg]
         
     def do_Return(self, node):
         value = None
         if not node.value:
-            value = BasicTypeVariable([none_type])
+            value = BasicTypeVariable([None_Type()])
         else:
             value = self.visit(node.value)[0]
         self.conduct_assignment([self.return_variable], [value], node)                
@@ -365,7 +374,7 @@ class TypeInferrer(AstFullTraverser):
         left_types = self.visit(node.left)[0]
         right_types = self.visit(node.right)[0]
         
-        if node.lineno == 90:
+        if node.lineno == 81:
             pass
         
         # Add constraints if they are function parameters
@@ -459,7 +468,7 @@ class TypeInferrer(AstFullTraverser):
     def do_Lambda(self, node):
         self.visit(node.args)
         self.visit(node.body)
-        return [BasicTypeVariable([any_type])]
+        return [BasicTypeVariable([Any_Type()])]
     
    # def do_Slice(self, node):
         ''' No need to return anything here.
@@ -474,7 +483,7 @@ class TypeInferrer(AstFullTraverser):
         
     def do_Ellipsis(self, node):
         ''' Not 100% what to do with this. '''
-        return [BasicTypeVariable([any_type])]
+        return [BasicTypeVariable([Any_Type()])]
 
     def do_Subscript(self, node):
         ''' You can have slice assignment. e.g. x[0:2] = [1, 2]
@@ -492,7 +501,7 @@ class TypeInferrer(AstFullTraverser):
             return value_types
         # I don't know what an extended slice is...
         if isinstance(node.slice, ast.ExtSlice):
-            return [BasicTypeVariable([any_type])]
+            return [BasicTypeVariable([Any_Type()])]
         assert False
     
     def do_ListComp(self, node):
@@ -544,11 +553,11 @@ class TypeInferrer(AstFullTraverser):
         op_types = self.visit(node.operand)[0] # Will only have 1 element
         op_kind = self.kind(node.op)
         if op_kind == 'Not':    # All types are valid
-            return [BasicTypeVariable([bool_type])]
+            return [BasicTypeVariable([Bool_Type()])]
       #  for a_type in op_types:
       #      if a_type == int_type or a_type == float_type:
       #          return [set([a_type])]
-        return [BasicTypeVariable([any_type])]
+        return [BasicTypeVariable([Any_Type()])]
     
     def do_IfExp (self, node):
         ''' For stuff like x = a if b else c.
@@ -572,16 +581,16 @@ class TypeInferrer(AstFullTraverser):
         self.visit(node.left)
         for z in node.comparators:
             self.visit(z)
-        return [BasicTypeVariable([bool_type])]
+        return [BasicTypeVariable([Bool_Type()])]
     
     def do_Num(self, node):
         ''' node.n is the number in the num. '''
         ''' Returns int or float. '''
         t_num = None
         if isinstance(node.n, int):
-            t_num = int_type
+            t_num = Int_Type()
         if isinstance(node.n, float):
-            t_num = float_type
+            t_num = Float_Type()
         return [BasicTypeVariable([t_num])]
     
     def do_ExceptHandler(self, node):
@@ -593,8 +602,8 @@ class TypeInferrer(AstFullTraverser):
             self.visit(z)
     
     def do_Bytes(self, node):
-        return [BasicTypeVariable([bytes_type])]
+        return [BasicTypeVariable([Bytes_Type()])]
 
     def do_Str(self, node):
         '''This represents a string constant.'''
-        return [BasicTypeVariable([string_type])]
+        return [BasicTypeVariable([String_Type()])]

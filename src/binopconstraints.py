@@ -1,17 +1,17 @@
 from src.typeclasses import *
 
-BASE_ADD_TYPES = BasicTypeVariable([List_Type(), int_type, float_type, string_type, bytes_type, bool_type])
-BASE_SUB_TYPES = BasicTypeVariable([int_type, float_type, string_type, bytes_type, bool_type])
-BASE_MULT_TYPES = BasicTypeVariable([List_Type(), Tuple_Type(), int_type, float_type, string_type, bytes_type, bool_type])
-BASE_DIV_TYPES = BasicTypeVariable([List_Type(), int_type, float_type, string_type, bool_type])
-BASE_MOD_TYPES = BasicTypeVariable([List_Type(), int_type, float_type, string_type, bool_type])
-BASE_POW_TYPES = BasicTypeVariable([int_type, float_type, bool_type])
-BASE_BITAND_TYPES = BasicTypeVariable([Set_Type(), int_type, bool_type])
-BASE_BITOR_TYPES = BasicTypeVariable([Set_Type(), int_type, bool_type])
-BASE_BITXOR_TYPES = BasicTypeVariable([Set_Type(), int_type, bool_type])
-BASE_RSHIFT_TYPES = BasicTypeVariable([int_type, bool_type])
-BASE_LSHIFT_TYPES = BasicTypeVariable([int_type, bool_type])
-BASE_FLOORDIV_TYPES = BasicTypeVariable([int_type, bool_type, float_type, bool_type])
+BASE_ADD_TYPES = BasicTypeVariable([List_Type(), Int_Type(), Float_Type(), String_Type(), Bytes_Type(), Bool_Type()])
+BASE_SUB_TYPES = BasicTypeVariable([Int_Type(), Float_Type(), String_Type(), Bytes_Type(), Bool_Type()])
+BASE_MULT_TYPES = BasicTypeVariable([List_Type(), Tuple_Type(), Int_Type(), Float_Type(), String_Type(), Bytes_Type(), Bool_Type()])
+BASE_DIV_TYPES = BasicTypeVariable([List_Type(), Int_Type(), Float_Type(), String_Type(), Bool_Type()])
+BASE_MOD_TYPES = BasicTypeVariable([List_Type(), Int_Type(), Float_Type(), String_Type(), Bool_Type()])
+BASE_POW_TYPES = BasicTypeVariable([Int_Type(), Float_Type(), Bool_Type()])
+BASE_BITAND_TYPES = BasicTypeVariable([Set_Type(), Int_Type(), Bool_Type()])
+BASE_BITOR_TYPES = BasicTypeVariable([Set_Type(), Int_Type(), Bool_Type()])
+BASE_BITXOR_TYPES = BasicTypeVariable([Set_Type(), Int_Type(), Bool_Type()])
+BASE_RSHIFT_TYPES = BasicTypeVariable([Int_Type(), Bool_Type()])
+BASE_LSHIFT_TYPES = BasicTypeVariable([Int_Type(), Bool_Type()])
+BASE_FLOORDIV_TYPES = BasicTypeVariable([Int_Type(), Bool_Type(), Float_Type(), Bool_Type()])
         
 
 # (left_type, right_type) -> return_type

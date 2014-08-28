@@ -36,7 +36,7 @@ class BinOpTypeVariable(BasicTypeVariable):
         for left in left_ts:
             for right in right_ts:
                 if isinstance(left, Any_Type) and isinstance(right, Any_Type):
-                    extracted |= set([any_type])
+                    extracted |= set([Any_Type()])
                     continue
                 if isinstance(left, Any_Type):
                     extracted |= binop_cons.get_right_return_types(self.op, right)

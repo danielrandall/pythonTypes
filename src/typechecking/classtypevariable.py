@@ -33,7 +33,7 @@ class ClassTypeVariable(BasicTypeVariable):
         for base_class in self.base_classes:
             assert isinstance(base_class, BasicTypeVariable)
             for possible_type in base_class:
-                if possible_type == any_type:
+                if isinstance(possible_type, Any_Type):
                     # What the hell do I do here?
                     self.acceptable_base_classes.add(base_class)
                     self.any_base_class = True
@@ -54,7 +54,7 @@ class ClassTypeVariable(BasicTypeVariable):
          assert isinstance(base_class, BasicTypeVariable)
          change = False
          for possible_type in base_class:
-            if possible_type == any_type:
+            if isinstance(possible_type, Any_Type):
                     # What the hell do I do here?
                     self.acceptable_base_classes.add(base_class)
                     self.class_type.set_any_base()

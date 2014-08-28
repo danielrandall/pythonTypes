@@ -1,6 +1,5 @@
 from src.typechecking.basictypevariable import BasicTypeVariable
-from src.typeclasses import Class_Base, Any_Type, any_type
-
+from src.typeclasses import Class_Base, Any_Type
 class GetAttrTypeVariable(BasicTypeVariable):
     ''' Must work for modules and classes.
         self.types represents the types the attribute can take '''
@@ -26,7 +25,7 @@ class GetAttrTypeVariable(BasicTypeVariable):
         new_dependents = set()
         for possible_type in self.value:
             if isinstance(possible_type, Any_Type):
-                extracted.add(any_type)
+                extracted.add(Any_Type())
                 continue
             has_attr = possible_type.get_global_var(self.attr)
             if has_attr:
@@ -41,9 +40,9 @@ class GetAttrTypeVariable(BasicTypeVariable):
         for new_dep in new_dependents:
             new_dep.add_new_dependent(self)
         # If the attr hasn't been found but has any base then
-        # it might be there but we can't see it! any_type
+        # it might be there but we can't see it! Any_Type()
         if not extracted and any_base:
-            extracted.add(any_type)
+            extracted.add(Any_Type())
         return extracted
     
     def extract_from_attrs(self, other):

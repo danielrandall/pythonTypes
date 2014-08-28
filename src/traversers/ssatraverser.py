@@ -212,9 +212,6 @@ class SSA_Traverser(AstFullTraverser):
         old_func_stores = self.func_global_stores
         self.func_global_stores = node.func_global_stores
         
-        
-        if node.name == "__init__":
-            pass
     #    args = self.visit(node.args)
     #    self.fun_args += args
        # print(node.name)

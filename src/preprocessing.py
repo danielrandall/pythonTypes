@@ -230,6 +230,7 @@ class Preprocessor(AstFullTraverser):
         node.stc_scope = cx
         for name in node.names:
             self.define_name(cx,name)
+            self.global_variables.add(name)
             
     def do_Import(self, node):
         ''' Import(names=[alias(name='ast')])

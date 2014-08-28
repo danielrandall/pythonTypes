@@ -1,4 +1,4 @@
-from src.typeclasses import Module_Type, any_type
+from src.typeclasses import Module_Type, Any_Type
 from src.typechecking.basictypevariable import BasicTypeVariable
 
 class ImportDependent(object):
@@ -94,9 +94,16 @@ class ImportFrom():
         if self.item == "*":
             return self.do_wildcard_imports(file_tree, current_dir, path, module_name)
         
-        # Regular import
+        # Regular import - first check if its a item
+        if path in file_tree:
+            if module_name in file_tree[path]:
+                module = file_tree[path][module_name].get_module_type()
+                module_vars = module.get_vars()
+                if self.item in module_vars:
+                    return [(self.get_as_name(), module_vars[self.item])]
         
-        return [(self.get_as_name(), BasicTypeVariable([any_type]))]
+        # Give up
+        return [(self.get_as_name(), BasicTypeVariable([Any_Type()]))]
 
        
     def do_wildcard_imports(self, file_tree, current_dir, path, module_name):
@@ -150,7 +157,7 @@ class Import():
                 return [(as_name, BasicTypeVariable([dirs[current_dir][file_in_dir].get_module_type()]))]
             else:
                 # Can't find it
-                return [(as_name, BasicTypeVariable([any_type]))]
+                return [(as_name, BasicTypeVariable([Any_Type()]))]
         elif self.as_name:
             # We can just grab the module/package
             # Check module first
@@ -158,15 +165,15 @@ class Import():
             path_to_module = '/'.join(path)
                 
             if path_to_module not in dirs:
-                return [(self.as_name, BasicTypeVariable([any_type]))]
+                return [(self.as_name, BasicTypeVariable([Any_Type()]))]
                 
             return_type = None
             if name in dirs[path_to_module]:
                 return [(self.as_name, BasicTypeVariable([dirs[path_to_module][name].get_module_type()]))]
             else:
-                return [(self.as_name, BasicTypeVariable([any_type]))]
+                return [(self.as_name, BasicTypeVariable([Any_Type()]))]
         else:
-            return [(path[0], BasicTypeVariable([any_type]))]
+            return [(path[0], BasicTypeVariable([Any_Type()]))]
                 
                 
                 # First check if the last item is a module
