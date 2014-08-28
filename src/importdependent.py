@@ -85,6 +85,9 @@ class ImportFrom():
                 current_dir = '/'.join(current_dir)
             self.path = current_dir + "." + self.path
             
+        if self.as_name == "kp":
+            pass
+            
         path = self.convert_to_directories(self.path)
         module_name = path.pop()
         path  = '/'.join(path)
@@ -101,6 +104,18 @@ class ImportFrom():
                 module_vars = module.get_vars()
                 if self.item in module_vars:
                     return [(self.get_as_name(), module_vars[self.item])]
+                
+        # Now try to get the module
+        if path == ".":
+            path = module_name
+        else:
+            path = path + "/" + module_name
+        module_name = self.item
+        if path in file_tree:
+            if module_name in file_tree[path]:
+                module = file_tree[path][module_name].get_module_type()
+                return [(self.get_as_name(), BasicTypeVariable([module]))]
+        
         
         # Give up
         return [(self.get_as_name(), BasicTypeVariable([Any_Type()]))]
