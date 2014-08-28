@@ -66,6 +66,8 @@ F_BLOCK_FINALLY = 2
 F_BLOCK_FINALLY_END = 3
 
 class ControlFlowGraph(AstFullTraverser):
+    ''' Only the nodes which dictate control flow are entered. This is to stop
+        adding low-level items. '''
     
     def __init__(self):
         self.current_block = None
@@ -359,13 +361,12 @@ class ControlFlowGraph(AstFullTraverser):
                     self.add_to_exits(self.current_block, block)
                     break
                 if f_type == F_BLOCK_FINALLY_END:
-                    self.error("'continue' not supported inside 'finally' "
-                                   "clause", node)
+                    print("Line " + str(node.lineno) + " 'continue' not supported inside 'finally' clause")
             else:
-                self.error("'continue' not properly in loop", node)
+                print("Line " + str(node.lineno) + " 'continue' not inside of a loop")
                 return
         elif top_block == F_BLOCK_FINALLY_END:
-            self.error("'continue' not supported inside 'finally' clause", node)
+            print("Line " + str(node.lineno) + " 'continue' not supported inside 'finally' clause")
         self.current_block.has_return = True
     
     def do_Break(self, node):
@@ -378,7 +379,7 @@ class ControlFlowGraph(AstFullTraverser):
                 self.add_to_exits(self.current_block, f_block.next)
                 break
         else:
-            self.error("'break' outside loop", node)
+            print("Line " + str(node.lineno) + " 'break' not inside of a loop")
         self.current_block.has_return = True
         
     def do_Yield(self, node):
@@ -390,6 +391,14 @@ class ControlFlowGraph(AstFullTraverser):
         next_block = self.new_block()
         self.add_to_exits(self.current_block, next_block)
         self.use_next_block(next_block)
+        
+    def do_TryExcept(self, node):
+        ''' I don't think these are ever entered. '''
+        self.do_Try(node)
+
+    def do_TryFinally(self, node):
+        ''' I don't think these are ever entered. '''
+        self.do_Try(node)
         
     def do_Try(self, node):
         ''' It is a great ordeal to find out which statements can cause which
@@ -461,12 +470,6 @@ class ControlFlowGraph(AstFullTraverser):
        #     self.check_child_exits(self.current_block, after_try_block)
             
         self.use_next_block(after_try_block)     
-        
-        
-        
-        
-        
-        
         
         
     def do_Assign(self, node):
@@ -555,7 +558,6 @@ class ControlFlowGraph(AstFullTraverser):
 
 
     def do_Name(self,node):
-        # self.visit(node.ctx)
         pass
 
 
@@ -580,11 +582,7 @@ class ControlFlowGraph(AstFullTraverser):
         pass
 
     def do_ClassDef (self,node):
-        for z in node.bases:
-            self.visit(z)
         for z in node.body:
-            self.visit(z)
-        for z in node.decorator_list:
             self.visit(z)
             
     def do_Delete(self,node):
@@ -610,9 +608,7 @@ class ControlFlowGraph(AstFullTraverser):
         pass
 
     def do_Lambda(self,node):
-        self.visit(node.args)
         self.visit(node.body)
-
 
     def do_Pass(self,node):
         pass
@@ -623,18 +619,6 @@ class ControlFlowGraph(AstFullTraverser):
     def do_Raise(self,node):
         pass
 
-
-
-
-    def do_TryExcept(self, node):
-        ''' I don't think these are ever entered. '''
-        self.do_Try(node)
-
-    def do_TryFinally(self, node):
-        ''' I don't think these are ever entered. '''
-        self.do_Try(node)
-
-            
    # def do_With(self, node):
    #     for z in node.items:
    #         self.visit(z)
