@@ -50,7 +50,8 @@ class BasicTypeVariable:
         self.update_dependent(new_dependent)
         
     def update_all_dependents(self):
-        for dependent in self.constraint_dependents:
+        iterating_dependents = self.constraint_dependents.copy()
+        for dependent in iterating_dependents:
             self.update_dependent(dependent)
         
     def update_dependent(self, dependent):

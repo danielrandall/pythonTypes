@@ -216,9 +216,9 @@ class TypeInferrer(AstFullTraverser):
             assert isinstance(value, BasicTypeVariable)
             assert isinstance(target, BasicTypeVariable)
             value.add_new_dependent(target)
-   #     print()
-   #     print("Conduct")
-   #     self.print_types()
+      #  print()
+      #  print("Conduct")
+      #  self.print_types()
             
     def do_Call(self, node):
         ''' Link the indentifier to a callvariable. '''
@@ -226,9 +226,11 @@ class TypeInferrer(AstFullTraverser):
         given_args = []
         for z in node.args:
             given_args.extend(self.visit(z))
-        return_type = CallTypeVariable(given_args, node)
+        return_type = CallTypeVariable(given_args, node, func_indentifier)
         # Set up a constraint between the call and the identifier
         self.conduct_assignment([return_type], [func_indentifier], node)
+        # Do args as well
+        self.conduct_assignment([return_type]*len(given_args), given_args, node)
         # Create a call issue
         self.error_issuer.add_issue(CallIssue(node, return_type, self.module_name))
         return [return_type]
@@ -236,7 +238,7 @@ class TypeInferrer(AstFullTraverser):
     def do_Attribute(self, node):
         return_type = None
         value = self.visit(node.value)[0]
-        if node.attr == "host":
+        if node.attr == "getKey":
             pass
         if isinstance(node.ctx, ast.Store):
             return_type = SetAttrTypeVariable(value, node.attr, node)
@@ -294,16 +296,27 @@ class TypeInferrer(AstFullTraverser):
                 print(node.lineno)
                 self.print_types()
         finally:
+            
+            # Add the new function type
+            param_types = [self.variableTypes[param] for param in params]
+            has_kwarg_vararg = self.check_has_kwarg_or_vararg(node.args)
+            defaults_length = self.get_defaults_length(node.args)
+            fun_type = BasicTypeVariable([Def_Type(param_types, self.return_variable, defaults_length, has_kwarg_vararg)])
+            
             # Restore parent variables
             self.variableTypes = node.stc_context.variableTypes
-            # Add the new function type
-            fun_type = BasicTypeVariable([Def_Type(None, self.return_variable, 0)])
             self.conduct_assignment([self.variableTypes[node.name]], [fun_type], node)
             self.fun_params = old_params
             
+    def get_defaults_length(self, arguments):
+        return len(arguments.defaults)
+            
+    def check_has_kwarg_or_vararg(self, arguments):
+        return arguments.vararg or arguments.kwarg
+        
+            
     def do_arguments(self, node):
-        ''' We need to begin checking what types the args can take.
-            We can check stuff like 'self' here. '''
+        ''' Defaults are also in args. '''
         args = []
         for z in node.args:
             args.extend(self.visit(z))
