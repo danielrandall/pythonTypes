@@ -38,14 +38,26 @@
     pages    = "29--60",
     year      = "1969"
 }
+
 @article{cardelli87,
-    author = {Luca Cardelli},
-    title = {Basic polymorphic typechecking},
-    journal = {Science of Computer Programming},
-    year = {1987},
-    volume = {8},
-    pages = {147--172}
-}
+ author = {Cardelli, Luca},
+ title = {Basic Polymorphic Typechecking},
+ journal = {Sci. Comput. Program.},
+ issue_date = {April 1, 1987},
+ volume = {8},
+ number = {2},
+ month = apr,
+ year = {1987},
+ issn = {0167-6423},
+ pages = {147--172},
+ numpages = {26},
+ url = {http://dx.doi.org/10.1016/0167-6423(87)90019-0},
+ doi = {10.1016/0167-6423(87)90019-0},
+ acmid = {34882},
+ publisher = {Elsevier North-Holland, Inc.},
+ address = {Amsterdam, The Netherlands, The Netherlands},
+} 
+
 @inproceedings{milner84,
  author = {Milner, Robin},
  title = {A Proposal for Standard {ML}},
@@ -76,32 +88,45 @@
     pages    = "238--255",
     year     = "2009"
 }
-@article{furr09,
-    author   = "Furr, Michael and An, Jong-hoon (David) and Foster, Jeffrey S. and Hicks, Michael",
-    title    = "Static Type Inference for {Ruby}",
-    journal  = "SAC 2009",
-    pages    = "1859--1866",
-    year     = "2009"
-}
-@article{pRuby,
+
+@inproceedings{furr09,
+ author = {Furr, Michael and An, Jong-hoon (David) and Foster, Jeffrey S. and Hicks, Michael},
+ title = {Static Type Inference for Ruby},
+ booktitle = {Proceedings of the 2009 ACM Symposium on Applied Computing},
+ series = {SAC '09},
+ year = {2009},
+ isbn = {978-1-60558-166-8},
+ location = {Honolulu, Hawaii},
+ pages = {1859--1866},
+ numpages = {8},
+ url = {http://doi.acm.org/10.1145/1529282.1529700},
+ doi = {10.1145/1529282.1529700},
+ acmid = {1529700},
+ publisher = {ACM},
+ address = {New York, NY, USA},
+ keywords = {Ruby, contracts, dynamic typing, type inference},
+} 
+
+
+
+@inproceedings{pRuby,
  author = {Furr, Michael and An, Jong-hoon (David) and Foster, Jeffrey S.},
  title = {Profile-guided Static Typing for Dynamic Scripting Languages},
- journal = {SIGPLAN Not.},
+ booktitle = {Proceedings of the 24th ACM SIGPLAN Conference on Object Oriented Programming Systems Languages and Applications},
+ series = {OOPSLA '09},
  year = {2009},
- volume = {44},
- number = {10},
- month = oct,
- year = {2009},
- issn = {0362-1340},
+ isbn = {978-1-60558-766-0},
+ location = {Orlando, Florida, USA},
  pages = {283--300},
  numpages = {18},
- url = {http://doi.acm.org/10.1145/1639949.1640110},
- doi = {10.1145/1639949.1640110},
+ url = {http://doi.acm.org/10.1145/1640089.1640110},
+ doi = {10.1145/1640089.1640110},
  acmid = {1640110},
  publisher = {ACM},
  address = {New York, NY, USA},
  keywords = {RIL, profile guided anlaysis, ruby, scripting languages},
 } 
+
 @inproceedings{aggressiveType,
     author   = "John Aycock",
     title    = "Aggressive Type Inference",
@@ -138,28 +163,45 @@
  address = {Darlinghurst, Australia, Australia},
  keywords = {Python and compilers, dynamic languages},
 } 	
+
 @inproceedings{cartwright91,
-  author    = {Robert Cartwright and
-               Mike Fagan},
-  title     = {Soft Typing},
-  booktitle = {PLDI},
-  year      = {1991},
-  pages     = {278-292},
-  ee        = {http://doi.acm.org/10.1145/113445.113469},
-  crossref  = {DBLP:conf/pldi/1991},
-  bibsource = {DBLP, http://dblp.uni-trier.de}
-}
+ author = {Cartwright, Robert and Fagan, Mike},
+ title = {Soft Typing},
+ booktitle = {Proceedings of the ACM SIGPLAN 1991 Conference on Programming Language Design and Implementation},
+ series = {PLDI '91},
+ year = {1991},
+ isbn = {0-89791-428-7},
+ location = {Toronto, Ontario, Canada},
+ pages = {278--292},
+ numpages = {15},
+ url = {http://doi.acm.org/10.1145/113445.113469},
+ doi = {10.1145/113445.113469},
+ acmid = {113469},
+ publisher = {ACM},
+ address = {New York, NY, USA},
+} 
+
 @TECHREPORT{agesen95,
     author = {Ole Agesen},
     title = {Concrete Type Inference: Delivering Object-Oriented Applications},
     institution = {Stanford University},
     year = {1995}
 }
-@MISC{jones95,
-    author = {Mark P. Jones},
-    title = {Functional Programming with Overloading and Higher-Order Polymorphism},
-    year = {1995}
-}
+
+@inproceedings{jones95,
+ author = {Jones, Mark P.},
+ title = {Functional Programming with Overloading and Higher-Order Polymorphism},
+ booktitle = {Advanced Functional Programming, First International Spring School on Advanced Functional Programming Techniques-Tutorial Text},
+ year = {1995},
+ isbn = {3-540-59451-5},
+ pages = {97--136},
+ numpages = {40},
+ url = {http://dl.acm.org/citation.cfm?id=647698.734150},
+ acmid = {734150},
+ publisher = {Springer-Verlag},
+ address = {London, UK, UK},
+} 
+
 @mastersthesis{pyty,
 	author = "Jeff Ruberg",
 	title = "Charming {Python} with Static Typechecking",
@@ -218,18 +260,15 @@
 }
 @misc{ssaLecture,
   Author = {Jeff Foster},
-  Institution = {Harvard University},
-  Howpublished = {University Lecture},
+  Howpublished = {Harvard University. University Lecture. \url{http://www.seas.harvard.edu/courses/cs252/2011sp/slides/Lec04-SSA.pdf}},
   Year = {2011},
   Title = {Static Single Assignment Form (and dominators, post-dominators, dominance frontiers…)}
 }
 
 @misc{domianceFrontiersImage,
   Author = {Charles N. Fischer},
-  Institution = {University of Wisconsin-Madison},
-  Howpublished = {University Lecture},
   Year = {2008},
-  howpublished = {\url{http://pages.cs.wisc.edu/~fischer/cs701.f08/lectures/Lecture23.4up.pdf}},
+  howpublished = {University of Wisconsin-Madison. University Lecture. \url{http://pages.cs.wisc.edu/~fischer/cs701.f08/lectures/Lecture23.4up.pdf}},
   Title = {Static Single Assignment Form}
 }
 
@@ -366,6 +405,14 @@ url ={http://dx.doi.org/10.1017/CBO9780511615320}
   note = {Accessed: 22-08-2014}
 }
 
+@misc{pythonTypeDocs,
+  title = {4. Built-in Types},
+  author = {Python Software Foundation},
+  year = {2014},
+  howpublished = {\url{https://docs.python.org/3/library/stdtypes.html}},
+  note = {Accessed: 29-08-2014}
+}
+
 @book{VanRossumImports,
  author = {Van Rossum, Guido and Drake, Fred L.},
  title = {An Introduction to Python},
@@ -381,4 +428,31 @@ url ={http://dx.doi.org/10.1017/CBO9780511615320}
   howpublished = {\url{https://docs.python.org/3/reference/datamodel.html}},
   note = {Accessed: 25-08-2014}
 }
+
+@misc{mypy,
+  title = {mypy},
+  author = {Jukka Lehtosalo},
+  year = {2014},
+  howpublished = {\url{https://github.com/JukkaL/mypy/}},
+  note = {Accessed: 29-08-2014}
+}
+
+@misc{pythonScripts,
+  title = {What are the best Python scripts you've ever written?},
+  author = {Quora},
+  year = {2014},
+  howpublished = {\url{http://www.quora.com/What-are-the-best-Python-scripts-youve-ever-written}},
+  note = {Accessed: 29-08-2014}
+}
+
+@misc{python3Projects,
+  title = {Package Index},
+  author = {Python Software Foundation},
+  year = {2014},
+  howpublished = {\url{https://pypi.python.org/pypi?%3Aaction=browse&c=533&show=all}},
+  note = {Accessed: 29-08-2014}
+}
+
+
+
 
