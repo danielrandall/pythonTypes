@@ -614,6 +614,10 @@ class TypeInferrer(AstFullTraverser):
         for z in node.comparators:
             comparators.extend(self.visit(z))
         for comp in comparators:
+            # if comp is a parameter then constrain types
+            if comp in self.fun_params:
+                self.conduct_assignment([comp], [CONTAINS_TYPES], node)
+                self.fun_params[comp] = True
             self.error_issuer.add_issue(ContainsIssue(node, comp, self.module_name))
             
         return [BasicTypeVariable([Bool_Type()])]

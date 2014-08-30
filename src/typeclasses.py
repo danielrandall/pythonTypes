@@ -1751,7 +1751,7 @@ BUILTIN_TYPE_DICT = {
   'dict': BasicTypeVariable([ Dict_Type() ]),
                      
   'bytes' : BasicTypeVariable([ Bytes_Type() ]),
-  # TODO: Support this
+  # TODO: Support this type
   'bytearray' : BasicTypeVariable([ Any_Type() ]),
   'bool' : BasicTypeVariable([ Bool_Type() ] ),
             # Classes
@@ -1760,7 +1760,7 @@ BUILTIN_TYPE_DICT = {
 
 
 ITERATOR_TYPES = BasicTypeVariable([List_Type(), Set_Type(), Tuple_Type(), Dict_Type(), String_Type(), Bytes_Type()])
-
+CONTAINS_TYPES = BasicTypeVariable([ List_Type(), Set_Type(), Tuple_Type(), Dict_Type(), String_Type(), Bytes_Type() ])
 SLICE_TYPES = BasicTypeVariable([List_Type(), String_Type()])
 INDEX_TYPES = BasicTypeVariable([List_Type(), Dict_Type(), String_Type()])
 #ALL_TYPES = [List_Type(), Dict_Type(), Int_Type(), Float_Type(), Bool_Type(), String_Type(), Bytes_Type()]
