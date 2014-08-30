@@ -610,8 +610,12 @@ class TypeInferrer(AstFullTraverser):
         ''' A comparison will always return a boolean type.
             TODO: Check if errors can occur as a result of a comparison. '''
         self.visit(node.left)
+        comparators = []
         for z in node.comparators:
-            self.visit(z)
+            comparators.extend(self.visit(z))
+        for comp in comparators:
+            self.error_issuer.add_issue(ContainsIssue(node, comp, self.module_name))
+            
         return [BasicTypeVariable([Bool_Type()])]
     
     def do_Num(self, node):

@@ -1,4 +1,4 @@
-from src.typeclasses import None_Type
+from src.typeclasses import None_Type, Any_Type
 
 class ErrorIssuer():
     def __init__(self):
@@ -101,6 +101,21 @@ class IndexIssue(BaseIssue):
         
     def print_error(self):        
         print(self.module_name + ": " + "Line " + str(self.lineno) + ": cannot be indexed")
+
+class ContainsIssue(BaseIssue):
+    ''' Checks whether the given type is an iterator. '''
+    def __init__(self, node, var, module_name):
+        super().__init__(node, var, module_name)
+    
+    def check(self):
+        ''' This should be done in a type variable. '''
+        for possible_type in self.var_to_check.get():
+            if possible_type.get_global_var("__contains__") or isinstance(possible_type, Any_Type):
+                return
+        self.print_error()
+        
+    def print_error(self):        
+        print(self.module_name + ": " + "Line " + str(self.lineno) + ": cannot be searched for contents")
         
 class MustContainTypeIssue(BaseIssue):
     pass
