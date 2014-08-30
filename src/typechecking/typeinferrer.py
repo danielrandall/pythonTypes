@@ -7,6 +7,7 @@ from src.typechecking.basictypevariable import BasicTypeVariable
 from src.typechecking.calltypevariable import CallTypeVariable
 from src.typechecking.contentstypevariable import ContentsTypeVariable
 from src.typechecking.itertypevariable import IterTypeVariable
+from src.typechecking.indextypevariable import IndexTypeVariable
 from src.typechecking.binoptypevariable import BinOpTypeVariable
 from src.typechecking.classtypevariable import ClassTypeVariable
 from src.typechecking.getattrtypevariable import GetAttrTypeVariable
@@ -516,9 +517,10 @@ class TypeInferrer(AstFullTraverser):
         
         # Will return something in the container if index
         if isinstance(node.slice, ast.Index):
-            contents_var = ContentsTypeVariable()
-            self.conduct_assignment([contents_var], value_types, node)
-            return [contents_var]
+            index_var = IndexTypeVariable()
+            self.conduct_assignment([index_var], value_types, node)
+            self.error_issuer.add_issue(IndexIssue(node, index_var, self.module_name))
+            return [index_var]
         # Will return portion of the list. We don't know which
         if isinstance(node.slice, ast.Slice):
             return value_types
