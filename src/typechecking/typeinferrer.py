@@ -290,7 +290,6 @@ class TypeInferrer(AstFullTraverser):
             if node.name == "__init__":
                 self.error_issuer.add_issue(InitNoneIssue(node, self.return_variable, self.module_name))
                 
-                
             if node.name == "f":
                 print()
                 print("Final types")
@@ -302,7 +301,14 @@ class TypeInferrer(AstFullTraverser):
             param_types = [self.variableTypes[param] for param in params]
             has_kwarg_vararg = self.check_has_kwarg_or_vararg(node.args)
             defaults_length = self.get_defaults_length(node.args)
-            fun_type = BasicTypeVariable([Def_Type(param_types, self.return_variable, defaults_length, has_kwarg_vararg)])
+            # Check to see whether function is a generator
+            return_types = None
+            if node.generator_function:
+                return_types = BasicTypeVariable([Generator_Type()])
+            else:
+                return_types = self.return_variable
+            # Create the function type
+            fun_type = BasicTypeVariable([Def_Type(param_types, return_types, defaults_length, has_kwarg_vararg)])
             
             # Restore parent variables
             self.variableTypes = node.stc_context.variableTypes
