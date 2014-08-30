@@ -6,6 +6,7 @@ from src.typechecking.errorissuer import *
 from src.typechecking.basictypevariable import BasicTypeVariable
 from src.typechecking.calltypevariable import CallTypeVariable
 from src.typechecking.contentstypevariable import ContentsTypeVariable
+from src.typechecking.itertypevariable import IterTypeVariable
 from src.typechecking.binoptypevariable import BinOpTypeVariable
 from src.typechecking.classtypevariable import ClassTypeVariable
 from src.typechecking.getattrtypevariable import GetAttrTypeVariable
@@ -424,9 +425,12 @@ class TypeInferrer(AstFullTraverser):
                 self.fun_params[it] = True
         
         # Assign to the iter target#
-        iter_contents = [ContentsTypeVariable() for x in iters]
+        iter_contents = [IterTypeVariable() for x in iters]
         self.conduct_assignment(iter_contents, iters, node)
         self.conduct_assignment(targets, iter_contents, node)
+        
+        for iter_typevar in iter_contents:
+            self.error_issuer.add_issue(IteratorIssue(node, iter_typevar, self.module_name))
         
         for z in node.body:
             self.visit(z)

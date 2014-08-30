@@ -83,9 +83,9 @@ class IteratorIssue(BaseIssue):
     def __init__(self, node, var, module_name):
         super().__init__(node, var, module_name)
     
-    #def check(self):
-    #    possible_types - self.var_to_check.get()
-        
+    def check(self):
+        if not self.var_to_check.check_iter():
+            self.print_error()
         
     def print_error(self):        
         print(self.module_name + ": " + "Line " + str(self.lineno) + ": Not an iterator")

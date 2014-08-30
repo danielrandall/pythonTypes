@@ -483,10 +483,7 @@ class Class_Instance(Class_Base, BaseType):
             return self.global_vars["__call__"]
         
     def get_contents_types(self):
-        if "__getitem__" in self.global_vars:
-            return set([Any_Type()])
-        else:
-            return BaseType.get_contents_types(self)
+        return set([Any_Type()])
             
 class Module_Type(Class_Base, BaseType):
     def __init__(self, global_vars):
@@ -983,7 +980,7 @@ class List_Type(Container_Type, Class_Base, BaseType):
 class Generator_Type(Container_Type, Class_Base, BaseType):
     ''' TODO: Add new types when the function append is called or similar. '''
     def __init__(self):
-        kind = 'List({})'
+        kind = 'Generator({})'
         Container_Type.__init__(self, None, [], set())
         Class_Base.__init__(self)
         BaseType.__init__(self, kind)
@@ -1005,8 +1002,17 @@ class Generator_Type(Container_Type, Class_Base, BaseType):
                             
                             }
         
+    def is_callable(self):
+        ''' Can always initialise a class definition. '''
+        return True
+    
+    def get_return_types(self):
+        ''' We want to return a new instance every time. '''
+        # Need to copy as it is liable to change
+        return BasicTypeVariable([self])
+        
     def define_kind(self):
-        self.kind = 'List(%s)' % repr(self.content_types)
+        self.kind = 'Generator(%s)' % repr(self.content_types)
     
     
 class Tuple_Type(Container_Type, Class_Base, BaseType):

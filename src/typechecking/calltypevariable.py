@@ -4,7 +4,7 @@ from itertools import product
 
 class CallTypeVariable(BasicTypeVariable):
     ''' Must work for modules and classes.
-        self.types represents the types the attribute can take.
+        self.types represents the types the function call can return.
         
         If type is a class def then check __init__
         If function - obvious
@@ -25,7 +25,7 @@ class CallTypeVariable(BasicTypeVariable):
         extracted = set()
         for possible_type in value:
             if possible_type.is_callable():
-                # Check all type match the necessary arg types
+                # Check all given types match the necessary arg types
                 if isinstance(possible_type, Class_Type):
                     self.has_callable_type = True
                     extracted |= possible_type.get_return_types().types
