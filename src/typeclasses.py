@@ -121,7 +121,10 @@ class Bytes_Type(BaseType):
                                                                     2)]),
                             
                             # format(self, *args: Any, **kwargs: Any) -> str
-                            'format': BasicTypeVariable([Any_Type()]),
+                            'format': BasicTypeVariable([Def_Type([],
+                                                                    BasicTypeVariable([Any_Type()]),
+                                                                    0,
+                                                                    True)]),
                             
                             # format_map(self, map: Mapping[str, Any]) -> str
                             'format_map': BasicTypeVariable([Def_Type([ BasicTypeVariable([Any_Type()])],
@@ -493,16 +496,26 @@ class Module_Type(Class_Base, BaseType):
 
 class Def_Type(Callable_Type, BaseType):    
     ''' TODO: deal with kind. '''
-    def __init__(self, parameter_types, return_types, arg_default_length):
+    def __init__(self, parameter_types, return_types, arg_default_length, is_kwarg_vaarg=False):
         kind = 'Def(%s)' % id(parameter_types)
         BaseType.__init__(self, kind)
         Callable_Type.__init__(self)
         self.parameter_types = parameter_types
         self.return_types = return_types
         self.arg_default_length = arg_default_length
+        self.is_kwarg_vaarg = is_kwarg_vaarg
         
     def get_return_types(self):
         return self.return_types
+    
+    def get_is_kwarg(self):
+        return self.is_kwarg_vaarg
+    
+    def get_default_length(self):
+        return self.arg_default_length
+    
+    def get_parameter_types(self):
+        return self.parameter_types
 
 class Inference_Failure(BaseType):
     def __init__(self, kind, node):
@@ -892,7 +905,10 @@ class List_Type(Container_Type, Class_Base, BaseType):
                                                                     BasicTypeVariable([None_Type()]),
                                                                     0)]),
                             # sort(self, *, key: Function[[T], Any] = None, reverse: bool = False) -> None
-                            'sort' : BasicTypeVariable([Any_Type()]),
+                            'sort' : BasicTypeVariable([Def_Type([ ],
+                                                                    BasicTypeVariable([None_Type()]),
+                                                                    0,
+                                                                    True)]),
                             
                             # __len__(self) -> int
                             '__len__': BasicTypeVariable([Def_Type([],
@@ -972,6 +988,23 @@ class Generator_Type(Container_Type, Class_Base, BaseType):
         Class_Base.__init__(self)
         BaseType.__init__(self, kind)
         
+        self.global_vars = { # __init__(self, ?)
+                            '__init__' : BasicTypeVariable([Def_Type([ Any_Type() ],
+                                                                    BasicTypeVariable([None_Type()]),
+                                                                    1)]),                          
+                            
+                            # __iter__(self) -> Iterator[T]
+                            '__iter__' : BasicTypeVariable([Def_Type([],
+                                                                    BasicTypeVariable([Any_Type()]),
+                                                                    0)]),
+                            
+                            # __next__(self) -> any
+                            '__next__' : BasicTypeVariable([Def_Type([],
+                                                                    BasicTypeVariable([Any_Type()]),
+                                                                    0)]),
+                            
+                            }
+        
     def define_kind(self):
         self.kind = 'List(%s)' % repr(self.content_types)
     
@@ -984,6 +1017,8 @@ class Tuple_Type(Container_Type, Class_Base, BaseType):
         BaseType.__init__(self, kind)
         
         self.global_vars = {
+                            
+                            
                             # __getitem__(self, x: int) -> Any
                             '__getitem__' : BasicTypeVariable([Def_Type([Int_Type()],
                                                                     BasicTypeVariable([Any_Type()]),
@@ -1092,7 +1127,10 @@ class String_Type(Container_Type, Class_Base, BaseType):
                                                                     2)]),
                             
                             # format(self, *args: Any, **kwargs: Any) -> str
-                            'format': BasicTypeVariable([Any_Type()]),
+                            'format': BasicTypeVariable([Def_Type([],
+                                                                    BasicTypeVariable([self]),
+                                                                    0,
+                                                                    True)]),
                             
                             # format_map(self, map: Mapping[str, Any]) -> str
                             'format_map': BasicTypeVariable([Def_Type([ BasicTypeVariable([Any_Type()])],
@@ -1578,13 +1616,15 @@ BUILTIN_TYPE_DICT = {
   # max(arg1: T, arg2: T, *args: T) -> T
   'max' : BasicTypeVariable([Def_Type([BasicTypeVariable([Any_Type()]), BasicTypeVariable([Any_Type()])],
                                   BasicTypeVariable([Any_Type()]),
-                                  0)]),
+                                  0,
+                                  True)]),
                
   # min(iterable: Iterable[T]) -> T: pass
   # min(arg1: T, arg2: T, *args: T) -> T      
   'min' : BasicTypeVariable([Def_Type([BasicTypeVariable([Any_Type()]), BasicTypeVariable([Any_Type()])],
                                   BasicTypeVariable([Any_Type()]),
-                                  0)]),
+                                  0,
+                                  True)]),
                      
   # next(i: Iterator[T]) -> T
   # nexxt(i: Iterator[T], default: T) -> T
@@ -1610,7 +1650,8 @@ BUILTIN_TYPE_DICT = {
   # print(*values: Any, sep: str = ' ', end: str = '\n', file: IO[str] = None) -> None
   'print': BasicTypeVariable([Def_Type([BasicTypeVariable([Any_Type()])],
                                   BasicTypeVariable([None_Type()]),
-                                  0)]),
+                                  0,
+                                  True)]),
                      
   # pow(x: int, y: int) -> Any
   # pow(x: int, y: int, z: int) -> Any
@@ -1647,7 +1688,8 @@ BUILTIN_TYPE_DICT = {
   # sorted(iterable: Iterable[T], *, key: Function[[T], Any] = None, reverse: bool = False) -> List[T]         
   'sorted': BasicTypeVariable([Def_Type([BasicTypeVariable([List_Type()]), BasicTypeVariable([Any_Type()]), BasicTypeVariable([Bool_Type()])],
                                   BasicTypeVariable([List_Type()]),
-                                  2)]),
+                                  2,
+                                  True)]),
                      
   # sum(iterable: Iterable[T], start: T = None) -> T
   'sum' : BasicTypeVariable([Def_Type([BasicTypeVariable([Any_Type()]), BasicTypeVariable([Any_Type()])],
