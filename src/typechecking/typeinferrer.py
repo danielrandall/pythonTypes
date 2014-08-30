@@ -20,8 +20,9 @@ from src.pyfile import PyFile
 
 class TypeInferrer(AstFullTraverser):
     
-    def __init__(self, error_issuer):
+    def __init__(self, error_issuer, stats):
         self.error_issuer = error_issuer
+        self.stats = stats
     
     def initialise(self):
         self.currently_assigning = False
@@ -224,6 +225,7 @@ class TypeInferrer(AstFullTraverser):
             
     def do_Call(self, node):
         ''' Link the indentifier to a callvariable. '''
+        self.stats.inc_num_func_calls()
         func_indentifier = self.visit(node.func)[0]
         given_args = []
         for z in node.args:
@@ -265,6 +267,7 @@ class TypeInferrer(AstFullTraverser):
         ''' Find all args and return values.
         
             TODO: Find out possible types in *karg dict. '''
+        self.stats.inc_num_funcs()
         self.variableTypes = node.variableTypes
         old_return = self.return_variable
         old_params = self.fun_params
@@ -350,6 +353,8 @@ class TypeInferrer(AstFullTraverser):
         self.conduct_assignment([self.return_variable], [value], node)                
         
     def do_ClassDef(self, node):
+        self.stats.inc_num_classes()
+        
         self.variableTypes = node.variableTypes
 
         parent_class = self.current_class
@@ -392,6 +397,7 @@ class TypeInferrer(AstFullTraverser):
     def do_BinOp (self, node):
         ''' Adding the dependents causes it to update 3 times initially.
             TODO: find a way to stop this. '''
+        self.stats.inc_num_binops()
         op = self.kind(node.op)
         left_types = self.visit(node.left)[0]
         right_types = self.visit(node.right)[0]
@@ -613,7 +619,10 @@ class TypeInferrer(AstFullTraverser):
         comparators = []
         for z in node.comparators:
             comparators.extend(self.visit(z))
-        for comp in comparators:
+        # Only check if its, say, if x in something
+        # Can't be doing with the complications of all the possible combinations
+        if len(node.ops) == 1 and isinstance(node.ops[0], ast.In):
+            comp = comparators[0]
             # if comp is a parameter then constrain types
             if comp in self.fun_params:
                 self.conduct_assignment([comp], [CONTAINS_TYPES], node)
