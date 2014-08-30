@@ -413,6 +413,7 @@ class Class_Type(Class_Base, BaseType):
         self.call_return_types = None
         self.any_base_class = False
         
+        # Attribute builtin to every class
         if "__name__" not in self.global_vars:
             self.global_vars["__name__"] = BasicTypeVariable([Any_Type()])
         if "__class__" not in self.global_vars:
@@ -1760,6 +1761,6 @@ BUILTIN_TYPE_DICT = {
 
 ITERATOR_TYPES = BasicTypeVariable([List_Type(), Set_Type(), Tuple_Type(), Dict_Type(), String_Type(), Bytes_Type()])
 
-SLICE_TYPES = [List_Type(), String_Type()]
-INDEX_TYPES = [List_Type(), Dict_Type(), String_Type()]
-ALL_TYPES = [List_Type(), Dict_Type(), Int_Type(), Float_Type(), Bool_Type(), String_Type(), Bytes_Type()]
+SLICE_TYPES = BasicTypeVariable([List_Type(), String_Type()])
+INDEX_TYPES = BasicTypeVariable([List_Type(), Dict_Type(), String_Type()])
+#ALL_TYPES = [List_Type(), Dict_Type(), Int_Type(), Float_Type(), Bool_Type(), String_Type(), Bytes_Type()]

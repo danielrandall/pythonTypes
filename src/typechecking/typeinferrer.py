@@ -372,9 +372,10 @@ class TypeInferrer(AstFullTraverser):
             for z in node.body:
                 self.visit(z)
         finally:
-            # Restore parents variables
     #        print("Class " + node.name + " vars")
     #        self.print_types()
+    
+            # Restore parents variables            
             self.variableTypes = node.stc_context.variableTypes
             self.current_class = parent_class 
             
@@ -517,6 +518,11 @@ class TypeInferrer(AstFullTraverser):
         
         # Will return something in the container if index
         if isinstance(node.slice, ast.Index):
+            # Update function parameters if used as an index
+            if value_types[0] in self.fun_params:
+                self.conduct_assignment(value_types, [INDEX_TYPES], node)
+                self.fun_params[value_types[0]] = True
+            
             index_var = IndexTypeVariable()
             self.conduct_assignment([index_var], value_types, node)
             self.error_issuer.add_issue(IndexIssue(node, index_var, self.module_name))

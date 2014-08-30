@@ -89,6 +89,11 @@ class ClassTypeVariable(BasicTypeVariable):
         if self.class_type.get_global_var("__iter__") and "__iter__" not in self.found_special_methods:
             # send type to iterators
             self.add_new_dependent(ITERATOR_TYPES)
+            self.found_special_methods.add("__iter__")
+        # Add it to set of all index types
+        if self.class_type.get_global_var("__getitem__"):
+            self.add_new_dependent(INDEX_TYPES)
+            self.found_special_methods.add("__getitem__")
     
     def receive_update(self, other):
         ''' Can be updated by a base class. '''
