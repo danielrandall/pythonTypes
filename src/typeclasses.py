@@ -899,7 +899,7 @@ class List_Type(Container_Type, Class_Base, BaseType):
                                                                     BasicTypeVariable([None_Type()]),
                                                                     0)]),
                             # reverse(self) -> None
-                            'remove' : BasicTypeVariable([Def_Type([],
+                            'reverse' : BasicTypeVariable([Def_Type([],
                                                                     BasicTypeVariable([None_Type()]),
                                                                     0)]),
                             # sort(self, *, key: Function[[T], Any] = None, reverse: bool = False) -> None
