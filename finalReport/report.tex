@@ -603,8 +603,9 @@ Furr et al. developed Diamondback Ruby (DRuby)~\cite{furr09} in order to discove
 
 \newpage
 \section{Design of the Type Inferencing Algorithm}
-
-
+Our primary aim is to create a type checker for Python which returns a minimum amount of false positives. This decision has largely dictated the design of our algorithm. We take a cautious approach to handling exceptions. We do this by assuming that every statement within a \texttt{try} is capable of causing an exception and leading the handlers. \\
+\indent We assume that any code written by the programmer is possibly incorrect. Due to this restriction we can not use the function calls to determine the types taken by function arguments, the technique adopted by most of the type inferencers described in our background research. For this reason we follow the ethos of success typings to infer types for function arguments and look at the context in which they are used in the function body. \\
+\indent We treat global variables separately from local variables. We do not attempt to determine which types a global variable can have at certain points in a program, a task which is perhaps impossible, so we assume they can be all of the possible types they can take at all times. However the path taken by local variables is easier to determine and so we perform this analysis. Due to this it can be said we take a flow-sensitive approach for local variables and flow-insensitive approach for global variables.
 
 
 
@@ -1060,12 +1061,19 @@ A top-down approach involves finding all of the calls to a function and determin
 Analysing the given code with a top-down approach would see that the only the function call to \texttt{add\_one} gives the argument \texttt{x} a \texttt{string} type thus giving the argument a type set containing only \texttt{string}. Due to this an error will be flagged on the use of the \texttt{int} \texttt{1} in a binary \texttt{+} operation with \texttt{x}. While an error will certainly occur at that line when the function is called with a string, the line \texttt{x + 1} is not the cause of error but instead the function call. In this case, assuming the types given to function calls is not a reasonable assumptions and will cause the type checker to raise errors in the wrong places.
 
 \paragraph*{Bottom-Up: Use Case}\mbox{} \\
-A bottom-up approach involves determining the types of arguments solely by how they are used within the function body. To do this we make use of pre-existing knowledge from the types which other functions and built-in operators accept. If a parameter is used within a context then the types that parameter can take are limited by the types accepted within that context. \\
+A bottom-up approach involves determining the types of arguments solely by how they are used within the function body. To do this we make use of pre-existing knowledge from the types which other functions and built-in operators accept. If a parameter is used within a context then the types that parameter can take are changed the types applicable in that context. \\
 
 It was felt that more was to be gained using the bottom-up approach since we would be able to detect errors caused by incorrect types being passed to a function. However it is important to note that useful information can be extracted from the calls. There is a possibility of using this information when we are unable to infer the types of the parameters using the function body in isolation. \\
-To do this we observe how each parameters is used and constraints this imposes on the possible types that it can legally assume. When we are unable to infer any restrictions on the parameter we resort to labelling the parameter as having any \texttt{any} type. \\\\
-\textbf{Constraint Generation} \\
-Consider the following two functions:
+\indent To do this we observe how each parameter is used and what possible types that it can legally assume in these contexts. When we are unable to infer any useful context in which the parameter is used, we resort to labelling the parameter as having any \texttt{any} type. \\
+\indent We observe the following contexts to infer types for parameters:
+\begin{itemize}
+	\item Whether the parameter is indexed
+	\item Whether the parameter is used in a binary operation
+	\item Whether the parameter is iterated over
+\end{itemize}
+In each case we use the types which are legally allowed in each operation to infer the types for the parameter. \\
+\indent We do not currently use whether the parameter is called to infer the types. This is because any function, class definition or class instance which implements \texttt{\_\_call\_\_} can satisfy this context. There are hundreds of builtin functions and classes which it could possibly be and cataloguing would take more time than it is worth. \\
+\indent There are times when the same context of the parameter should be used differently. Consider the following two functions:
 \begin{lstlisting}[mathescape]
 	def f(x, y):
 	  return x + y
@@ -1073,23 +1081,43 @@ Consider the following two functions:
 	def g(x, y):
 	  if (p1):
 	    return x + y
+	  return 0
 \end{lstlisting}
 Both functions apply the $+$ operator to the parameters. However, due to the \textit{if} statement the constraint this imposes on the types they can take is quite different. In function \textit{f} the operation is unconditional and so we know that both parameters are required to be of a type (or a sub-type of a type) which can used in this operation. On the other hand, in the function \textit{g} this statement may not be executed in which case we can see that no type errors can occur. This leads us to conclude that we must take the context of the statement into account before we issue a constraint.
 
 \subsubsection{Inferring the Possible Return Types of a Function}
 To do this we simply create a type variable to represent the return type of the function, $\alpha$. For every \texttt{return} statement we come across we create a subset relationship between the value of the return statement and our type variable. For example:
 \begin{lstlisting}[mathescape]
-	def f():
-	  if (p1):
-	    return 5
-	  if (p2):
-	    return "Hi"
-	  return
+    def f():
+      if (p1):
+        return 5
+      if (p2):
+        return "Hi"
+      return
 \end{lstlisting}
 Here we create the subset relationships $\texttt{int} \subseteq \alpha$, $\texttt{float} \subseteq \alpha$, $\texttt{string} \subseteq \alpha$ which would result in $\alpha$ assuming the type set $\{\texttt{int}, \texttt{float}, \texttt{string}\}$. \\
 \indent There is a the possibility of a relationship between the types of the parameters and the return types, e.g.\ a string is always returned if an integer is given. While this addition would improve the accuracy of our type inference, it would be complex to implement and cases where doing so will improve accuracy are likely quite infrequent.
 
-
+\subsubsection{Generators and the yield Keyword}
+The \texttt{generator} type is an iterator which lazily generates values to be iterated over. Functions which return a \texttt{generator} type use the \texttt{yield} keyword in place of \texttt{return}. For example:
+\begin{lstlisting}[mathescape]
+    def f():
+      for x in range(10):
+        yield x + 1
+    
+    it = f()
+    for x in f():
+      print(x)
+\end{lstlisting}
+The function \texttt{f} returns a \texttt{generator} type which iterates the values from 1 to 10. When the function \texttt{f} is first called a \texttt{generator} type is returned and no computation takes place. When the iteration begins on line 6, the function \texttt{f} is entered for the first time and the function body is executed until a \texttt{yield} is reached. The value is returned and computation is paused until another value is required. This continues until the function returns. \\
+\indent The types contained in the \texttt{generator} can be inferred by determining all types which can be `yielded'. However since we currently do not track the types in containers this is not done. \\
+\indent Any function which contains the keyword \texttt{yield} returns a \texttt{generator} type. For instance, despite never being able to reach a \texttt{yield} the following function returns a \texttt{generator} type:
+\begin{lstlisting}[mathescape]
+    def f():
+      return
+      yield 6
+\end{lstlisting}
+For this reason if we encounter a \texttt{yield} keyword contained in a function body we tag the function as generator function and set the return type of that function to the type set \texttt{\{generator\}}.
 
 \subsubsection{Inferring the Types Involving Recursive Functions}
 TODO
@@ -1130,9 +1158,6 @@ Where the $\theta$ function represents modifications to the class instance. We a
 
 The decision was made to use Method One. While Method Two is clearly more accurate, calculating the side-effects of a function would be complicated process and would not fit within the time-scale of the project. \\
 \indent To implement Method One we treat the class variables in the same manner that we treat module-wide global variables.
-
-%\paragraph{Small Improvement: Analyse the \texttt{\_\_init\_\_} Function First}\mbox{}\\
-%The equivalent of a Java/C++ constructor in Python is the \texttt{\_\_init\_\_} function. While Python in no way forces you to declare your \texttt{self} variables in the \texttt{\_\_init\_\_} function, it makes sense to do so and we can reasonably assume that large percentage is declared there. The advantage of analysing this function before the others is that if a global variable is referenced (not assigned to) in a function then to acquire the most accurate typing of that function we want to already having typing information available for that variable. To do this we simply look for the \texttt{\_\_init\_\_} function in the list of the functions contained in the class and move it to the top of the list if it is found.
 
 
 \subsubsection{Inheritance}
@@ -1254,7 +1279,7 @@ Both types of import have their own rules on how they can be legally used. They 
 
 \paragraph*{import \_} \mbox{} \\
 Assume we creating an import in \texttt{travel.py} in the \texttt{src} directory in Figure~\ref{fig:directory}. If we wish to import the module \texttt{src/vehicles/car.py} using the \texttt{import \_} statement we write \texttt{import src.vehicles.car}. If we wish to reference this module then we must use the full name. i.e\ \texttt{x = src.vehicles.car.Car()}. Using this method, \texttt{src}, \texttt{src.vehicles} and \texttt{src.vehicles.car} all are of type \texttt{module}. However only \texttt{src.vehicles.car} contains usable types. For instance, having only imported \texttt{car}, \texttt{src.vehicles.train} would be undefined. The import can be assigned a more elegant name using the \texttt{as} keyword. \texttt{import src.vehicles.car as car} would bind the import to the identifier \texttt{car}. The \texttt{import \_} can only be used to import packages and modules~\cite{VanRossumImports}. Meaning the statement \texttt{src.vehicles.car.Car} would be illegal. \\
-\indent The path to the imported modules does not have to be absolute. From the \texttt{car} module we can import \texttt{train} by simply writing \texttt{import train}. \\
+\indent The path to the imported modules does not have to be absolute. From the \texttt{car} module we can import \texttt{train} by simply writing \texttt{import train}.
 
 \paragraph*{from \_ import \_} \mbox{} \\
 Using the same example we can use \texttt{from \_ import \_} to import \texttt{car} into \texttt{travel} by writing \texttt{from src.vehicles import car}. This binds the module to the identifier \texttt{car}. This style of import also permits directly importing classes and variables. To import the class \texttt{Car} we write \texttt{from src.vehicles.car import Car}. \\
@@ -1378,24 +1403,51 @@ Python can be used in many different kinds of projects. From single module scrip
 \indent In order to see how it runs on genuine scripts, samples have been taken from those posted in an online discussion~\cite{pythonScripts}. \\
 \indent The larger projects have been taken from the beginning of the list of all open source Python3 projects on the Python package index, Pypi~\cite{python3Projects}.
 
+	% Projects
 	\begin{table}
 	\centering
     \begin{tabular}{ | c | c | c | c | c | c |}
     \hline
-    \textbf{Name} & \textbf{Lines of Code} & \textbf{Number of Classes} & \textbf{Number of Functions} & \textbf{Runetime} & \textbf{Number of False Positives} \\ \hline
+    \textbf{Name} & \textbf{LoC} & \textbf{Num. Modules} & \textbf{Num. Classes} & \textbf{Num. Functions} \\ \hline
+    birthday-script & 37 & 1 & 0 & 2 \\ \hline
+    subtitle-downloader & 49 & 1 & 0 & 2 \\ \hline
+    futen & 178 & & 1 & 14 \\ \hline
+    fluent-logger-pyramid & 244 & & 4 & 18 \\ \hline
+    cchardet & 602 & & 2 & 47  \\ \hline
+    sshmap & 1102 &  & 3 & 33 \\ \hline
+    Glances & 6801 & & 50 & 300 \\ \hline
     \end{tabular}
-    \caption{The results of the tool being run on a number of different source of Python code.}
-	\label{table:toolPerformance}
+    \caption{Information regarding the projects used to test the tool.}
+	\label{table:toolTests}
     \end{table}
+    
+
 
 \subsection{False-positives}
+The number of false positives can be seen in Table~\ref{table:toolResults}. The highest amount of false positives returned by any of the project tested on was two. However each of these false positives was the result of a feature not yet supported. For example, the two false positives in \texttt{sshmap} involve calling a function and providing arguments using the argument name.
 
 \subsection{Accuracy}
 The greatest sources of inaccuracy in our tool is the use of builtin modules and being unable to infer the contents of container types. We will discuss the practical implications of each separately.
 
+    % Results
+    	\begin{table}
+	\centering
+    \begin{tabular}{ | c | c | c | c | c | c |}
+    \hline
+    \textbf{Name} & \textbf{Runtime} & \textbf{Pylint Runtime} & \textbf{False Positives} \\ \hline
+    birthday-script & 0.2475 &  & 0 \\ \hline
+    futen & 0.1827 &  & 0 \\ \hline
+    fluent-logger-pyramid & 0.1474 &  & 1 \\ \hline
+    cchardet &  1.9217 &  & 0  \\ \hline
+    sshmap & 1.9816 &  & 2 \\ \hline
+    Glances & 14.1534  &  & 2 \\ \hline
+    \end{tabular}
+    \caption{The results of the tests. Each project was run 10 times. The runtime given is the mean of runtimes. Times are given in seconds.}
+	\label{table:toolResults}
+    \end{table}
+
 \paragraph*{Contents of Containers}\mbox{}\\
-Some variation of a container type has been used in every sample of Python source code we have taken. \\
-\indent Containers are frequently iterated over in \texttt{for} loops. This done in the following way: \texttt{for item\_name in container\_name}. The \texttt{item} is then used in the body of the loop. Since we are unable to infer the types contained in the object we are required to assign \texttt{any} to the item. The use of the item in the body then causes the \texttt{any}s to propagate. Consider the following snippet of code: ...
+Some variation of a container type have been used in every sample of Python source code we have taken. They are frequently iterated over in \texttt{for} loops. This done in the following way: \texttt{for item\_name in container\_name}. The \texttt{item} is then used in the body of the loop for some purpose. Since we are unable to infer the types contained in the object we are required to assign \texttt{any} to the item. The use of the item in the body then causes the \texttt{any}s to propagate. Consider the following snippet of code:
 
 Similarly, any functions calls on a container which refer to the contents, or any direct accesses of the contents, such as indexing, will return \texttt{any}.
 
@@ -1403,13 +1455,7 @@ Similarly, any functions calls on a container which refer to the contents, or an
 Builtin Modules, such as \texttt{re} and \texttt{os} have been used in ... many of our samples. Since these are not supported their identifier is given \texttt{any} type. Any function call or variable access made on these imports will return \texttt{any}.
 
 \subsection{Runtime}
-%The ways in which we can test the runtime of our system are:
-%\begin{itemize}
-%	\item Lines of code
-%	\item Number of modules
-%	\item Number of functions
-%	\item Number of classes
-%\end{itemize}
+The runtime of our tool can be seen in Table~\ref{table:toolResults}.
 
 \subsection{Bug Checking Capabilities}
 Our system is capable of finding errors regarding the following:
@@ -1426,7 +1472,7 @@ Our system is capable of finding errors regarding the following:
 	\item Whether an object used as an index implements the \texttt{\_\_getitem\_\_} method
 	\item Whether an object used with the \texttt{in} operator implements the \texttt{\_\_contains\_\_} method
 \end{itemize}
-A this time our tool is not accurate enough to currently be used as a full-blown bug checker. However it is capable of finding basic programming errors. These include mis-typing variable names, using the wrong variable name in a statement.
+A this time our tool is not accurate enough to currently be used as a full-blown bug checker due to the current limitations. In small programs with a limited amount of imports and container type use then it is capable of finding fairly deep type bugs. However in programs which depend on builtin modules and containers then currenty our tool is only capable of finding basic programming errors due to the propagation of \texttt{any} types. These basic errors include mis-typing variable names, using the wrong variable in a statement.
 
 \newpage
 \section{Conclusion}
@@ -1437,11 +1483,46 @@ Throughout this project we have looked at types in programming languages, type i
 \subsection{Future work}
 The brunt of the future work available is improving on the accuracy of our tool. This can be done in the following ways:
 
-\subsubsection*{Calculating the side-effects of functions}
-As we saw in the \textit{Evaluation} section, the greatest weakness of our tool is its inability to keep track of the types in container types. Due to the fact that most containers are mutable types the side-effects of functions needs to be tracked before this becomes plausible. This can
-
 \subsubsection*{Supporting Builtin Modules}
 In order to build a type checker which can infer types accurately enough to become a tool of real use the builtin modules need to be supported. Some builtin module was used in all of the examples we evaluated our tool on. Typing the import as \texttt{any} type causes great inaccuracy to propagate through our analysis. However dealing with these are not simple. One idea would be to run our tool on these modules and use the types we are able to infer. Unfortunately, this is not an option as a large number of Python builtin modules, such as \texttt{os}, are largely written in \texttt{C} for the purposes of speed. Parsing the modules by hand is also not a realistic option due to the sheer number of modules and their size. We believe the best way to support these would be utilise the work of others. Similar to the manner we supported builtin functions, mypy has inferred the types of functions and global variables within a number of these modules~\cite{mypy}. At the time of writing, mypy's documentation of the modules is not complete. For example, there is currently no support for the \texttt{datetime} module. But with the most frequently used largely covered, such as \texttt{re}, \texttt{os} and \texttt{math}, there is certainly enough information to act as a promising starting point.
+
+\subsubsection*{Calculating the side-effects of functions}
+As we saw in the Evaluation section, the greatest weakness of our tool is its inability to keep track of the types in container types. Due to the fact that most containers are mutable types, the side-effects of functions needs to be tracked before this becomes plausible. Calculating the side-effects of functions will also open the gateway to inferring the possible states of object at a given point in the source code. \\
+\indent To do this we need to analyse a function to determine the following:
+\begin{itemize}
+	\item What changes it may make to the global variables within the class
+	\item What changes it may make to the the parameters given
+	\item What other functions it may call
+\end{itemize}
+For example, consider the following function:
+\begin{lstlisting}[mathescape]
+    def f(x):
+      y = 5
+      x.append(y)
+      self.f[y] = 5.0
+      g()
+\end{lstlisting}
+Line 2 has no effect and so we ignore it. Line 3 makes a change to the parameter \texttt{x} adds a type \texttt{int} to the contents. Line 4 it makes a change the global variable \texttt{self.f} and adds a type \texttt{int} to the keys and a type \texttt{float} to the values. On line 5 the the function \texttt{g} is called and so any changes that the function \texttt{g}, we say that \texttt{f} also causes. \\
+\indent If the function \textit{may} make a change, such as if the change is within a \texttt{if} block, then a conservative approach will need to be taken and assume that it always performs it.
+
+\subsubsection*{varargs and kwargs}
+
+
+\subsubsection*{Improving Exceptions}
+Currently our tool assumes that all statements within a \texttt{try} block can cause an exception. This is, of course, not true. As an extreme example, the statement \texttt{pass} in Python has no effect, yet currently our tool assumes it is capable of causing an exception. Improving upon this will improve, both, accuracy and speed. The improvement on accuracy will be that the values of variables will be sent to the \texttt{finally} or \texttt{except} block if they present at a statement which can cause an exception. The speed will increase due to that the fact the CFG and SSA are required to do less work and their will be less $\phi$ functions to evaluate in the type checker. \\
+\indent It would be not be simple to improve upon this method. We can only think of one solution. Catalogue all of the statements which can definitely cause exceptions, such as \texttt{x / y} which can cause a \texttt{ZeroDivisionError}, and all statements which definitely can not cause exceptions, such as \texttt{pass}. \\
+\indent A simpler improvement may be to determine which statements are capable of causing \textit{which} exception, rather than whether they cause them at all. Currently if there is more than one \texttt{except} block we link all statements to all \texttt{except} block. However this is also not always true. For example, consider the following code:
+\begin{lstlisting}[mathescape]
+    try:
+      x / y
+      z[0]
+      a = b + c
+    except ZeroDivisionError:
+      # Do something
+    except IndexError:
+      # Do something
+\end{lstlisting}
+Knowing that \texttt{ZeroDivisionError} statements can only be caused by a division and that \texttt{IndexError} can only be caused by indexing into a variable greatly improve the accuracy the tool. We would know only to link the block at line 2 to the block at line 6, to link the block at line 3 to the block at line 8 and that line 4 can cause none of the exceptions listed. This can also be done with \texttt{ImportError}, \texttt{KeyError}, \texttt{OverflowError}, \texttt{StopIteration} and \texttt{FileNotFoundError} to name a few. However dealing with user-defined exceptions would still remain very difficult and a cautious approach will still need to be taken.
 
 %Throughout this project we have looked at the background of cryptography, access control and how they can be brought together to create our hierarchy, we looked at how we can use these to create our system and how we can solve potential issues in the \textit{Design} section. From there we described the structure of our work and went on to evaluate it in a number of ways. We benchmarked our system against Dropbox, looked at how potential users found using our system and what markets our work may perform well in, before finally looking at how secure our system is.
 %\newline \indent This project aims to increase the automation in file sharing with different groups of friends who require different access control constraints. Our solution achieves this by using cryptography. This is done without troubling the users with technicalities. A user need not know what a `key' is, or how to derive and use them to access files. Most actions are performed in the GUI by selecting desired files and clicking the button for the desired action.
