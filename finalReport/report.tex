@@ -554,7 +554,7 @@ The primary limitation of success typings is that it resorts to labelling a func
 
 
 \subsection{Soft Typing}
-Cartwright and Fagan extended the Hindley-Milner $\mathcal{W}$ algorithm to introduce soft typing~\cite{cartwright91}. The aim of soft typing is not to reject a program for which static type checking fails but to ``transform arbitrary programs to equivalent programs that type check.'' Soft typing works by inserting run-time checks, resulting from ``narrowers,'' when a program fails to statically type a program, i.e.\ when unification in $\mathcal{W}$ fails. Narrowers are type casts which blindly convert from the current type to the destination type. Conversion errors are caught by the run-time checks. \\
+Cartwright and Fagan extended the Hindley-Milner $\mathcal{W}$ algorithm to introduce soft typing~\cite{cartwright91}. The aim of soft typing is not to reject a program for which static type checking fails but to ``transform arbitrary programs to equivalent programs that type check.'' Soft typing works by inserting run-time checks, resulting from ``narrowers,'' when a program fails to statically type a program, i.e.\ when unification in $\mathcal{W}$ fails. Narrowers are type casts which blindly convert from the current type to the destination type. Conversion errors are caught by the run-time checks.
 \paragraph{Limitations}\mbox{} \\
 Soft typing requires a program to be run in order to notify the programmer about errors. Our aim is to create a static debugger and so our aims are incompatible with soft typing.
 
