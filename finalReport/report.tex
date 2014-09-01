@@ -65,16 +65,16 @@
 High level, dynamically typed languages such as Python have been gaining popularity in recent years. Python is now used as a teaching language in 80\% of the top ten Computer Science department in the USA, surpassing previous favourites such as Java~\cite{guoTeaching}. Python has also become a force in industry and has been picked up by influential software engineering companies such as Google and Yahoo!~\cite{organisationsPython}. One reason for this is a high level of productivity involved in using such languages, partly due to the programmer being free from having to declare the types of the variables used. However, the benefits gained from this design decision are at the expense of the security provided by a statically typed language. Type errors which are easily caught by a compiler for a statically typed language, such as Java or C++, can be left unnoticed in Python source code into the release stage of a product where its execution may prove fatal. \\ % Specifying types is regarded as superfluous by many in the Python community.
 \indent While there has been significant talk of adding optional static typing to Python~\cite{guido1, guido2, guido3, guidoLatest}, it seems that this will be limited to annotations similar to those currently employed in the open source project mypy\footnote{\url{http://mypy-lang.org/}}. This means that even if support is added in the near future it will be some time before this is incorporated into large projects. \\
 \indent Tools attempting to provide the benefits of a statically typed language to unedited Python do exist, such as Pylint\footnote{\url{http://www.pylint.org/}} and PyChecker\footnote{\url{http://pychecker.sourceforge.net/}}, however their usability is hampered by the number of false positives returned and the amount of configuration needed. \\
-\indent This project aims to design and implement a type checker for Python which returns few false positives. The basis for our implementation is a method called success typings~\cite{lindhal06}. We harness this idea in order to provide a over-approximation of how a function is intended to be used without relying on how the function is actually used. This allows us to determine that a violation of a function's contract is guaranteed to be a programming error. We describe success typing as well as the general theory behind type systems in Chapter 2. We then examine similar products and techniques and show the limitations in their application. \\
+\indent This project aims to design and implement a type checker for Python which returns few false positives. The basis for our implementation is a method called success typings~\cite{lindhal06}. We harness this idea in order to provide a over-approximation of how a function is intended to be used without relying on how the function is actually used. This allows us to determine that a violation of a function's contract is guaranteed to be a programming error. We describe success typing as well as the general theory behind type systems in Chapter 3. We then examine similar products and techniques and show the limitations in their application. \\
 \indent Using the methods and techniques we described, we begin to define our solution and determine the best way to type inference each programming construct in Python. Once we decide upon the best methods we then set about evaluating the best 3\textsuperscript{rd} party software we can use to achieve these tasks and why we should not implement our own solutions. \\
-\indent In Chapter 3 we describe what we have done and evaluate it. We evaluate our implementation in four ways: speed, accuracy, ease of use and the number of false positives/negatives it reports. We benchmark our solution against existing type checkers for Python.
+\indent In Chapter 6 we describe what we have done and evaluate it. We evaluate our implementation in four ways: the number of false positives it reports, accuracy, speed, and its ability to find bugs. We benchmark our solution against existing type checkers for Python.
 
 \subsection{Objectives}
 The objectives for this project are as follows:
 \begin{itemize}
 	\item \textbf{A low number of false positives} - Our solution should report a minimal number of errors which are then found not to be genuine bugs in the program. A `genuine' bug can be defined as one which is guaranteed to cause an un-caught run-time exception when executed.
 	\item \textbf{Static} - Our solution should not require the user to run the program.
-	\item \textbf{Out-of-the-box} - The user should not need to specify the way in which the tool should run, such as command line arguments. The user also should not have to modify their program in any way in order to successfully use our solution.
+	\item \textbf{Out-of-the-box} - The user should not have to modify their program in any way in order to successfully use our solution.
 	\item \textbf{Fast} - Our system will ideally run at a high speed, similar to other type checkers for Python.
 \end{itemize} 
 
@@ -411,8 +411,22 @@ The main problem which is required to be solved by this project is how to static
 \subsection{Hindley-Milner}
 The Hindley-Milner algorithm was developed by Robin Milner based on the work of J. Roger Hindley. Hindley described the \textit{principal
 type schema}~\cite{hindley69}, ``which is the most general polymorphic type of an expression, and showed that if a combinatorial term has a type, then it has a principal type.''~\cite{cardelli87} Milner's contribution was an extension to Hindley's \textit{principal type schema} which included the ``notion of generic and non-generic type variables, which is essential for handling declarations of polymorphic functions.''~\cite{cardelli87} Milner's work culminated in the type inference system for the ML language~\cite{milner84}. \\
-\indent The Hindley-Milner algorithm uses the operations performed on expressions to generate constraints on the types of those expressions. This is done by annotating the nodes of an expression tree with the constraints in a bottom up fashion\footnote{The Hindley-Milner algorithm can be implemented top-down, called the $\mathcal{M}$ algorithm, or bottom-up, called $\mathcal{W}$~\cite{heeren02}. However, the bottom-up version appears to be much more common.}. \\ The constraint is solved to infer a type for a term using a \textit{unification} algorithm.
-Bugs can be detected by determining whether there are inconsistencies in the set of constraints.
+\indent The Hindley-Milner algorithm uses the operations performed on expressions to generate constraints on the types of those expressions. This is done by annotating the nodes of an expression tree with the constraints in a bottom up fashion\footnote{The Hindley-Milner algorithm can be implemented top-down, called the $\mathcal{M}$ algorithm, or bottom-up, called $\mathcal{W}$~\cite{heeren02}. However, the bottom-up version appears to be much more common.}. \\ The constraint is solved to infer a type for a term using a \textit{unification} algorithm. \\
+\indent For an example of how the algorithm is performed, consider the following function written in Standard ML~\cite{cannonlocalizedtype}:
+\begin{lstlisting}
+    fun foo x y =
+      if x = y
+        then x - y
+        else x + y
+    ;
+\end{lstlisting}
+Using the $\mathcal{W}$ version of the algorithm, the function is determined to have parameter types \texttt{(\{int\}, \{int\})} and return type \texttt{\{int\}}. This calculated in five steps. \\
+\indent The first step is to initialise the function parameters to empty type variables, \texttt{a} and \texttt{b}. \\
+\indent Standard ML requires two variables to be of the same type to be legally compared. The statement on line 2, \texttt{if x = y}, imposes the constraint on the two type variables, \texttt{a = b}, or \texttt{a ⊆ b} and \texttt{b ⊆ a}. \\
+\indent The \texttt{then} branch is evaluated. Standard ML only permits the \texttt{int} type to be used in conjunction with the \texttt{-} operator. The types of \texttt{a}, and therefore \texttt{b}, is set to the \texttt{int} type. \\
+\indent For the fourth step, the \texttt{else} branch is evaluated but no new constraints are imposed. The restriction created by the \texttt{+} operator is the same as that for the \texttt{-} operator. \\
+\indent The final step determines the return type of the function. Since the \texttt{if} statement is the only expression in the function. Both branches result in an \texttt{int} type and so the return type of the function is determined be \texttt{int}. \\
+\indent Bugs can be detected using Hindley-Milner by determining whether there are inconsistencies in the set of constraints.
 
 \paragraph{Limitations}\mbox{}\\
 The technique does not allow a polymorphic argument to be of a different type in different locations. This is because unification requires there to be a single type for all appearances of a variable. For this reason Hindley-Milner is unable to infer a type for programs such as the following:
@@ -606,9 +620,9 @@ Furr et al. developed Diamondback Ruby (DRuby)~\cite{furr09} in order to discove
 
 \newpage
 \section{Design of the Type Inferencing Algorithm}
-Our primary aim is to create a type checker for Python which returns a minimum amount of false positives. This decision has largely dictated the design of our algorithm. We take a cautious approach to handling exceptions. We do this by assuming that every statement within a \texttt{try} is capable of causing an exception and leading the handlers. \\
-\indent We assume that any code written by the programmer is possibly incorrect. Due to this restriction we can not use the function calls to determine the types taken by function arguments, the technique adopted by most of the type inferencers described in our background research. For this reason we follow the ethos of success typings to infer types for function arguments and look at the context in which they are used in the function body. \\
-\indent We treat global variables separately from local variables. We do not attempt to determine which types a global variable can have at certain points in a program, a task which is perhaps impossible, so we assume they can be all of the possible types they can take at all times. However the path taken by local variables is easier to determine and so we perform this analysis. Due to this it can be said we take a flow-sensitive approach for local variables and flow-insensitive approach for global variables.
+Our primary aim is to create a type checker for Python which returns a minimum amount of false positives. This decision has largely dictated the design of our algorithm. We take a cautious approach to handling exceptions. We do this by assuming that every statement within a \texttt{try} is capable of causing an exception and leading to the exception handlers. \\
+\indent We assume that any code written by the programmer is possibly incorrect. Due to this restriction we can not use the function calls to determine the types taken by function arguments, the technique adopted by most of the type inferencers described in our background research. For this reason we follow the ethos of success typings which is to infer types for function arguments by observing the context in which they are used in the function body. \\
+\indent We treat global variables separately from local variables. We do not attempt to determine which types a global variable can have at certain points in a program, a task which is perhaps impossible. Therefore we assume global variables can be all of the possible types they can take at all times. However the path taken by local variables is easier to determine and so we perform this analysis. Due to this it can be said we take a flow-sensitive approach for local variables and flow-insensitive approach for global variables.
 
 
 
@@ -838,8 +852,8 @@ The exit block for the inner \texttt{if} is not needed as there are no further s
 
 \subsection{SSA Form}
 The implementation of SSA renaming was performed as described in the background section. However, few additional allowances were required for the system to function correctly. These will be explained here. \\
-\indent Having created the CFG our SSA naming can ignore specifics programming constructs such as \texttt{for}, \texttt{if} and \texttt{while}. The knowledge required to successfully create the phi-nodes are encapsulated for these constructs are encapsulated in the exits for each basic blocks in the CFG. \\
-\indent The algorithm works by analysing each function at a time. A dictionary is held with each variable name eligible within the current scope. The dictionary is reset to containing only module/class wide variables at the end of each function. When a identifier is encountered it is determined whether we wish to rename it. If we do then we check whether it is a \texttt{store} or \texttt{load} operation. A \texttt{store} checks whether the identifier has been referenced beforehand. If hasn't we add the identifier to the dictionary along with the value \texttt{1} and modified by appending that value. Otherwise the identifier's value is incremented and renamed with the new value. A \texttt{load} operation uses the latest the latest value for that identifier. Once we reach the end of a basic block the state of current block's dictionary is forwarded to all of the block's exits.
+\indent Having created the CFG our SSA naming can ignore specifics programming constructs such as \texttt{for}, \texttt{if} and \texttt{while}. The knowledge required to successfully create the phi-nodes  for these constructs are encapsulated in the exits for each basic blocks in the CFG. \\
+\indent The algorithm works by analysing each function at a time. A dictionary is held with each variable name eligible within the current scope. The dictionary is reset to containing only module/class wide variables at the end of each function. When a identifier is encountered it is determined whether we wish to rename it. If we do then we check whether it is a \texttt{store} or \texttt{load} operation. A \texttt{store} checks whether the identifier has been referenced beforehand. If it hasn't we add the identifier to the dictionary along with the value \texttt{1} and we modify the node containing the variable name by appending that value to the end of the name, so, for instance, \texttt{x} becomes \texttt{x1}. Otherwise the identifier's value is incremented and renamed with the new value. A \texttt{load} operation uses the latest value for that identifier for renaming. Once we reach the end of a basic block the state of current block's dictionary is forwarded to all of the block's exits.
 
 \subsubsection{Global and Local Variables}
 We consider a global variable to be a variable in the Module-wide or Class-wide namespace. This includes all imports, function identifiers and all of the built-in functions and classes. A local variable is one which is limited to the scope of a function. \\
@@ -859,7 +873,7 @@ The references to $self.x$ refer to the same variable. The principles of SSA nam
 \indent Separating which variables are global and which are local is not simple due to the fact it can change line-by-line.
 
 \paragraph*{Global Keyword}\mbox{} \\
-The keyword \texttt{global} in Python is used to enable the programmer to write to the global namespace within a function. By default the programmer has immediate read access to the global scope and read/write access to the local scope. This means the \texttt{global} keyword is only necessary when a write to the global scope is to take place within the function. With the keyword global variables and global functions can be defined dynamically at runtime. If an identifier to a global variable is modified without indicating this with the \texttt{global} keyword then a new local variable with the same name is created. Consider the following code:
+The keyword \texttt{global} in Python is used to enable the programmer to write to the global namespace within a function. By default the programmer has immediate read access to the global scope and read/write access to the local scope. This means the \texttt{global} keyword is only necessary when a write to the global scope is to take place within the function. With the \texttt{global} keyword global variables can be defined dynamically at runtime. If an identifier to a global variable is modified without indicating this with the \texttt{global} keyword then a new local variable with the same name is created. Consider the following code:
 \begin{lstlisting}
     x =  5
     def f():
@@ -872,9 +886,9 @@ The keyword \texttt{global} in Python is used to enable the programmer to write 
       x = 5.0
       y = x
 \end{lstlisting}
-Function \texttt{f} does not modify the global variable. Instead a local variable is created. In the rest of the function \texttt{x} will reference the local variable created. The global \texttt{x} cannot be accessed unless a highly dynamic method is used, such as \texttt{globals().get("x")} where the function \texttt{globals} returns a dictionary containing all global variables. \\
-It is common in Python to use the \texttt{global} keyword at the beginning of the function to increase clarity, however Python code in which the global keyword is used \textit{after} the variable has been assigned functions correctly, i.e.\ $x$ in the global namespace is assigned the value (despite the Python interpreter issuing a warning to the programmer.) Therefore we need only worry if the a variable name is used in conjunction with the keyword \textit{somewhere} in the function. \\
-Using this knowledge every time a global variable is edited inside of a function we begin the SSA naming unless the identifier is inside of a list of variables which are used in conjunction with the \texttt{global} keyword at some point in the function. For example:
+Function \texttt{f} does not modify the global variable. Instead a local variable is created which displaces the global variable \texttt{x} from the function namespace. In the rest of the function \texttt{x} will reference the local variable created. The global \texttt{x} cannot be accessed unless a highly dynamic method is used, such as \texttt{globals().get("x")} where the function \texttt{globals} returns a dictionary containing all global variables. \\
+It is common in Python to use the \texttt{global} keyword at the beginning of the function to increase clarity, however Python code in which the global keyword is used \textit{after} the variable has been assigned functions correctly, i.e.\ $x$ in the global namespace is assigned the value (despite the Python interpreter issuing a warning to the programmer.) Therefore we need only worry if the variable name is used in conjunction with the keyword \textit{somewhere} in the function. \\
+\indent Using this knowledge, every time a global variable is edited inside of a function we begin the SSA naming unless the identifier is inside of a list of variables which are used in conjunction with the \texttt{global} keyword at some point in the function. For example:
 \begin{lstlisting}
     # Set x to be a module-wide global
     x =  5
@@ -893,7 +907,7 @@ Using this knowledge every time a global variable is edited inside of a function
 In function \texttt{f} the global keyword is not used with \texttt{x} and so we perform SSA on the variable whereas in function \texttt{g} it has been used and so the identifier is not renamed.
 
 \subsubsection{$\phi$ Function Generation}
-The two options for generating $\phi$ functions were described in the background section. These were: to calculate dominance frontiers, or to naively place them for all variables at the beginning of each block. The decision was made to implement the naive approach. This decision was taken as we felt it was more important, and interesting, to cover more of the Python language than to increase the speed of the tool. We currently generate $\phi$ functions for all local variables within the function and for global variables which have been assigned to without using the \texttt{global} keyword earlier in the function.
+The two methods for generating $\phi$ functions were described in the background section. These were: to calculate dominance frontiers, or to naively place them for all variables at the beginning of each block. The decision was made to implement the naive approach. This decision was taken as we felt it was more important, and interesting, to cover more of the Python language rather than to increase the speed of the tool. We currently generate $\phi$ functions for all local variables within the function and for global variables which have been assigned to without using the \texttt{global} keyword earlier in the function.
 
 \subsection{Type Inference}
 Type inference in our system works by creating a network modelling the data flow of types. The inference works by propagating primitive types through the constraints until the system has been completely satisfied. The types supported by this system are:
@@ -915,10 +929,10 @@ Type inference in our system works by creating a network modelling the data flow
 	\item \texttt{function} - a type representing a function.
 \end{itemize}
 A thorough description of these types can be seen in~\cite{pythonTypeDocs}. \\
-\indent All but \texttt{int} and \texttt{float} have built-in functions which can be called. Almost all of these are supported. In total, across all built-in classes, 177 functions are supported at the time of writing. For conciseness they have not be been documented here. For a significant number of these functions, the information necessary to add them to our tool was extracted from mypy~\cite{mypy}. \\
-\indent Python provide an number of built-in functions which can be used freely. For example, \texttt{abs} takes an \texttt{int} or \texttt{float} and returns the absolute value of that number. At the time of writing, 53 built-in functions are supported which covers the most frequently used of these functions. For conciseness they have not be been documented here. \\
-\indent On top of these types we make use of a type not find Python, \texttt{any}, which represents the fact the variable could be any possible type and as such is permitted in all circumstances. \\
-\indent Initially a pass over the entire program is made and every variable encountered is initialised to an empty type variable. Each context in the program has a mapping of the name of every variable accessible in the current scope to its corresponding type variable. In the case that access of variable is permitted in more than one scope, the corresponding type variable is passed from the parent context to the child.
+\indent All but \texttt{int} and \texttt{float} have built-in functions which can be called. Almost all of these are supported. In total, across all built-in classes, 177 functions are supported at the time of writing. For brevity they have not be been documented here. For a significant number of these functions, the information necessary to add them to our tool was extracted from mypy~\cite{mypy}. \\
+\indent Python provide an number of built-in functions which can be used freely. For example, \texttt{abs} takes an \texttt{int} or \texttt{float} and returns the absolute value of that number. At the time of writing, 53 built-in functions are supported which covers the most frequently used of these functions. For brevity they have not be been documented here. \\
+\indent In addition to these types we make use of a type not found Python, \texttt{any}, which represents the fact the variable could be any possible type and as such is permitted in all circumstances. \\
+\indent Initially a pass over the entire program is made and every variable encountered is initialised to an empty type variable. Each context in the program has a mapping from the name of every variable accessible in the current scope to its corresponding type variable. In the case that access to the variable is permitted in more than one scope, such as module-wide global in a function, the corresponding type variable is passed from the parent context to the child.
 
 \subsubsection{Inferring the Types of Simple Assignments}
 All changes to the types of variables involve assignment. For each assignment the variable on the left-hand side (LHS) assumes all of the types which the right-hand side (RHS) can possibly have. The following shows a number of ways in which this can be done.
@@ -959,7 +973,7 @@ A comprehensive list of the binary operators and the types which can be legally 
 Python has a small number of unary operators. These are all numeric operators, such as the bitwise not, $\sim$, aside from the boolean operator \texttt{not}. The numeric operators can only be applied to \texttt{ints} and \texttt{floats}, however the \texttt{not} operator can be legally applied to any type.
 
 \subsubsection{Inferring the Types in a `Container' Type}
-By a `container' we refer to any type which can contain other types. In the built-in types these are \texttt{list}, \texttt{dict}, \texttt{set} and \texttt{tuple}. \\
+By a `container' we refer to any type which can contain a sequence of other types. In the built-in types these are \texttt{list}, \texttt{dict}, \texttt{set}, \texttt{generator} and \texttt{tuple}. \\
 \indent Types can be added to these container typically through indexing and using functions. For example, using a list:
 \begin{lstlisting}
     x = []
@@ -1309,7 +1323,7 @@ With the exception of the first, each \texttt{.} represents one directory higher
 \end{figure}
 
 
-\paragraph*{Importing Items From Within A Project}
+\paragraph*{Importing Items From Within A Project}\mbox{}\\
 As with the examples given using Figure~\ref{fig:directory}, imports are frequently used to import code from one module in a project to another. We support this by simulating the rules described for each import style. After having created all of the empty type variables for all of the global variables within each module we then proceed to evaluate the the imports. By following the import rules we search through a tree replicating the project hierarchy. The leafs of contain a \texttt{module} type which then itself contains a dictionary containing all of the empty type variables. The type variables corresponding to the target of the import is then added to the global variables of the module containing the import. \\
 \indent Both styles of import and all of the rules are supported. That is, except for \texttt{import a.b.c} with no \texttt{as} name specified. This is simply because that this import is so cumbersome that it is not used very frequently. However, adding support for this import is not difficult. It can be simulated by creating a new \texttt{module} type for all identifiers preceding the last, with each \texttt{module} type containing only a single global variable corresponding the the identifier succeeding it. So, for \texttt{a.b.c}, where \texttt{c} is the target module, we create a new \texttt{module} type for \texttt{a} and \texttt{b}, where \texttt{a} contains only the single global variable, \texttt{b}, and \texttt{b} contains only a single global variable which is the actual imported \texttt{module}, \texttt{c}.
 
@@ -1343,13 +1357,13 @@ Some of these limitations, such as tracking the state of an object, have already
 The modules included in the standard library are not automatically imported but are built-in and are available to import without any further work. The most popular of these include \texttt{os}, \texttt{sys}, \texttt{re} and \texttt{json}. Currently these are not supported. We deal with these by simply assigning \texttt{any} to the identifier bound to the import when we are unable to locate it.
 
 \paragraph*{Installed Packages}\mbox{} \\
-3rd party packages are popular in Python. There are two ways these can used: by including the package in the project directory, or by installing the package on the machine the code is running on. If the package is included in the directory then we are able to perform type inference on that as well. However if they are installed then we have no way of determining their location. The packages can be installed anywhere so long as the path to the directory is included in the \texttt{PYTHONPATH} which is a field to indicate where the Python interpreter should search for definitions. This field can be accessed at runtime using the built-in module \texttt{sys}. The attribute \texttt{sys.path} returns a list containing all entries in \texttt{PYTHONPATH}. Therefore we could navigate to all directories in \texttt{PYTHONPATH} in an attempt to locate all installed packages and perform type inference on them. However this is not currently done. Since this means we unable to locate the packages, we assign \texttt{any} to the import name.
+3rd party packages are popular in Python. There are two ways these can used: by including the package in the project directory, or by installing the package on the machine the code is running on. If the package is included in the directory then we are able to perform type inference on that package as well. However if they are installed then we have no simple way of determining their location. The packages can be installed anywhere providing the path to the directory is included in the \texttt{PYTHONPATH} which is a field to indicate where the Python interpreter should search for definitions. This field can be accessed at runtime using the built-in module \texttt{sys}. The attribute \texttt{sys.path} returns a list containing all entries in \texttt{PYTHONPATH}. Therefore we could navigate to all directories in \texttt{PYTHONPATH} in an attempt to locate all installed packages and perform type inference on them. However this is not currently done. Since this means we unable to locate the packages, we assign \texttt{any} to the import name.
 
 \paragraph*{Built-in Exceptions and Warnings} \mbox{} \\
-Python provides built-in classes which are used in exception handling. The base class for these exceptions is \texttt{Exception}. The subclasses refer to specific exceptions which can occur, such as \texttt{ZeroDivisionError}. Classes for warnings are also provided which cover unusual, but non-exceptional, activity in Python code. Any example of this is the \texttt{DeprecationWarning} which is used when functions and classes are used for which support has discontinued. Currently we include of all of the respective identifiers in the namespace along with the \texttt{any} type. This suppresses any false positives but the lack of support means lose use bug checking opportunities related to how instances of these classes are used.
+Python provides built-in classes which are used in exception handling. The base class for these exceptions is \texttt{Exception}. The subclasses refer to specific exceptions which can occur, such as \texttt{ZeroDivisionError}. Classes for warnings are also provided which cover unusual, but non-exceptional, activity in Python code. Any example of this is the \texttt{DeprecationWarning} which is used when functions and classes are used for which support has discontinued. Currently we include all of the respective identifiers in the namespace along with the \texttt{any} type. This suppresses any false positives but the lack of support means we lose bug checking opportunities related to how instances of these classes are used in \texttt{except} bodies.
 
 \paragraph*{Dynamically Defined Functions and Classes} \mbox{} \\
-Unlike most languages, such as Java and C++, classes and functions are first-class citizens. This means there are no restrictions and how they may be defined. A by-product of this is that Python permits functions and classes to be defined within functions. Consider the following example:
+Unlike most languages, such as Java and C++, classes and functions are first-class citizens. This means there are no restrictions on how they may be defined. A by-product of this is that Python permits functions and classes to be defined within functions. Consider the following example:
 \begin{lstlisting}[mathescape]
     def outer(x):
       def inner(y):
@@ -1362,7 +1376,7 @@ In the function \texttt{outer} the function \texttt{inner} is defined dynamicall
       return 5 + y
 \end{lstlisting}
 The variable containing the return type of \texttt{outer} is then free to be called with its own arguments. The function will then perform in the expected manner. \\
-\indent A number of problems arise as a result of this. Firstly, special consideration needs to be taken when generation the control flow graph. The definition of a function does not disturb control flow and so further branching occurs. However, the dynamically defined function consists of its own independent CFG and so as a result we end up with nested CFGs. This can be seen in Figure~\ref{fig:dynamicFuncCFG}. Similarly, at the SSA stage special consideration is needed. Changes in the inner function to variables in scope of the outer function are not applicable outside of the inner function. For instance, any changes to the variable \texttt{x} in the function \texttt{inner} do change the value of \texttt{x} if what was to be used after the definition of \texttt{inner}. However the opposite does apply. The most recent assignment of a variable before the inner function definition is used within the definition. Another problem which needs to be considered is that the name of the dynamically defined function is a local variable within the scope of the outer function. This means SSA naming needs to be performed on the inner function. \\
+\indent A number of problems arise as a result of this. Firstly, special consideration needs to be taken when generating the control flow graph. The definition of a function does not disturb control flow and so not branching occurs at that point. However, the dynamically defined function consists of its own independent CFG and so as a result we end up with nested CFGs. This can be seen in Figure~\ref{fig:dynamicFuncCFG}. Similarly at the SSA stage, special consideration is needed. Changes in the inner function to variables in the scope of the outer function are not applicable outside of the inner function. For instance, any changes to the variable \texttt{x} in the function \texttt{inner} do change the value of \texttt{x} after the definition of \texttt{inner}. However the opposite does apply. The most recent assignment of a variable before the inner function definition is used within the definition, so if \texttt{x} was assigned a \texttt{string} the line before the definition of \texttt{inner} then that value would be applicable with the function definition. Another problem which needs to be considered is that the name of the dynamically defined function is a local variable within the scope of the outer function. This means SSA naming needs to be performed on the inner function name. \\
 \indent A dynamically defined class is defined in much the same way. Consider the following example:
 \begin{lstlisting}[mathescape]
     def outer(x):
@@ -1372,7 +1386,7 @@ The variable containing the return type of \texttt{outer} is then free to be cal
       return C()
 \end{lstlisting}
 All of the problems involved in dynamically defining functions still apply. However there are some differences. In the example above \texttt{C} is a local variable within \texttt{outer} and so we perform SSA on the class name. However \texttt{f} is a global variable with the scope of the class \texttt{C} and so we treat that as we normally treat functions within classes. Similarly, all local variables inherited from the function \texttt{outer} become global variables within the scope of the class \texttt{C}. \\
-\indent Python provides syntactic sugar for dynamically defined functions in the way of function decorators. This is done by defining a function or class which implements the \texttt{\_\_call\_\_} method. The function to be wrapped is then annotated with \texttt{@name}. Consider the following example which demonstrates both of these cases:
+\indent Python provides syntactic sugar for dynamically defined functions and classes in the way of function decorators. This is done by defining a function or class which implements the \texttt{\_\_call\_\_} method. The function to be wrapped is then annotated with \texttt{@name}. Consider the following example which demonstrates both of these cases:
 \begin{lstlisting}[mathescape]
     class Wrapper():
       def __init__(self, f):
@@ -1393,8 +1407,8 @@ All of the problems involved in dynamically defining functions still apply. Howe
     def inner():
       # Do something
 \end{lstlisting}
-Here \texttt{\_\_init\_\_} of \texttt{Wrapper} is called when the function \texttt{foo} is first encountered by the interpreter (not when it first executed) with the function \texttt{foo} as the argument. The \texttt{\_\_call\_\_} is called when the function \texttt{foo} is called. \\
-\indent Currently dynamic generation of classes and functions is not supported.
+Here \texttt{\_\_init\_\_} of \texttt{Wrapper} is called when the function \texttt{foo} is first encountered by the interpreter (not when it is first executed) with the function \texttt{foo} as the argument. The \texttt{\_\_call\_\_} is called when the function \texttt{foo} is called. \\
+\indent Currently dynamic generation of classes and functions is not supported in our tool.
 
 \begin{figure}
 \centering
@@ -1406,7 +1420,7 @@ Here \texttt{\_\_init\_\_} of \texttt{Wrapper} is called when the function \text
 
 \newpage
 \section{Evaluation}
-Python can be used in many different kinds of projects. From single module scripts with no classes to large projects. In order to see how our work performs we will test on projects of varying size. \\
+Python can be used in many different kinds of projects. From single module scripts with no classes to larger projects across multiple modules and classes. In the interest of seeing how our tool performs on  all possible types of Python source code, we will test it a combination of these. \\
 \indent In order to see how it runs on genuine scripts, samples have been taken from those posted in an online discussion~\cite{pythonScripts}. \\
 \indent The larger projects have been taken from the beginning of the list of all open source Python3 projects on the Python package index, Pypi~\cite{python3Projects}.
 
@@ -1449,7 +1463,7 @@ The greatest sources of inaccuracy in our tool is the use of built-in modules an
     futen & 0.1827 & 0.8556 & 0 \\ \hline
     fluent-logger-pyramid & 0.1474 & 1.1554 & 1 \\ \hline
     numconv & 0.6218 & TODO & 0 \\ \hline
-    cchardet &  1.9217 & 1.0391 & 0  \\ \hline
+    cchardet &  1.9117 & 1.0991 & 0  \\ \hline
     sshmap & 1.9816 & 1.9566 & 2 \\ \hline
  %   Glances & 14.1534  &  & 2 \\ \hline
     \end{tabular}
@@ -1458,7 +1472,7 @@ The greatest sources of inaccuracy in our tool is the use of built-in modules an
     \end{table}
 
 \paragraph*{Contents of Containers}\mbox{}\\
-Some variation of a container type have been used in every sample of Python source code we have taken. They are frequently iterated over in \texttt{for} loops. This done in the following way: \texttt{for item\_name in container\_name}. The \texttt{item} is then used in the body of the loop for some purpose. Since we are unable to infer the types contained in the object we are required to assign \texttt{any} to the item. The use of the item in the body then causes the \texttt{any}s to propagate. Similarly, any functions calls on a container which refer to the contents, or any direct accesses of the contents, such as indexing, will return \texttt{any}.
+Some variation of a container type have been used in every sample of Python source code we have looked at. They are frequently iterated over in \texttt{for} loops. This done in the following way: \texttt{for item\_name in container\_name}. The \texttt{item} is then used in the body of the loop for some purpose. Since we are unable to infer the types contained in the object we are required to assign \texttt{any} to the item. The use of the item in the body of the \texttt{for} then causes the \texttt{any}s to propagate. Similarly, any functions calls on a container which refer to the contents, or any direct accesses of the contents, such as indexing, will return \texttt{any}.
 
 \paragraph*{Built-in Modules}\mbox{}\\
 Built-in Modules, such as \texttt{re} and \texttt{os} have been used in all of our sample projects. Since these are not supported their identifier is given \texttt{any} type. Any function call or variable access made on these imports will return \texttt{any}. Anything but light use of these modules would see the inaccuracy propagate throughout the code. \\
@@ -1541,7 +1555,7 @@ Throughout this project we have looked at types in programming languages, type i
 \indent However our achievements are just the beginning in what could be a very promising line of work. It appears our solution may be usefully used alongside a more aggressive and false-positive sensitive tool.
 
 \subsection{Future work}
-The majority of the future work available is improving on the accuracy of our tool. This can be done in the following ways:
+The majority of the future work available is improving upon the accuracy of our tool. This can be done in the following ways:
 
 \subsubsection*{Supporting Built-in Modules}
 In order to build a type checker which can infer types accurately enough to become a tool of real use, the built-in modules need to be supported. Some built-in module was used in all of the examples we evaluated our tool on. Typing the import as \texttt{any} type causes great inaccuracy to propagate through our analysis. However dealing with these modules is not simple. One possible solution would be to run our tool on these modules and use the types we are able to infer. Unfortunately, this is not a realistic option since a large number of Python built-in modules, such as \texttt{os}, are largely written in \texttt{C} for the purposes of speed. Parsing the modules by hand is also not a realistic option due to the sheer number of modules and their size. We believe the best way to support these would be utilise the work of others. Similar to the manner we supported built-in functions, mypy has inferred the types of functions and global variables within a number of these modules~\cite{mypy}. At the time of writing, mypy's documentation of the modules is not complete. For example, there is currently no support for the \texttt{datetime} module. But with the most frequently used modules largely covered, such as \texttt{re}, \texttt{os} and \texttt{math}, there is certainly enough information to act as a promising starting point.
@@ -1585,7 +1599,16 @@ Currently our tool assumes that all statements within a \texttt{try} block can c
 Knowing that \texttt{ZeroDivisionError} statements can only be caused by a division and that \texttt{IndexError} can only be caused by indexing into a variable, greatly improve the accuracy of the tool. We would know to only link the block at line 2 to the block at line 6, to link the block at line 3 to the block at line 8 and that line 4 can cause none of the exceptions listed. This can also be done with \texttt{ImportError}, \texttt{KeyError}, \texttt{OverflowError}, \texttt{StopIteration} and \texttt{FileNotFoundError} to name a few. However dealing with user-defined exceptions would still remain very difficult and a cautious approach will still need to be taken.
 
 \subsubsection*{Increasing `Magic' Function Coverage}
-Our tool covers a number of `magic' functions, however there are some such as, \texttt{\_\_add\_\_} and \texttt{\_\_ge\_\_} which are currently unsupported. Each `magic' function performs a unique function
+Our tool covers a number of `magic' functions, however there are some such as \texttt{\_\_add\_\_} and \texttt{\_\_ge\_\_} which are currently unsupported. Each `magic' function performs a unique function and so must be considered separately. For brevity we will not describe the possible implementation procedures for each one. However magic functions such as \texttt{\_\_add\_\_} or \texttt{\_\_sub\_\_} take a parameter representing the value of the right-hand side of a binary operation. The result of this is the object may not necessarily be used in conjunction with it's own class type. For example:
+\begin{lstlisting}[mathescape]
+    class C():
+      def __init__(self):
+        self.total = 0
+        
+      def __add__(self, other):
+        return self.total + other
+\end{lstlisting}
+In this case the class \texttt{C} takes only an \texttt{int} or a \texttt{float} as its right-side parameter. This means an acceptable use case for an instance of \texttt{C}, \texttt{c}, is: \texttt{c + 1}. Therefore, upon detecting a class implementing a method such as \texttt{\_\_add\_\_} the possible types of the parameters need to be inferred before adding the class type and the parameter to the list of possible combinations for their respective binary operators.
 
 \subsubsection*{Improving the Speed}
 The primary method of reducing the runtime of the tool would be to calculate the dominance frontiers of the basic blocks in the CFG before applying SSA naming. This would reduce the number of redundant operations performed in the type checker. This should result in a significant speed-up on projects with large functions with a large number of control flow constructs. This is due to the fact these functions are likely to have a large number of local variables and blocks which results in redundant $\phi$ functions.
