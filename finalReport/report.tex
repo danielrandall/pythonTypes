@@ -615,10 +615,9 @@ Our primary aim is to create a type checker for Python which returns a minimum a
 \newpage
 \section{Implementation}
 All of the implementation was created using the language Python. This was decided purely due to the the built-in \texttt{ast} module which provided the base from which this project was built. Since no other language offered such a critical component out-of-the-box this was an easy decision. \\
-\indent Our project uses a flow-sensitive approach. This was decided in order to increase accuracy. To implement flow-sensitivity, we use single static assignment. \\
+\indent Our project uses a flow-sensitive approach. This was decided in order to increase accuracy. To implement flow-sensitivity, we use single static assignment. SSA allows us to use a flow-sensitive approach while implementing a simpler flow-insensitive algorithm in our type checker. \\
 \indent The basic structure of our system can be seen in Figure~\ref{fig:systemStructure}. The basic components are the AST, CFG, SSA, Preprocessing and Type Inference. Each component will be described here. \\
-\indent SSA is used to allow us to take a flow-sensitive approach whilst using the simplicity of a flow-insensitive algorithm. \\
-\indent This traverser used to navigate the AST are taken from Edward K. Ream's \textit{stc}~\footnote{\url{https://code.launchpad.net/~edreamleo/python-static-type-checking/trunk} Revision \#448 was used for this project.}. \\
+\indent This traverser used to navigate the AST are taken from Edward K. Ream's \textit{stc}~\footnote{\url{https://code.launchpad.net/~edreamleo/python-static-type-checking/trunk} Revision \#448 was used for this project.}.
 
 
 \begin{figure}
@@ -916,7 +915,7 @@ Type inference in our system works by creating a network modelling the data flow
 	\item \texttt{function} - a type representing a function.
 \end{itemize}
 A thorough description of these types can be seen in~\cite{pythonTypeDocs}. \\
-\indent All but \texttt{int} and \texttt{float} have built-in functions which can be called. Almost all of these are supported. In total, across all built-in classes, 177 functions are supported at the time of writing. For conciseness they have not be been documented here. \\
+\indent All but \texttt{int} and \texttt{float} have built-in functions which can be called. Almost all of these are supported. In total, across all built-in classes, 177 functions are supported at the time of writing. For conciseness they have not be been documented here. For a significant number of these functions, the information necessary to add them to our tool was extracted from mypy~\cite{mypy}. \\
 \indent Python provide an number of built-in functions which can be used freely. For example, \texttt{abs} takes an \texttt{int} or \texttt{float} and returns the absolute value of that number. At the time of writing, 53 built-in functions are supported which covers the most frequently used of these functions. For conciseness they have not be been documented here. \\
 \indent On top of these types we make use of a type not find Python, \texttt{any}, which represents the fact the variable could be any possible type and as such is permitted in all circumstances. \\
 \indent Initially a pass over the entire program is made and every variable encountered is initialised to an empty type variable. Each context in the program has a mapping of the name of every variable accessible in the current scope to its corresponding type variable. In the case that access of variable is permitted in more than one scope, the corresponding type variable is passed from the parent context to the child.
@@ -1049,7 +1048,7 @@ A default argument is similar to regular function argument apart from the fact i
 Variable-length function arguments, or \textit{vaargs}, are used to allow a function call to provide an unbounded amount of arguments. A vaarg is signified by preceding the identifier with a \texttt{*}. For example, the function header \texttt{def f(x, *y)} has a regular argument and a vaarg. Similarly to the default argument, the vaarg does not need to be given a value in a function call. The type of the vaarg is always a \texttt{tuple} and will contain all arguments given after the required arguments and default arguments. For example, the call \texttt{f(1, 2, 3, "hi")} will give the parameter \texttt{y} the \texttt{tuple} \texttt{(2, 3, "hi")}. \\
 \indent vaargs are not very common. In the library functions we have supported in our system they have occurred seven times out of (TODO: count functions). However, not supporting vaargs does not raise any false positives. Since the type of a vaarg is always \texttt{tuple} we can type the function argument accurately. The only downside is that the cannot type check the parameters in a function call to a function using vaargs. 
 
-\paragraph*{Keyword function Arguments}\mbox{} \\
+\paragraph*{Keyword Function Arguments}\mbox{} \\
 Keyword function arguments, or \textit{kwargs}, are similar to vaargs in that they allow unbounded number of arguments to be given to the function call. A kwarg is signified by preceding the identifier with \texttt{**}. For example, the function header \texttt{def f(x, **y)} has a regular argument and a kwarg. The difference between a kwarg and vaarg is that an identifier needs to be provided along with each value. Each identifier and value pair is then provided in a \texttt{dict}. For example, the function call \texttt{5, item1 = 1, item2 = 2} will cause \texttt{y} to take on the \texttt{dict} \texttt{\{item1 : 1, item2 : 2\}}. \\
 \indent kwargs are the least common `special' function argument. They are used only twice in our supported library functions. For this reason they are also not supported. Similarly to vaargs the kwargs only ever assume one type. Due to this we can always type the kwarg as a \texttt{dict}. However, again, we unable to type check the correct type are given to the call of a function using kwargs. \\
 
@@ -1117,15 +1116,15 @@ The \texttt{generator} type is an iterator which lazily generates values to be i
     for x in f():
       print(x)
 \end{lstlisting}
-The function \texttt{f} returns a \texttt{generator} type which iterates the values from 1 to 10. When the function \texttt{f} is first called a \texttt{generator} type is returned and no computation takes place. When the iteration begins on line 6, the function \texttt{f} is entered for the first time and the function body is executed until a \texttt{yield} is reached. The value is returned and computation is paused until another value is required. This continues until the function returns. \\
+The function \texttt{f} returns a \texttt{generator} type which iterates over the values from 1 to 10. When the function \texttt{f} is first called a \texttt{generator} type is returned and no computation takes place. When the iteration begins on line 6, the function \texttt{f} is entered for the first time and the function body is executed until a \texttt{yield} is reached. The value is returned and computation is paused until another value is required. This continues until the function returns. \\
 \indent The types contained in the \texttt{generator} can be inferred by determining all types which can be `yielded'. However since we currently do not track the types in containers this is not done. \\
-\indent Any function which contains the keyword \texttt{yield} returns a \texttt{generator} type. For instance, despite never being able to reach a \texttt{yield} the following function returns a \texttt{generator} type:
+\indent Any function which contains the keyword \texttt{yield} returns a \texttt{generator} type. For instance, despite never being able to reach a \texttt{yield} the following function returns a \texttt{generator} type when first called:
 \begin{lstlisting}[mathescape]
     def f():
       return
       yield 6
 \end{lstlisting}
-For this reason if we encounter a \texttt{yield} keyword contained in a function body we tag the function as generator function and set the return type of that function to the type set \texttt{\{generator\}}.
+For this reason if we encounter a \texttt{yield} keyword contained in a function body we tag the function as a generator function and set the return type of that function to the type set \texttt{\{generator\}}.
 
 \subsubsection{Inferring the Types Involving Recursive Functions}
 TODO
@@ -1202,7 +1201,7 @@ Class \textit{D} inherits from the base class \textit{C}. The function \textit{g
 	class E(C, D):
 	  pass
 \end{lstlisting}
-When a function is called on a subclass Python initially looks for a declaration in the subclass. If it is not found the search is continued through the base classes, in the order they are given, until the referenced identifier is found. Therefore preference is given to the base classes listed first. So, in the previous example, if a call to the function \textit{f} is made on an instance of class \textit{E} the search will end on the function instance in class \textit{C}. \\
+When a function is called on a subclass Python initially looks for a declaration in the subclass definition. If it is not found the search is continued through the base classes, in the order they are given, until the referenced identifier is found. Therefore preference is given to the base classes listed first. So, in the previous example, if a call to the function \textit{f} is made on an instance of class \textit{E} the search will end on the function instance in class \textit{C}. \\
 \indent We support inheritance by constructing a relationship between the identifiers listed to be inherited from and the subclass. If the identifiers assume a class type then global identifiers in that class, along with their type variables are sent to the base class. If the identifiers are not already in the global identifiers of the subclass, therefore not overridden, then they are added. \\
 A problem arises if we find that a base class has the type \texttt{any}. In this case we cannot possibly have any idea which identifiers are inherited. In this case we label the subclass as having an \texttt{any} base type. If any identifier is referenced in the class which is not in the list of global identifiers for the class then we assume it originates from the base class with \texttt{any} type and return the value \texttt{any} type. \\
 \indent Python supports dynamic change in the list of base classes through tricks such as the following:
@@ -1228,16 +1227,16 @@ Similarly, for the set attributes we construct a \texttt{SetAttributeTypeVariabl
 
 \subsubsection{`Magic' Functions}
 Python has a large number of special functions which can be implemented by the programmer which will then be used in a unorthodox way. All of these functions are characterised by having a double leading and trailing underscores. The most frequently used of these is \texttt{\_\_init\_\_} and \texttt{\_\_del\_\_} which act as a constructor and destructor respectively. \\
-The functions \texttt{\_\_eq\_\_}, \texttt{\_\_ne\_\_}, \texttt{\_\_gt\_\_}, \texttt{\_\_ge\_\_}, \texttt{\_\_lt\_\_}, \texttt{\_\_le\_\_} are used to define comparisons between objects using the $==$, $\neq$, $\ge$, $\geq$, $<$, $\leq$ operators respectively. No type errors can ever occur using the $==$, $\neq$, for instance $4 == ``Hi"$ simply returns false. However using the ordering operators, $>$, $\geq$, $<$, $\leq$, on a class which has not defined the respective function results in a type error. \\
-There are also `magic' functions for each of the binary operators and an additional one for each of the augmenting assignment equivalents. \\
-\indent We will now discuss some of the more interesting `magic' functions.
+\indent The functions \texttt{\_\_eq\_\_}, \texttt{\_\_ne\_\_}, \texttt{\_\_gt\_\_}, \texttt{\_\_ge\_\_}, \texttt{\_\_lt\_\_}, \texttt{\_\_le\_\_} are used to define comparisons between objects using the $==$, $\neq$, $\ge$, $\geq$, $<$, $\leq$ operators respectively. No type errors can ever occur using the $==$, $\neq$, for instance $4 == ``Hi"$ simply returns false. However using the ordering operators, $>$, $\geq$, $<$, $\leq$, on a class which has not defined the respective function results in a type error. \\
+There are also `magic' functions for each of the binary operators and an additional one for each of the augmenting assignment equivalents. Currently, we do not support these particular `magic' functions. \\
+\indent We will now discuss some of the more interesting `magic' functions of which are supported.
 
 \paragraph*{\_\_iter\_\_}\mbox{} \\
-The \texttt{\_\_iter\_\_} (short for \textit{iterable} or \textit{iterator}) defines how an object should be traversed. It is typically used in \texttt{for} loops in the context: \texttt{for item\_name in object\_name}. If an object does not define the \texttt{\_\_iter\_\_} function then it can not be legally used in this context. Thus when an identifier is used in this context we check whether any of its possible types implements \texttt{\_\_iter\_\_} before assigning the target of the iteration the type of the object's contents, which, in our tool, is always \texttt{any}. \\
+The \texttt{\_\_iter\_\_} (short for \textit{iterable} or \textit{iterator}) defines how an object should be traversed. It is typically used in \texttt{for} loops in the context: \texttt{for item\_name in object\_name}. If an object does not define the \texttt{\_\_iter\_\_} function then it can not be legally used in this context. Thus when an identifier is used in this context we check whether any of its possible types implement the \texttt{\_\_iter\_\_} method before assigning the target of the iteration the type of the object's contents, which, in our tool, is always \texttt{any}. \\
 \indent We keep track of all classes which support iteration in a type variable. This type variable is initially populated with all of the built-in classes supporting iteration. These are: \texttt{\{list, set, tuple, dict, string, bytes, generator\}}. A programmer defined class is added to this type variable if it defines the \texttt{\_\_iter\_\_} function.
 
 \paragraph*{\_\_contains\_\_}\mbox{} \\
-The \texttt{\_\_contains\_\_} is used to test whether the object contains a particular item. The function is invoked, for example, in the expression \texttt{if item\_name in object\_name}. An object can only be used in this context if its definition implements the \_\_contains\_\_ method. \\
+The \texttt{\_\_contains\_\_} method is used to test whether the object contains a particular item. The function is invoked, for example, in the expression \texttt{if item\_name in object\_name}. An object can only be used in this context if its definition implements the \_\_contains\_\_ method. \\
 \indent Similarly to \texttt{\_\_iter\_\_}, we keep track of all classes which support their contents being searched. The initialised type variable for \texttt{\_\_contains\_\_} is: \texttt{\{list, set, tuple, dict, string, bytes\}}. A programmer defined class is added to this type variable if it defines the \texttt{\_\_contains\_\_} function.
 
 \paragraph*{\_\_getitem\_\_ and \_\_setitem\_\_}\mbox{} \\
@@ -1340,13 +1339,13 @@ The main limitations of our implementation are:
 \end{itemize}
 Some of these limitations, such as tracking the state of an object, have already been discussed. We will now briefly mention the others.
 
-\paragraph*{built-in Modules}\mbox{} \\
+\paragraph*{Built-in Modules}\mbox{} \\
 The modules included in the standard library are not automatically imported but are built-in and are available to import without any further work. The most popular of these include \texttt{os}, \texttt{sys}, \texttt{re} and \texttt{json}. Currently these are not supported. We deal with these by simply assigning \texttt{any} to the identifier bound to the import when we are unable to locate it.
 
 \paragraph*{Installed Packages}\mbox{} \\
 3rd party packages are popular in Python. There are two ways these can used: by including the package in the project directory, or by installing the package on the machine the code is running on. If the package is included in the directory then we are able to perform type inference on that as well. However if they are installed then we have no way of determining their location. The packages can be installed anywhere so long as the path to the directory is included in the \texttt{PYTHONPATH} which is a field to indicate where the Python interpreter should search for definitions. This field can be accessed at runtime using the built-in module \texttt{sys}. The attribute \texttt{sys.path} returns a list containing all entries in \texttt{PYTHONPATH}. Therefore we could navigate to all directories in \texttt{PYTHONPATH} in an attempt to locate all installed packages and perform type inference on them. However this is not currently done. Since this means we unable to locate the packages, we assign \texttt{any} to the import name.
 
-\paragraph*{built-in Exceptions and Warnings} \mbox{} \\
+\paragraph*{Built-in Exceptions and Warnings} \mbox{} \\
 Python provides built-in classes which are used in exception handling. The base class for these exceptions is \texttt{Exception}. The subclasses refer to specific exceptions which can occur, such as \texttt{ZeroDivisionError}. Classes for warnings are also provided which cover unusual, but non-exceptional, activity in Python code. Any example of this is the \texttt{DeprecationWarning} which is used when functions and classes are used for which support has discontinued. Currently we include of all of the respective identifiers in the namespace along with the \texttt{any} type. This suppresses any false positives but the lack of support means lose use bug checking opportunities related to how instances of these classes are used.
 
 \paragraph*{Dynamically Defined Functions and Classes} \mbox{} \\
@@ -1461,8 +1460,8 @@ The greatest sources of inaccuracy in our tool is the use of built-in modules an
 \paragraph*{Contents of Containers}\mbox{}\\
 Some variation of a container type have been used in every sample of Python source code we have taken. They are frequently iterated over in \texttt{for} loops. This done in the following way: \texttt{for item\_name in container\_name}. The \texttt{item} is then used in the body of the loop for some purpose. Since we are unable to infer the types contained in the object we are required to assign \texttt{any} to the item. The use of the item in the body then causes the \texttt{any}s to propagate. Similarly, any functions calls on a container which refer to the contents, or any direct accesses of the contents, such as indexing, will return \texttt{any}.
 
-\paragraph*{built-in Modules}\mbox{}\\
-built-in Modules, such as \texttt{re} and \texttt{os} have been used in all of our sample projects. Since these are not supported their identifier is given \texttt{any} type. Any function call or variable access made on these imports will return \texttt{any}. Anything but light use of these modules would see the inaccuracy propagate throughout the code. \\
+\paragraph*{Built-in Modules}\mbox{}\\
+Built-in Modules, such as \texttt{re} and \texttt{os} have been used in all of our sample projects. Since these are not supported their identifier is given \texttt{any} type. Any function call or variable access made on these imports will return \texttt{any}. Anything but light use of these modules would see the inaccuracy propagate throughout the code. \\
 
 To demonstrate both of these, consider the following function taken from \texttt{birthday-script}:
 \begin{lstlisting}[mathescape]
@@ -1515,7 +1514,8 @@ where \texttt{requests} and \texttt{json} are built-in modules which have been i
 where \texttt{self.radix} and \texttt{self.alphabet} are class variables which have been inferred as \texttt{any} due to being assigned parameters in the class \texttt{\_\_init\_\_} function and \texttt{BASE85} is a module-wide global \texttt{string}. Since \texttt{self.radix} and \texttt{self.alphabet} are classified as \texttt{any} the local variables \texttt{radix} and \texttt{alphabet} receive the \texttt{any} type on line 16. However, despite this, our tool infers the correct return type of the function as the type set \texttt{\{sting\}} as stated by the author in the function documentation. On line 22 we have a binary operation \texttt{+} on the left-hand \texttt{any} type and the right-hand \texttt{string} type. However our tool determines that the only legal outcome of this operation is \texttt{string} \texttt{+} \texttt{string} and so sets the return type of the binary operation as \texttt{string} only.
 
 \subsection{Runtime}
-The runtime of our tool can be seen in Table~\ref{table:toolResults}. The runtime of our tool is in-line with the runtime of Pylint. Since Pylint is widely used then our tool is fast enough to be used as a static analysis tool for Python.
+The runtime of our tool can be seen in Table~\ref{table:toolResults}. The runtime of our tool is in-line with the runtime of Pylint. Since Pylint is widely used then our tool is fast enough to be used as a static analysis tool for Python. \\
+\indent It is interesting to note that our tool either matches or slightly out-performs Pylint on all projects aside from \texttt{cchardet}. The stand-out difference between \texttt{cchardet} and other projects is that \texttt{cchardet} has noticeably ratio of functions to LoC and modules. A possible reason for this slower performance is perhaps that more functions results in more CFGs and a higher number of basic blocks. This would exploit our naive approach to $\phi$ function generation and may result in the sub-par performance shown on this project.
 
 \subsection{Bug Checking Capabilities}
 Our system is capable of finding errors regarding the following:
@@ -1532,7 +1532,7 @@ Our system is capable of finding errors regarding the following:
 	\item Whether an object used as an index implements the \texttt{\_\_getitem\_\_} method
 	\item Whether an object used with the \texttt{in} operator implements the \texttt{\_\_contains\_\_} method
 \end{itemize}
-A this time our tool is not accurate enough to currently be used as a full-blown bug checker due to the current limitations. In small programs with a limited amount of imports and container type use then it is capable of finding fairly deep type bugs. However in programs which depend on built-in modules and containers then currenty our tool is only capable of finding basic programming errors due to the propagation of \texttt{any} types. These basic errors include mis-typing variable names, using the wrong variable in a statement.
+At this time our tool is not accurate enough to currently be used as a full-blown bug checker due to the current limitations already described. In small programs with a limited amount of imports and container type use then it is capable of finding fairly deep type bugs. However in programs which depend on built-in modules and containers then currently our tool is only capable of finding basic programming errors due to the propagation of \texttt{any} types. These basic errors include mis-typing variable names and using the wrong variable in a statement.
 
 \newpage
 \section{Conclusion}
@@ -1544,10 +1544,10 @@ Throughout this project we have looked at types in programming languages, type i
 The majority of the future work available is improving on the accuracy of our tool. This can be done in the following ways:
 
 \subsubsection*{Supporting Built-in Modules}
-In order to build a type checker which can infer types accurately enough to become a tool of real use the built-in modules need to be supported. Some built-in module was used in all of the examples we evaluated our tool on. Typing the import as \texttt{any} type causes great inaccuracy to propagate through our analysis. However dealing with these are not simple. One idea would be to run our tool on these modules and use the types we are able to infer. Unfortunately, this is not an option as a large number of Python built-in modules, such as \texttt{os}, are largely written in \texttt{C} for the purposes of speed. Parsing the modules by hand is also not a realistic option due to the sheer number of modules and their size. We believe the best way to support these would be utilise the work of others. Similar to the manner we supported built-in functions, mypy has inferred the types of functions and global variables within a number of these modules~\cite{mypy}. At the time of writing, mypy's documentation of the modules is not complete. For example, there is currently no support for the \texttt{datetime} module. But with the most frequently used largely covered, such as \texttt{re}, \texttt{os} and \texttt{math}, there is certainly enough information to act as a promising starting point.
+In order to build a type checker which can infer types accurately enough to become a tool of real use, the built-in modules need to be supported. Some built-in module was used in all of the examples we evaluated our tool on. Typing the import as \texttt{any} type causes great inaccuracy to propagate through our analysis. However dealing with these modules is not simple. One possible solution would be to run our tool on these modules and use the types we are able to infer. Unfortunately, this is not a realistic option since a large number of Python built-in modules, such as \texttt{os}, are largely written in \texttt{C} for the purposes of speed. Parsing the modules by hand is also not a realistic option due to the sheer number of modules and their size. We believe the best way to support these would be utilise the work of others. Similar to the manner we supported built-in functions, mypy has inferred the types of functions and global variables within a number of these modules~\cite{mypy}. At the time of writing, mypy's documentation of the modules is not complete. For example, there is currently no support for the \texttt{datetime} module. But with the most frequently used modules largely covered, such as \texttt{re}, \texttt{os} and \texttt{math}, there is certainly enough information to act as a promising starting point.
 
 \subsubsection*{Calculating the Side-Effects of Functions}
-As we saw in the Evaluation section, the greatest weakness of our tool is its inability to keep track of the types in container types. Due to the fact that most containers are mutable types, the side-effects of functions needs to be tracked before this becomes plausible. Calculating the side-effects of functions will also open the gateway to inferring the possible states of object at a given point in the source code. \\
+As we saw in the Evaluation section, one of the greatest weaknesses of our tool is its inability to keep track of the types in container types. Due to the fact that most containers are mutable types, the side-effects of functions needs to be tracked before this solving this problem becomes plausible. Calculating the side-effects of functions will also open the gateway to inferring the possible states of object at a given point in the source code. \\
 \indent To do this we need to analyse a function to determine the following:
 \begin{itemize}
 	\item What changes it may make to the global variables within the class
@@ -1562,16 +1562,16 @@ For example, consider the following function:
       self.f[y] = 5.0
       g()
 \end{lstlisting}
-Line 2 has no effect and so we ignore it. Line 3 makes a change to the parameter \texttt{x} adds a type \texttt{int} to the contents. Line 4 it makes a change the global variable \texttt{self.f} and adds a type \texttt{int} to the keys and a type \texttt{float} to the values. On line 5 the the function \texttt{g} is called and so any changes that the function \texttt{g}, we say that \texttt{f} also causes. \\
-\indent If the function \textit{may} make a change, such as if the change is within a \texttt{if} block, then a conservative approach will need to be taken and assume that it always performs it.
+Line 2 has no side-effects and so we ignore it. Line 3 makes a change to the parameter \texttt{x} by adding a type \texttt{int} to the contents. Line 4 makes a change to the global variable \texttt{self.f} and adds the type \texttt{int} to the keys and the type \texttt{float} to the values. On line 5 the function \texttt{g} is called and so any side-effects that the function \texttt{g} causes, we say that \texttt{f} also causes. \\
+\indent If the function \textit{may} make cause a side-effect, such as if the change is within a \texttt{if} block, then a conservative approach may need to be taken and assume that it always causes it.
 
 \subsubsection*{varargs and kwargs}
-
+TODO
 
 \subsubsection*{Improving Exceptions}
-Currently our tool assumes that all statements within a \texttt{try} block can cause an exception. This is, of course, not true. As an extreme example, the statement \texttt{pass} in Python has no effect, yet currently our tool assumes it is capable of causing an exception. Improving upon this will improve, both, accuracy and speed. The improvement on accuracy will be that the values of variables will be sent to the \texttt{finally} or \texttt{except} block if they present at a statement which can cause an exception. The speed will increase due to that the fact the CFG and SSA are required to do less work and their will be less $\phi$ functions to evaluate in the type checker. \\
-\indent It would be not be simple to improve upon this method. We can only think of one solution. Catalogue all of the statements which can definitely cause exceptions, such as \texttt{x / y} which can cause a \texttt{ZeroDivisionError}, and all statements which definitely can not cause exceptions, such as \texttt{pass}. \\
-\indent A simpler improvement may be to determine which statements are capable of causing \textit{which} exception, rather than whether they cause them at all. Currently if there is more than one \texttt{except} block we link all statements to all \texttt{except} block. However this is also not always true. For example, consider the following code:
+Currently our tool assumes that all statements within a \texttt{try} block can cause an exception. This is, of course, not true. As an extreme example, the statement \texttt{pass} in Python has no effect, yet currently our tool assumes it is capable of causing an exception. Improving upon this will result in a boost in, both, accuracy and speed. The increased accuracy will result from the values of variables only being sent to the \texttt{finally} or \texttt{except} block if they present are active at a statement which can cause an exception. The speed of the tool will increase due to the fact that the CFG and SSA are required to do less work and their will be less $\phi$ functions to evaluate in the type checker. \\
+\indent It would be not be simple to improve upon this method. One way solution is to catalogue all of the statements which can definitely cause exceptions, such as \texttt{x / y} which can cause a \texttt{ZeroDivisionError}, and all statements which definitely can not cause exceptions, such as \texttt{pass}. \\
+\indent A simpler improvement may be to determine which statements are capable of causing \textit{which} particular exceptions, rather than whether they cause them at all. Currently if there is more than one \texttt{except} block we link all statements to all possible \texttt{except} blocks. However this is often not accurate. For example, consider the following code:
 \begin{lstlisting}[mathescape]
     try:
       x / y
@@ -1582,7 +1582,13 @@ Currently our tool assumes that all statements within a \texttt{try} block can c
     except IndexError:
       # Do something
 \end{lstlisting}
-Knowing that \texttt{ZeroDivisionError} statements can only be caused by a division and that \texttt{IndexError} can only be caused by indexing into a variable greatly improve the accuracy the tool. We would know only to link the block at line 2 to the block at line 6, to link the block at line 3 to the block at line 8 and that line 4 can cause none of the exceptions listed. This can also be done with \texttt{ImportError}, \texttt{KeyError}, \texttt{OverflowError}, \texttt{StopIteration} and \texttt{FileNotFoundError} to name a few. However dealing with user-defined exceptions would still remain very difficult and a cautious approach will still need to be taken.
+Knowing that \texttt{ZeroDivisionError} statements can only be caused by a division and that \texttt{IndexError} can only be caused by indexing into a variable, greatly improve the accuracy of the tool. We would know to only link the block at line 2 to the block at line 6, to link the block at line 3 to the block at line 8 and that line 4 can cause none of the exceptions listed. This can also be done with \texttt{ImportError}, \texttt{KeyError}, \texttt{OverflowError}, \texttt{StopIteration} and \texttt{FileNotFoundError} to name a few. However dealing with user-defined exceptions would still remain very difficult and a cautious approach will still need to be taken.
+
+\subsubsection*{Increasing `Magic' Function Coverage}
+Our tool covers a number of `magic' functions, however there are some such as, \texttt{\_\_add\_\_} and \texttt{\_\_ge\_\_} which are currently unsupported. Each `magic' function performs a unique function
+
+\subsubsection*{Improving the Speed}
+The primary method of reducing the runtime of the tool would be to calculate the dominance frontiers of the basic blocks in the CFG before applying SSA naming. This would reduce the number of redundant operations performed in the type checker. This should result in a significant speed-up on projects with large functions with a large number of control flow constructs. This is due to the fact these functions are likely to have a large number of local variables and blocks which results in redundant $\phi$ functions.
 
 %Throughout this project we have looked at the background of cryptography, access control and how they can be brought together to create our hierarchy, we looked at how we can use these to create our system and how we can solve potential issues in the \textit{Design} section. From there we described the structure of our work and went on to evaluate it in a number of ways. We benchmarked our system against Dropbox, looked at how potential users found using our system and what markets our work may perform well in, before finally looking at how secure our system is.
 %\newline \indent This project aims to increase the automation in file sharing with different groups of friends who require different access control constraints. Our solution achieves this by using cryptography. This is done without troubling the users with technicalities. A user need not know what a `key' is, or how to derive and use them to access files. Most actions are performed in the GUI by selecting desired files and clicking the button for the desired action.
