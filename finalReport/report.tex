@@ -140,7 +140,7 @@ Type inference is the process of determining the types assigned to identifier us
 
 \newpage
 \section{Background}
-In this chapter we shall look at techniques which aid us in inferring types in Python code. We will look at Abstract Syntax Trees which will provide a base from which we can build our algorithms. From there we will look at ways to extract information from the source code and reduce it into to a state which is easier to reason about in Control Flow Graphs and Single Static Assignment, respectively. Finally...
+In this chapter we shall look at techniques which aid us in inferring types in Python code. We will look at Abstract Syntax Trees which will provide a base from which we can build our algorithms. From there we will look at ways to extract information from the source code and reduce it into to a state which is easier to reason about in control flow graphs and single static assignment, respectively.
 
 \subsection{Abstract Syntax Tree}
 An abstract syntax tree (AST) ``represents the hierarchical syntactic structure of the source 
@@ -401,7 +401,7 @@ where \texttt{AllDifferent} is shorthand for $S \neq E \neq N \ldots$ and simila
 \begin{verbatim}
     S = 9, E = 5, N = 6, D = 7, M = 1, O = 0, R = 8, Y = 2
 \end{verbatim}
-Constraints are frequently solved using constraint solvers. A third-party constraint solving package for Python called \textit{python-constraint}. python-constraint provides a number of built-in constraint types to use such as \textit{NotInSetConstraint}, \textit{AllEqualConstraint} and \textit{ExactSumConstraint}. However, it also allows you use a \textit{FunctionConstraint} to which you provide a function defining the constraint logic. This means the constraints it can handle are endless.
+Constraints are frequently solved using constraint solvers. % A third-party constraint solving package for Python called \textit{python-constraint}. python-constraint provides a number of built-in constraint types to use such as \textit{NotInSetConstraint}, \textit{AllEqualConstraint} and \textit{ExactSumConstraint}. However, it also allows you use a \textit{FunctionConstraint} to which you provide a function defining the constraint logic. This means the constraints it can handle are endless.
 
 \newpage
 \section{Type Inference}
@@ -773,7 +773,7 @@ The \texttt{try} keyword can be used in a few different ways in Python. Firstly 
     except ZeroDivisionError:
       # Deal with error
 \end{lstlisting}
-The statement \texttt{open("myfile.txt")} will lead to the \texttt{IOError} except block if, for instance, the file does not exist. The \texttt{x = 5 / y} will lead to the \texttt{ZeroDivisionError} if \texttt{y} is equal to \texttt{0} at the time of execution. In order to accurately create a control flow graph for \texttt{try} and \texttt{excepts} we need to know which statements can create exceptions and which exceptions they can create. While very time consuming, this knowledge can be gathered from the builtin exceptions and statements in the Python language and standard library and then hardcoded into our CFG generator. But Python permits the creation of unique exceptions by creating a class which inherits from the builtin \texttt{Exception} class. This would be very difficult to track. For this reason the design decision was made to attempt to minimise any false positives. This was done by determining that every statement in a \texttt{try} block can lead to every \texttt{except} block. \\
+The statement \texttt{open("myfile.txt")} will lead to the \texttt{IOError} except block if, for instance, the file does not exist. The \texttt{x = 5 / y} will lead to the \texttt{ZeroDivisionError} if \texttt{y} is equal to \texttt{0} at the time of execution. In order to accurately create a control flow graph for \texttt{try} and \texttt{excepts} we need to know which statements can create exceptions and which exceptions they can create. While very time consuming, this knowledge can be gathered from the built-in exceptions and statements in the Python language and standard library and then hardcoded into our CFG generator. But Python permits the creation of unique exceptions by creating a class which inherits from the built-in \texttt{Exception} class. This would be very difficult to track. For this reason the design decision was made to attempt to minimise any false positives. This was done by determining that every statement in a \texttt{try} block can lead to every \texttt{except} block. \\
 \indent Another application of \texttt{try} is to ensure that a particular block of code is unconditionally executed. This is done by using the \texttt{finally} keyword. All code in the \texttt{finally} block is executed no matter how the \texttt{try} body is exited. Normally \texttt{finallys} are used for clean up code. For example:
 \begin{lstlisting}
     try:
@@ -819,6 +819,8 @@ In the above example after the exception is raised then ``finally'' and ``except
 When an \texttt{else} is used in conjunction with a \texttt{finally} then the \texttt{else} body is executed before the \texttt{body} of the \texttt{finally}. \\
 \indent It is illegal for a \texttt{continue} statement to be inside of \texttt{finally} block. This will be detected in the CFG generation. Since the behaviour of this is undefined the CFG, and thus the subsequent SSA and type inferencing, will be broken. For this reason if a \texttt{continue} is detected in a \texttt{finally} block an error regarding this will be printed and the program will terminate. \\
 \indent \texttt{break} and \texttt{continue} statements are illegal outside of a loop. However, unlike a \texttt{continue} inside of a \texttt{finally} block this does not damage the integrity of the CFG. For this reason an error is printed and processing is continued.
+
+
 
 \subsubsection{Wrapping Exit Blocks}
 At the end of the programming constructs dictating control flow a new block is created as an `exit' block to which the blocks exiting the construct (such as a \texttt{break} in a loop) are linked to. However a problem arises when constructs are nested. Consider the following:
@@ -891,6 +893,9 @@ Using this knowledge every time a global variable is edited inside of a function
 \end{lstlisting}
 In function \texttt{f} the global keyword is not used with \texttt{x} and so we perform SSA on the variable whereas in function \texttt{g} it has been used and so the identifier is not renamed.
 
+\subsubsection{$\phi$ Function Generation}
+The two options for generating $\phi$ functions were described in the background section. These were: to calculate dominance frontiers, or to naively place them for all variables at the beginning of each block. The decision was made to implement the naive approach. This decision was taken as we felt it was more important, and interesting, to cover more of the Python language than to increase the speed of the tool. We currently generate $\phi$ functions for all local variables within the function and for global variables which have been assigned to without using the \texttt{global} keyword earlier in the function.
+
 \subsection{Type Inference}
 Type inference in our system works by creating a network modelling the data flow of types. The inference works by propagating primitive types through the constraints until the system has been completely satisfied. The types supported by this system are:
 \begin{itemize}
@@ -911,8 +916,8 @@ Type inference in our system works by creating a network modelling the data flow
 	\item \texttt{function} - a type representing a function.
 \end{itemize}
 A thorough description of these types can be seen in~\cite{pythonTypeDocs}. \\
-\indent All but \texttt{int} and \texttt{float} have builtin functions which can be called. Almost all of these are supported. In total, across all builtin classes, 177 functions are supported at the time of writing. For conciseness they have not be been documented here. \\
-\indent Python provide an number of builtin functions which can be used freely. For example, \texttt{abs} takes an \texttt{int} or \texttt{float} and returns the absolute value of that number. At the time of writing, 53 builtin functions are supported which covers the most frequently used of these functions. For conciseness they have not be been documented here. \\
+\indent All but \texttt{int} and \texttt{float} have built-in functions which can be called. Almost all of these are supported. In total, across all built-in classes, 177 functions are supported at the time of writing. For conciseness they have not be been documented here. \\
+\indent Python provide an number of built-in functions which can be used freely. For example, \texttt{abs} takes an \texttt{int} or \texttt{float} and returns the absolute value of that number. At the time of writing, 53 built-in functions are supported which covers the most frequently used of these functions. For conciseness they have not be been documented here. \\
 \indent On top of these types we make use of a type not find Python, \texttt{any}, which represents the fact the variable could be any possible type and as such is permitted in all circumstances. \\
 \indent Initially a pass over the entire program is made and every variable encountered is initialised to an empty type variable. Each context in the program has a mapping of the name of every variable accessible in the current scope to its corresponding type variable. In the case that access of variable is permitted in more than one scope, the corresponding type variable is passed from the parent context to the child.
 
@@ -955,7 +960,7 @@ A comprehensive list of the binary operators and the types which can be legally 
 Python has a small number of unary operators. These are all numeric operators, such as the bitwise not, $\sim$, aside from the boolean operator \texttt{not}. The numeric operators can only be applied to \texttt{ints} and \texttt{floats}, however the \texttt{not} operator can be legally applied to any type.
 
 \subsubsection{Inferring the Types in a `Container' Type}
-By a `container' we refer to any type which can contain other types. In the builtin types these are \texttt{list}, \texttt{dict}, \texttt{set} and \texttt{tuple}. \\
+By a `container' we refer to any type which can contain other types. In the built-in types these are \texttt{list}, \texttt{dict}, \texttt{set} and \texttt{tuple}. \\
 \indent Types can be added to these container typically through indexing and using functions. For example, using a list:
 \begin{lstlisting}
     x = []
@@ -987,7 +992,7 @@ The \texttt{int} type is immutable and so the function can in now way edit the v
       x2 = __side_effects(f, x1)
       print(x2)
 \end{lstlisting}
-where \texttt{\_\_side\_effects} performs whatever the changes the function has on the contents of \texttt{x1}. The same must also be done for the builtin functions, such as \texttt{append} for \texttt{list} which adds the parameter to the list. \\
+where \texttt{\_\_side\_effects} performs whatever the changes the function has on the contents of \texttt{x1}. The same must also be done for the built-in functions, such as \texttt{append} for \texttt{list} which adds the parameter to the list. \\
 \indent Unfortunately this process is either all-or-nothing since performing type inference only in some cases, such as only indexing which cause our tool to return false-positives. For example, if we encounter the following two statements: \texttt{some\_list[i] = 5; some\_list.append("hi")} only accepting new types from indexing would give \texttt{some\_list} the type set \texttt{\{int\}} when in fact it should have \texttt{\{int, string\}}. If an item is then taken from the list and used in a function which accepts only the \texttt{string} type then a false positive will occur. Due to this and the time and difficulty in calculating the side-effects of functions made it infeasible in the time frame of this project. For this reason we consider the contents of a container to always be the type \texttt{any}.
 
 \subsubsection{Inferring the Types in del statements}
@@ -1019,7 +1024,7 @@ The following shows a `raw' while loop and the same while loop in SSA form:
 \end{lstlisting}
 A problem raised by this is that the $\phi$ function at the beginning of the loop depends on the types which can not be determined until the end of the loop body. In between there may be other variables which use the result of the $\phi$ function in their own assignment, like \texttt{y1} above. Due to the manner we deal with simple assignment, using the subset relation, we can treat the $\phi$ function as a number of assignments. Thus, while in the example above \texttt{x3} may be an empty type variable once we set up the relationship the types will flow through to \texttt{x4} as \texttt{x3} receives them. \\
 \indent The case for \texttt{while} loop tests require no significant effort since any type can be compared to \texttt{True} and \texttt{False}, however \texttt{for} loops use the Python concept of \texttt{iterators}. \texttt{iterators} work by systematically yielding each object that they contain until all objects have been exhausted.
-A Python type qualifies as an iterator if it implements the \texttt{\_\_iter\_\_} function. The builtin types which implement \texttt{\_\_iter\_\_} are \texttt{list}, \texttt{sting}, \texttt{tuple}, \texttt{dict} and \texttt{set}.
+A Python type qualifies as an iterator if it implements the \texttt{\_\_iter\_\_} function. The built-in types which implement \texttt{\_\_iter\_\_} are \texttt{list}, \texttt{sting}, \texttt{tuple}, \texttt{dict} and \texttt{set}.
 
 
 \subsubsection{Inferring the Possible Types of Function Arguments}
@@ -1075,7 +1080,7 @@ It was felt that more was to be gained using the bottom-up approach since we wou
 	\item Whether the parameter is iterated over
 \end{itemize}
 In each case we use the types which are legally allowed in each operation to infer the types for the parameter. \\
-\indent We do not currently use whether the parameter is called to infer the types. This is because any function, class definition or class instance which implements \texttt{\_\_call\_\_} can satisfy this context. There are hundreds of builtin functions and classes which it could possibly be and cataloguing would take more time than it is worth. \\
+\indent We do not currently use whether the parameter is called to infer the types. This is because any function, class definition or class instance which implements \texttt{\_\_call\_\_} can satisfy this context. There are hundreds of built-in functions and classes which it could possibly be and cataloguing would take more time than it is worth. \\
 \indent There are times when the same context of the parameter should be used differently. Consider the following two functions:
 \begin{lstlisting}[mathescape]
 	def f(x, y):
@@ -1229,7 +1234,7 @@ There are also `magic' functions for each of the binary operators and an additio
 
 \paragraph*{\_\_iter\_\_}\mbox{} \\
 The \texttt{\_\_iter\_\_} (short for \textit{iterable} or \textit{iterator}) defines how an object should be traversed. It is typically used in \texttt{for} loops in the context: \texttt{for item\_name in object\_name}. If an object does not define the \texttt{\_\_iter\_\_} function then it can not be legally used in this context. Thus when an identifier is used in this context we check whether any of its possible types implements \texttt{\_\_iter\_\_} before assigning the target of the iteration the type of the object's contents, which, in our tool, is always \texttt{any}. \\
-\indent We keep track of all classes which support iteration in a type variable. This type variable is initially populated with all of the builtin classes supporting iteration. These are: \texttt{\{list, set, tuple, dict, string, bytes, generator\}}. A programmer defined class is added to this type variable if it defines the \texttt{\_\_iter\_\_} function.
+\indent We keep track of all classes which support iteration in a type variable. This type variable is initially populated with all of the built-in classes supporting iteration. These are: \texttt{\{list, set, tuple, dict, string, bytes, generator\}}. A programmer defined class is added to this type variable if it defines the \texttt{\_\_iter\_\_} function.
 
 \paragraph*{\_\_contains\_\_}\mbox{} \\
 The \texttt{\_\_contains\_\_} is used to test whether the object contains a particular item. The function is invoked, for example, in the expression \texttt{if item\_name in object\_name}. An object can only be used in this context if its definition implements the \_\_contains\_\_ method. \\
@@ -1255,10 +1260,10 @@ a class instance is initialised using the following syntax: \texttt{instance = C
 \subsubsection{Highly Dynamic Features}
 Python provides very dynamic features. We will describe the most common of these, how we accommodate them and any problems they may cause. 
 \paragraph*{eval}\mbox{} \\
-The builtin function \texttt{eval} takes a section of code a \texttt{string} returns the result of the execution of the code. For example, \texttt{eval("1 + 2")} returns the \texttt{int} type \texttt{3} and  \texttt{eval(""hello " + "world"")} returns the \texttt{string} type \texttt{"hello world"}. Without knowing all possible states the program can be in it is an impossible task to precisely calculate the set of types returned by \texttt{eval}. However we can eliminate any false positives by setting the return type to be \texttt{any}.
+The built-in function \texttt{eval} takes a section of code a \texttt{string} returns the result of the execution of the code. For example, \texttt{eval("1 + 2")} returns the \texttt{int} type \texttt{3} and  \texttt{eval(""hello " + "world"")} returns the \texttt{string} type \texttt{"hello world"}. Without knowing all possible states the program can be in it is an impossible task to precisely calculate the set of types returned by \texttt{eval}. However we can eliminate any false positives by setting the return type to be \texttt{any}.
 
 \paragraph*{getattr and setattr}\mbox{} \\
-The builtin function \texttt{getattr} works by providing an object and a string parameter. The function then composes the two and returns the value of the attribute. For example, \texttt{getattr(c, "x")} returns the value of \texttt{c.x}. A default parameter can also be provided as a third parameter which will be returned in the event that attribute is not found. Similarly to \texttt{eval} it is impossible to accurately predict which attributes will be requested. We deal with it in the same way and eliminate any false positives by returning \texttt{any} type. \\
+The built-in function \texttt{getattr} works by providing an object and a string parameter. The function then composes the two and returns the value of the attribute. For example, \texttt{getattr(c, "x")} returns the value of \texttt{c.x}. A default parameter can also be provided as a third parameter which will be returned in the event that attribute is not found. Similarly to \texttt{eval} it is impossible to accurately predict which attributes will be requested. We deal with it in the same way and eliminate any false positives by returning \texttt{any} type. \\
 \indent \texttt{setattr} works by providing three parameters: an object, a string attribute and a value. The attribute of the object is then set to the value give. For example, \texttt{setattr(c, "x", 5)} is equivalent to \texttt{c.x = 5}. The problem raised by \texttt{setattr} is when an attribute is only ever created by the use of this function or when a certain type is only ever set by this function. Since we are unable to calculate which attributes are being set we can not determine that the effect it is has the existence of an attribute or the change in possible types held by that attribute. As far as we are aware, there is no simple method of preventing these false positives.
 
 \subsubsection{Imports}
@@ -1324,8 +1329,8 @@ The wildcard \texttt{*} can be used with imports to indicate that every global i
 The main limitations of our implementation are:
 \begin{itemize}
 	\item Not tracking the types within a container
-	\item Not covering builtin modules
-	\item Not covering builtin exception and warning classes
+	\item Not covering built-in modules
+	\item Not covering built-in exception and warning classes
 	\item Not performing type checking on installed packages
 	\item Not tracking changes made during the lifetime of class instances
 	\item Not tracking changes made during the lifetime of global variables
@@ -1335,14 +1340,14 @@ The main limitations of our implementation are:
 \end{itemize}
 Some of these limitations, such as tracking the state of an object, have already been discussed. We will now briefly mention the others.
 
-\paragraph*{Builtin Modules}\mbox{} \\
-The modules included in the standard library are not automatically imported but are builtin and are available to import without any further work. The most popular of these include \texttt{os}, \texttt{sys}, \texttt{re} and \texttt{json}. Currently these are not supported. We deal with these by simply assigning \texttt{any} to the identifier bound to the import when we are unable to locate it.
+\paragraph*{built-in Modules}\mbox{} \\
+The modules included in the standard library are not automatically imported but are built-in and are available to import without any further work. The most popular of these include \texttt{os}, \texttt{sys}, \texttt{re} and \texttt{json}. Currently these are not supported. We deal with these by simply assigning \texttt{any} to the identifier bound to the import when we are unable to locate it.
 
 \paragraph*{Installed Packages}\mbox{} \\
-3rd party packages are popular in Python. There are two ways these can used: by including the package in the project directory, or by installing the package on the machine the code is running on. If the package is included in the directory then we are able to perform type inference on that as well. However if they are installed then we have no way of determining their location. The packages can be installed anywhere so long as the path to the directory is included in the \texttt{PYTHONPATH} which is a field to indicate where the Python interpreter should search for definitions. This field can be accessed at runtime using the builtin module \texttt{sys}. The attribute \texttt{sys.path} returns a list containing all entries in \texttt{PYTHONPATH}. Therefore we could navigate to all directories in \texttt{PYTHONPATH} in an attempt to locate all installed packages and perform type inference on them. However this is not currently done. Since this means we unable to locate the packages, we assign \texttt{any} to the import name.
+3rd party packages are popular in Python. There are two ways these can used: by including the package in the project directory, or by installing the package on the machine the code is running on. If the package is included in the directory then we are able to perform type inference on that as well. However if they are installed then we have no way of determining their location. The packages can be installed anywhere so long as the path to the directory is included in the \texttt{PYTHONPATH} which is a field to indicate where the Python interpreter should search for definitions. This field can be accessed at runtime using the built-in module \texttt{sys}. The attribute \texttt{sys.path} returns a list containing all entries in \texttt{PYTHONPATH}. Therefore we could navigate to all directories in \texttt{PYTHONPATH} in an attempt to locate all installed packages and perform type inference on them. However this is not currently done. Since this means we unable to locate the packages, we assign \texttt{any} to the import name.
 
-\paragraph*{Builtin Exceptions and Warnings} \mbox{} \\
-Python provides builtin classes which are used in exception handling. The base class for these exceptions is \texttt{Exception}. The subclasses refer to specific exceptions which can occur, such as \texttt{ZeroDivisionError}. Classes for warnings are also provided which cover unusual, but non-exceptional, activity in Python code. Any example of this is the \texttt{DeprecationWarning} which is used when functions and classes are used for which support has discontinued. Currently we include of all of the respective identifiers in the namespace along with the \texttt{any} type. This suppresses any false positives but the lack of support means lose use bug checking opportunities related to how instances of these classes are used.
+\paragraph*{built-in Exceptions and Warnings} \mbox{} \\
+Python provides built-in classes which are used in exception handling. The base class for these exceptions is \texttt{Exception}. The subclasses refer to specific exceptions which can occur, such as \texttt{ZeroDivisionError}. Classes for warnings are also provided which cover unusual, but non-exceptional, activity in Python code. Any example of this is the \texttt{DeprecationWarning} which is used when functions and classes are used for which support has discontinued. Currently we include of all of the respective identifiers in the namespace along with the \texttt{any} type. This suppresses any false positives but the lack of support means lose use bug checking opportunities related to how instances of these classes are used.
 
 \paragraph*{Dynamically Defined Functions and Classes} \mbox{} \\
 Unlike most languages, such as Java and C++, classes and functions are first-class citizens. This means there are no restrictions and how they may be defined. A by-product of this is that Python permits functions and classes to be defined within functions. Consider the following example:
@@ -1411,26 +1416,28 @@ Python can be used in many different kinds of projects. From single module scrip
 	\centering
     \begin{tabular}{ | c | c | c | c | c | c |}
     \hline
-    \textbf{Name} & \textbf{LoC} & \textbf{Num. Modules} & \textbf{Num. Classes} & \textbf{Num. Functions} \\ \hline
+     &  & \textbf{Num.} & \textbf{Num.}  & \textbf{Num.}  \\
+    \textbf{Project Name} & \textbf{LoC} & \textbf{Modules} & \textbf{Classes} & \textbf{Functions} \\ \hline
     birthday-script & 37 & 1 & 0 & 2 \\ \hline
     subtitle-downloader & 49 & 1 & 0 & 2 \\ \hline
-    futen & 178 & & 1 & 14 \\ \hline
-    fluent-logger-pyramid & 244 & & 4 & 18 \\ \hline
-    cchardet & 602 & & 2 & 47  \\ \hline
-    sshmap & 1102 &  & 3 & 33 \\ \hline
-    Glances & 6801 & & 50 & 300 \\ \hline
+    futen & 178 & 2 & 1 & 14 \\ \hline
+    fluent-logger-pyramid & 244 & 2 & 4 & 18 \\ \hline
+    numconv & 352 & 3 & 1 & 3 \\ \hline
+    cchardet & 602 & 2 & 2 & 47  \\ \hline
+    sshmap & 1102 & 6 & 3 & 33 \\ \hline
+%    Glances & 6801 & & 50 & 300 \\ \hline
     \end{tabular}
-    \caption{Information regarding the projects used to test the tool.}
+    \caption{Information regarding the projects used to test the tool. Given in ascending order by the number of lines of code}
 	\label{table:toolTests}
     \end{table}
     
 
 
 \subsection{False-positives}
-The number of false positives can be seen in Table~\ref{table:toolResults}. The highest amount of false positives returned by any of the project tested on was two. However each of these false positives was the result of a feature not yet supported. For example, the two false positives in \texttt{sshmap} involve calling a function and providing arguments using the argument name.
+The number of false positives can be seen in Table~\ref{table:toolResults}. The highest amount of false positives returned by any of the projects tested on was two. However each of these false positives was the result of a feature not yet supported. For example, the two false positives in \texttt{sshmap} involve calling a function and providing arguments using the argument name.
 
 \subsection{Accuracy}
-The greatest sources of inaccuracy in our tool is the use of builtin modules and being unable to infer the contents of container types. We will discuss the practical implications of each separately.
+The greatest sources of inaccuracy in our tool is the use of built-in modules and being unable to infer the contents of container types. We will discuss the practical implications of each separately.
 
     % Results
     	\begin{table}
@@ -1438,27 +1445,77 @@ The greatest sources of inaccuracy in our tool is the use of builtin modules and
     \begin{tabular}{ | c | c | c | c | c | c |}
     \hline
     \textbf{Name} & \textbf{Runtime} & \textbf{Pylint Runtime} & \textbf{False Positives} \\ \hline
-    birthday-script & 0.2475 &  & 0 \\ \hline
-    futen & 0.1827 &  & 0 \\ \hline
-    fluent-logger-pyramid & 0.1474 &  & 1 \\ \hline
-    cchardet &  1.9217 &  & 0  \\ \hline
-    sshmap & 1.9816 &  & 2 \\ \hline
-    Glances & 14.1534  &  & 2 \\ \hline
+    birthday-script & 0.2475 & 0.2334 & 0 \\ \hline
+    subtitle-downloader & 0.2444 & 0.6609 & 0 \\ \hline
+    futen & 0.1827 & 0.8556 & 0 \\ \hline
+    fluent-logger-pyramid & 0.1474 & 1.1554 & 1 \\ \hline
+    numconv & 0.6218 & TODO & 0 \\ \hline
+    cchardet &  1.9217 & 1.0391 & 0  \\ \hline
+    sshmap & 1.9816 & 1.9566 & 2 \\ \hline
+ %   Glances & 14.1534  &  & 2 \\ \hline
     \end{tabular}
     \caption{The results of the tests. Each project was run 10 times. The runtime given is the mean of runtimes. Times are given in seconds.}
 	\label{table:toolResults}
     \end{table}
 
 \paragraph*{Contents of Containers}\mbox{}\\
-Some variation of a container type have been used in every sample of Python source code we have taken. They are frequently iterated over in \texttt{for} loops. This done in the following way: \texttt{for item\_name in container\_name}. The \texttt{item} is then used in the body of the loop for some purpose. Since we are unable to infer the types contained in the object we are required to assign \texttt{any} to the item. The use of the item in the body then causes the \texttt{any}s to propagate. Consider the following snippet of code...
+Some variation of a container type have been used in every sample of Python source code we have taken. They are frequently iterated over in \texttt{for} loops. This done in the following way: \texttt{for item\_name in container\_name}. The \texttt{item} is then used in the body of the loop for some purpose. Since we are unable to infer the types contained in the object we are required to assign \texttt{any} to the item. The use of the item in the body then causes the \texttt{any}s to propagate. Similarly, any functions calls on a container which refer to the contents, or any direct accesses of the contents, such as indexing, will return \texttt{any}.
 
-Similarly, any functions calls on a container which refer to the contents, or any direct accesses of the contents, such as indexing, will return \texttt{any}.
+\paragraph*{built-in Modules}\mbox{}\\
+built-in Modules, such as \texttt{re} and \texttt{os} have been used in all of our sample projects. Since these are not supported their identifier is given \texttt{any} type. Any function call or variable access made on these imports will return \texttt{any}. Anything but light use of these modules would see the inaccuracy propagate throughout the code. \\
 
-\paragraph*{Builtin Modules}\mbox{}\\
-Builtin Modules, such as \texttt{re} and \texttt{os} have been used in all of our sample projects. Since these are not supported their identifier is given \texttt{any} type. Any function call or variable access made on these imports will return \texttt{any}. Anything but light use of these modules would see the inaccuracy propagate throughout the code. For example...
+To demonstrate both of these, consider the following function taken from \texttt{birthday-script}:
+\begin{lstlisting}[mathescape]
+    def commentall(wallposts):
+      """Comments thank you on all posts"""
+      #TODO convert to batch request later
+      for wallpost in wallposts:
+
+        r = requests.get('https://graph.facebook.com/%s' %
+                wallpost['actor_id'])
+        url = 'https://graph.facebook.com/%s/comments' % wallpost['post_id']
+        user = json.loads(r.text)
+        message = 'Thanks %s :)' % user['first_name']
+        payload = {'access_token': TOKEN, 'message': message}
+        s = requests.post(url, data=payload)
+
+        print("Wall post %s done" % wallpost['post_id'])
+\end{lstlisting}
+where \texttt{requests} and \texttt{json} are built-in modules which have been imported and \texttt{TOKEN} is module-wide global \texttt{string}. Line 4 the parameter \texttt{wallposts} is iterated over. Since we are unable to infer the contents of containers the identifier \texttt{wallpost} is assigned \texttt{any} type. This means we lose type checking opportunities on line 7, line 8 and line 14. Similarly, due to the fact we have resorted to assigning \texttt{requests} and \texttt{json} the type \texttt{any}, on line 7, line 9 and line 12 the return types of the function calls are type \texttt{type}. The result of this is that \texttt{any} has been propagated to three variables, \texttt{r}, \texttt{user} and \texttt{s}. \\
+\indent Due to our tool's inability to infer contents of containers and built-in modules, 4 out of 8 (50\%) of the variables created in this function have been assigned \texttt{any} type. \\
+\indent However, in functions which do not use these features, such as Mathematic calculations, our tool is reasonably accurate. Consider the following small function taken from \texttt{numconv}:
+\begin{lstlisting}[mathescape]
+    def int2str(self, num):
+      """Converts an integer into a string.
+
+        :param num: A numeric value to be converted to another base as a
+                    string.
+
+        :rtype: string
+
+        :raise TypeError: when *num* isn't an integer
+        :raise ValueError: when *num* isn't positive
+     """
+     if int(num) != num:
+       raise TypeError('number must be an integer')
+     if num < 0:
+       raise ValueError('number must be positive')
+     radix, alphabet = self.radix, self.alphabet
+     if radix in (8, 10, 16) and \
+              alphabet[:radix].lower() == BASE85[:radix].lower():
+        return ({8: '%o', 10: '%d', 16: '%x'}[radix] % num).upper()
+     ret = ''
+     while True:
+       ret = alphabet[num % radix] + ret
+       if num < radix:
+         break
+       num //= radix
+    return ret
+\end{lstlisting}
+where \texttt{self.radix} and \texttt{self.alphabet} are class variables which have been inferred as \texttt{any} due to being assigned parameters in the class \texttt{\_\_init\_\_} function and \texttt{BASE85} is a module-wide global \texttt{string}. Since \texttt{self.radix} and \texttt{self.alphabet} are classified as \texttt{any} the local variables \texttt{radix} and \texttt{alphabet} receive the \texttt{any} type on line 16. However, despite this, our tool infers the correct return type of the function as the type set \texttt{\{sting\}} as stated by the author in the function documentation. On line 22 we have a binary operation \texttt{+} on the left-hand \texttt{any} type and the right-hand \texttt{string} type. However our tool determines that the only legal outcome of this operation is \texttt{string} \texttt{+} \texttt{string} and so sets the return type of the binary operation as \texttt{string} only.
 
 \subsection{Runtime}
-The runtime of our tool can be seen in Table~\ref{table:toolResults}.
+The runtime of our tool can be seen in Table~\ref{table:toolResults}. The runtime of our tool is in-line with the runtime of Pylint. Since Pylint is widely used then our tool is fast enough to be used as a static analysis tool for Python.
 
 \subsection{Bug Checking Capabilities}
 Our system is capable of finding errors regarding the following:
@@ -1475,21 +1532,21 @@ Our system is capable of finding errors regarding the following:
 	\item Whether an object used as an index implements the \texttt{\_\_getitem\_\_} method
 	\item Whether an object used with the \texttt{in} operator implements the \texttt{\_\_contains\_\_} method
 \end{itemize}
-A this time our tool is not accurate enough to currently be used as a full-blown bug checker due to the current limitations. In small programs with a limited amount of imports and container type use then it is capable of finding fairly deep type bugs. However in programs which depend on builtin modules and containers then currenty our tool is only capable of finding basic programming errors due to the propagation of \texttt{any} types. These basic errors include mis-typing variable names, using the wrong variable in a statement.
+A this time our tool is not accurate enough to currently be used as a full-blown bug checker due to the current limitations. In small programs with a limited amount of imports and container type use then it is capable of finding fairly deep type bugs. However in programs which depend on built-in modules and containers then currenty our tool is only capable of finding basic programming errors due to the propagation of \texttt{any} types. These basic errors include mis-typing variable names, using the wrong variable in a statement.
 
 \newpage
 \section{Conclusion}
-Throughout this project we have looked at types in programming languages, type inference and how it can be performed, we looked at how we can use techniques such as control flow graphs and single static assignment to create our system and how we can solve potential issues in the \textit{Design of the Type Inferencing Algorithm} section. From there we described the structure of our work, the trade-offs of our decisions and went on to evaluate it in a number of ways. We benchmarked our system against existing type checkers, looked at its accuracy and what errors it is capable of checking. \\
-\indent This project aims to infer bugs involving type errors in Python code without the burden of having to check to see which errors are false positives and which are genuine. Our solution achieves this by using a flow-sensitive approach for local variables, a flow-insensitive approach for global variables and algorithm based on success typings for inferring function arguments. This is done out-of-the-box, without troubling the users with the technicalities of annotations. \\
+Throughout this project we have looked at types in programming languages, type inference and how it can be performed, we looked at how we can use techniques such as control flow graphs and single static assignment to create our system and how we can solve potential issues in the \textit{Design of the Type Inferencing Algorithm} section. From there we described the structure of our work, the trade-offs of our decisions and went on to evaluate it in a number of ways. We benchmarked our system against an existing type checker, looked at its accuracy and what errors it is capable of checking. \\
+\indent This project aims to infer bugs involving type errors in Python code without the burden of having to check to see which errors are false positives and which are genuine. Our solution achieves this by using a flow-sensitive approach for local variables, a flow-insensitive approach for global variables and an algorithm based on success typings for inferring function arguments. This is done out-of-the-box, without troubling the users with the technicalities of annotations. \\
 \indent However our achievements are just the beginning in what could be a very promising line of work. It appears our solution may be usefully used alongside a more aggressive and false-positive sensitive tool.
 
 \subsection{Future work}
 The majority of the future work available is improving on the accuracy of our tool. This can be done in the following ways:
 
-\subsubsection*{Supporting Builtin Modules}
-In order to build a type checker which can infer types accurately enough to become a tool of real use the builtin modules need to be supported. Some builtin module was used in all of the examples we evaluated our tool on. Typing the import as \texttt{any} type causes great inaccuracy to propagate through our analysis. However dealing with these are not simple. One idea would be to run our tool on these modules and use the types we are able to infer. Unfortunately, this is not an option as a large number of Python builtin modules, such as \texttt{os}, are largely written in \texttt{C} for the purposes of speed. Parsing the modules by hand is also not a realistic option due to the sheer number of modules and their size. We believe the best way to support these would be utilise the work of others. Similar to the manner we supported builtin functions, mypy has inferred the types of functions and global variables within a number of these modules~\cite{mypy}. At the time of writing, mypy's documentation of the modules is not complete. For example, there is currently no support for the \texttt{datetime} module. But with the most frequently used largely covered, such as \texttt{re}, \texttt{os} and \texttt{math}, there is certainly enough information to act as a promising starting point.
+\subsubsection*{Supporting Built-in Modules}
+In order to build a type checker which can infer types accurately enough to become a tool of real use the built-in modules need to be supported. Some built-in module was used in all of the examples we evaluated our tool on. Typing the import as \texttt{any} type causes great inaccuracy to propagate through our analysis. However dealing with these are not simple. One idea would be to run our tool on these modules and use the types we are able to infer. Unfortunately, this is not an option as a large number of Python built-in modules, such as \texttt{os}, are largely written in \texttt{C} for the purposes of speed. Parsing the modules by hand is also not a realistic option due to the sheer number of modules and their size. We believe the best way to support these would be utilise the work of others. Similar to the manner we supported built-in functions, mypy has inferred the types of functions and global variables within a number of these modules~\cite{mypy}. At the time of writing, mypy's documentation of the modules is not complete. For example, there is currently no support for the \texttt{datetime} module. But with the most frequently used largely covered, such as \texttt{re}, \texttt{os} and \texttt{math}, there is certainly enough information to act as a promising starting point.
 
-\subsubsection*{Calculating the side-effects of functions}
+\subsubsection*{Calculating the Side-Effects of Functions}
 As we saw in the Evaluation section, the greatest weakness of our tool is its inability to keep track of the types in container types. Due to the fact that most containers are mutable types, the side-effects of functions needs to be tracked before this becomes plausible. Calculating the side-effects of functions will also open the gateway to inferring the possible states of object at a given point in the source code. \\
 \indent To do this we need to analyse a function to determine the following:
 \begin{itemize}
