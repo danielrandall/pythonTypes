@@ -444,8 +444,15 @@ Developed by Jeff Ruberg~\cite{pyty}, Pyty is a bug checker which analyses annot
 Pyty requires annotations to the source code in a specific format. This is quite tedious and prevents it from being an `out-of-the-box' solution to our problem.
 
 \subsubsection{Palsberg and Schwartzbach Algorithm}
-The Palsberg and Schwartzbach algorithm~\cite{Palsbergstatictyping} works by constructing a network of constraints where each expression in the analysed program is represented by a node in the network. The node contains the types which the expression may assume during execution. All types are initially set to be empty except from constants and literals. The constraints between the nodes are created in response to statements in the program. In the Palsberg and Schwartzbach algorithm there are two ways in which a constraint can generated: assignments and function calls. An assignment such as $x := y$ is represented by the constraint $type(x) \subset type(y)$. Function calls generate constraints between the \textit{actual} arguments used in the function call and the formal arguments in the function definition. The constraints are solved by propagating types through the constraint edges until a fixed-point in reached. \\
-\indent The algorithm is used for object-oriented code by copying the bodies of base classes inherited into the child classes. Similarly, class definitions are duplicated at all sites at which they are constructed and method bodies are duplicated at call sites. \\
+The Palsberg and Schwartzbach algorithm~\cite{Palsbergstatictyping} works by constructing a network of constraints where each expression in the analysed program is represented by a node in the network. The node contains the types which the expression may assume during execution. All types are initially set to be empty except from constants and literals. The constraints between the nodes are created in response to statements in the program. In the Palsberg and Schwartzbach algorithm there are two ways in which a constraint can generated: assignments and function calls. An assignment such as $x := y$ is represented by the constraint $\mathtt{type(x) \subseteq type(y)}$. Function calls generate constraints between the \textit{actual} arguments used in the function call and the formal arguments in the function definition. The constraints are solved by propagating types through the constraint edges until a fixed-point is reached. Consider the following toy example: 
+\begin{lstlisting}
+    fun f(x):
+      y = x
+      
+    f(3)
+\end{lstlisting}
+For this code, two constraints are generated. A subset constraint between the value \texttt{3} and the parameter \texttt{x} in \texttt{f}, $\mathtt{3 \subseteq x}$, and between the parameter \texttt{x} and the local variable \texttt{y} in \texttt{f}, $\mathtt{x \subseteq y}$.  \\
+\indent The algorithm is used for object-oriented code by copying the bodies of base classes inherited into the child classes. Similarly, class definitions are duplicated at all sites at which they are constructed and method bodies are duplicated at call sites.
 \paragraph*{Limitations}\mbox{}\\
 The excessive duplication makes the algorithm impractical. In the worst case, successive expansions squares the size of the program to be analysed.
 
