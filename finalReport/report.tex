@@ -50,7 +50,7 @@
 }
 
 \title{Pratical Types for Python \\ Final Report}
-\author{Daniel Randall}
+\author{Daniel Randall \\ Imperial College London}
 \date{}
 
 \begin{document}
@@ -75,8 +75,8 @@ I would like to thank my supervisors, Jeroen Ketema and Alastair Donaldson, for 
 \section{Introduction}
 \subsection{Motivation}
 High level, dynamically typed languages such as Python have been gaining popularity in recent years. Python is now used as a teaching language in 80\% of the top ten Computer Science department in the USA, surpassing previous favourites such as Java~\cite{guoTeaching}. Python has also become a force in industry and has been picked up by influential software engineering companies such as Google and Yahoo!~\cite{organisationsPython}. One reason for this is a high level of productivity involved in using such languages, partly due to the programmer being free from having to declare the types of the variables used. However, the benefits gained from this design decision are at the expense of the security provided by a statically typed language. Type errors which are easily caught by a compiler for a statically typed language, such as Java or C++, can be left unnoticed in Python source code into the release stage of a product where its execution may prove fatal. \\ % Specifying types is regarded as superfluous by many in the Python community.
-\indent While there has been significant talk of adding optional static typing to Python~\cite{guido1, guido2, guido3, guidoLatest}, it seems that this will be limited to annotations similar to those currently employed in the open source project mypy\footnote{\url{http://mypy-lang.org/}}. This means that even if support is added in the near future it will be some time before this is incorporated into large projects. \\
-\indent Tools attempting to provide the benefits of a statically typed language to unedited Python do exist, such as Pylint\footnote{\url{http://www.pylint.org/}} and PyChecker\footnote{\url{http://pychecker.sourceforge.net/}}, however their usability is hampered by the number of false positives returned and the amount of configuration needed. \\
+\indent While there has been significant talk of adding optional static typing to Python~\cite{guido1, guido2, guido3, guidoLatest}, it seems that this will be limited to annotations similar to those currently employed in the open source project mypy~\cite{mypy}. This means that even if support is added in the near future it will be some time before this is incorporated into large projects. \\
+\indent Tools attempting to provide the benefits of a statically typed language to unedited Python do exist, such as Pylint~\cite{pylint} and PyChecker~\cite{pychecker}, however their usability is hampered by the number of false positives returned and the amount of configuration needed. \\
 \indent This project aims to design and implement a type checker for Python which returns few false positives. The basis for our implementation is a method called success typings~\cite{lindhal06}. We harness this idea in order to provide a over-approximation of how a function is intended to be used without relying on how the function is actually used. This allows us to determine that a violation of a function's contract is guaranteed to be a programming error. We describe success typing as well as the general theory behind type systems in Chapter 3. We then examine similar products and techniques and show the limitations in their application. \\
 \indent Using the methods and techniques we described, we begin to define our solution and determine the best way to type inference each programming construct in Python. Once we decide upon the best methods we then set about evaluating the best 3\textsuperscript{rd} party software we can use to achieve these tasks and why we should not implement our own solutions. \\
 \indent In Chapter 6 we describe what we have done and evaluate it. We evaluate our implementation in four ways: the number of false positives it reports, accuracy, speed, and its ability to find bugs. We benchmark our solution against existing type checkers for Python.
@@ -581,8 +581,8 @@ Aycock backs up this hypothesis by citing a study~\cite{typeInferenceIcon} which
 The limitations of Aycock's approach are quite clear: the types involved in dynamic behaviour are not reliably extracted. How much of an issue this poses is up for debate;
 A study on this, more recent and relevant to our interests than the \textit{Icon} analysis put forward by Aycock, has been conducted by Alex Holkner and James Harland~\cite{evaluatingDynamicBehaviour}. This study details the evaluation of twenty-four open source Python systems. Their results argue that dynamic features are actually widely used. For instance, they find that all systems studied employ dynamic code execution. Holkner and Harland concede that their study is small in comparison to the amount of Python code available, however if their results are to be extrapolated then Aycock's assumption is not so reasonable.
 
-\subsection{RPython}
-RPython is an intermediate language, a subset of Python which is entirely statically typed and which acts as a link in the PyPy toolchain. PyPy's goal is to develop a Just-In-Time (JIT) compiler for Python. PyPy's interpreter is written in RPython which removes dynamic features in order to reduce the complexity of type inference.
+\subsection{PyPy}
+RPython is an intermediate language, a subset of Python which is entirely statically typed and which acts as a link in the PyPy toolchain~\cite{pypyRpython}. PyPy's goal is to develop a Just-In-Time (JIT) compiler for Python. PyPy's interpreter is written in RPython which removes dynamic features in order to reduce the complexity of type inference.
 \paragraph{Limitations}\mbox{}\\
 The major limitation of PyPy is the use of RPython. One feature of RPython is that it does not allow variables to change their type.
 
@@ -594,13 +594,13 @@ To the best of our knowledge, there is currently no bug finder for type errors i
 %Psyco only attempts to infer locally defined \textit{ints} and \textit{strings} and pays little interest to any other types.
 
 \subsubsection{Pylint}
-Pylint is an error checking tool for Python which statically analyses Python source code to look for errors, including type errors, and to assess the coding style. Pylint is a static analyser and so it looks for errors without running the source code. \\
+Pylint~\cite{pylint} is an error checking tool for Python which statically analyses Python source code to look for errors, including type errors, and to assess the coding style. Pylint is a static analyser and so it looks for errors without running the source code. \\
 \indent Documentation on Pylint is almost non-existent and the source code is also quite difficult to understand so, unfortunately, we currently do not understand the type inference algorithm of Pylint.
 \paragraph{Limitations}\mbox{}\\
 Can often return a lot of false positives and offers a large number of command-line options in an attempt to allow users to manually suppress them.
 
 \subsubsection{PyChecker}
-PyChecker is an bug checker for Python which checks for type errors among a host of other errors. PyChecker is similar to Pylint except it does not checker the coding style of the source program. PyChecker also differs in that it needs to runs the code in order to analyse it.
+PyChecker~\cite{pychecker} is an bug checker for Python which checks for type errors among a host of other errors. PyChecker is similar to Pylint except it does not checker the coding style of the source program. PyChecker also differs in that it needs to runs the code in order to analyse it.
 \paragraph{Limitations}\mbox{}\\
 The type inference is quite limited. PyChecker focuses on 'softer' type errors, such as whether a variable exists and whether self is the first method argument. \\
 \indent PyChecker can return spurious errors and warnings. PyChecker imports the code it is analysing which, due to the fact this execute top-level code, can have undesirable side effects, such as executing a database query in the code.
@@ -620,8 +620,8 @@ Pyntch completely disregards execution order. In the following example given by 
 	x = 'a'
 \end{lstlisting}
 The variable \textit{x} will always have the type $\{int, string\}$ after analysing the second statement. \\
-Pyntch is unable to infer types in code which use the following functions: globals, locals, getattr, setattr, eval, compile or exec. \\
-As well as the inaccuracies listed, the Pyntch author states that ``sometimes Pyntch brings a lot of false positives in its result, which need to be further examined by human programmers.''
+\indent Pyntch is unable to infer types in code which use the following functions: globals, locals, getattr, setattr, eval, compile or exec. \\
+\indent As well as the inaccuracies listed, the Pyntch author states that ``sometimes Pyntch brings a lot of false positives in its result, which need to be further examined by human programmers.''
 
 %\subsection{Javascript}
 %Javascript is a dynamically typed scripting language, similar to Python. \\
@@ -629,8 +629,8 @@ As well as the inaccuracies listed, the Pyntch author states that ``sometimes Py
 
 
 \subsubsection{Ruby}
-Ruby is a dynamically typed scripting language, similar to Python. \\
-Furr et al. developed Diamondback Ruby (DRuby)~\cite{furr09} in order to discover type errors. DRuby works by using type annotations of library functions in order to generate constraints to infer the types for user defined functions. DRuby is an aggressive error checker and so reports false positives. \\
+Ruby is a dynamically typed scripting language, similar to Python. Due to the similarities of the languages, we will look at some related work in Ruby in the hope there are transferable techniques we can employ. \\
+\indent Furr et al. developed Diamondback Ruby (DRuby)~\cite{furr09} in order to discover type errors. DRuby works by using type annotations of library functions in order to generate constraints to infer the types for user defined functions. DRuby is an aggressive error checker and so reports false positives. \\
 \indent An extension to Diamondback Ruby, $\mathcal{P}$Ruby, was created in order to handle difficult dynamic language constructs such as the \textit{eval} method which converts a string into executable program code.~\cite{pRuby} This is done by instrumenting the code such that, when the program is run, all uses of the dynamic constructs are recorded. This allows a \textit{profile} to be built which fully describes how they were used. With this profile the dynamic code can be inserted into the program in place of the dynamic constructs. The modified program can then be statically analysed just like any other. Furr et al. use DRuby for the analysis. Since this process involves running the code it offers no real solution to this problem in regards to static analysis.
 
 
