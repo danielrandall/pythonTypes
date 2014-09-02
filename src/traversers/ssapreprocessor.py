@@ -70,8 +70,8 @@ class SSA_Pre_Processor(AstFullTraverser):
             self.process_blocks(node.initial_block)
         finally:
             self.local_variables -= node.global_var_edits
-            print("Local variables for " + node.name)
-            print(self.local_variables)
+           # print("Local variables for " + node.name)
+           # print(self.local_variables)
             self.local_variables = old_locals
             self.func_global_stores = old_func_store
             self.ssa_exempts = old_ssa_exempts 
@@ -108,11 +108,10 @@ class SSA_Pre_Processor(AstFullTraverser):
         
     def do_If(self,node):
         self.visit(node.test)
-        if self.in_loop_test:
-            for z in node.body:
-                self.visit(z)
-            for z in node.orelse:
-                self.visit(z)
+        for z in node.body:
+            self.visit(z)
+        for z in node.orelse:
+            self.visit(z)
                 
     def do_ListComp(self, node):
         ''' Must visit generators first as they assign. '''
@@ -146,8 +145,8 @@ class SSA_Pre_Processor(AstFullTraverser):
         
     def do_Name(self, node):
         # Global variable
-        if node.id == "bytes_":
-            pass
+   #     if node.id == "bytes_":
+   #         pass
         if isinstance(node.ctx, ast.Store) and (isinstance(node.stc_context, ast.Module) or isinstance(node.stc_context, ast.ClassDef)):
             self.ssa_exempts.add(node.id)
         if isinstance(node.stc_context, ast.Module):
@@ -183,8 +182,8 @@ class SSA_Pre_Processor(AstFullTraverser):
    #     pprint("Block starting at: " + str(block.start_line_no) + " to " + str(exit_nos))
    #     pprint("Block starting at: " + str(block.start_line_no) + " preceded by " + str(pred_nos))
    #     print(block.statements)
-        if block.start_line_no == 4:
-            pass
+    #    if block.start_line_no == 4:
+    #        pass
         for statement in block.statements:
             self.visit(statement)
             block.ssa_prepro_mark = True
