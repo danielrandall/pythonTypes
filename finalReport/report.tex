@@ -60,7 +60,7 @@
 
 % Abstract
 \begin{abstract}
-Programmers spend a large percentage of their time debugging dysfunctional code. In dynamically typed languages bugs can go hidden more easily due to the lack of protection offered by a static compiler. Tools have been developed to ease this process but they often frustrate the user with false positives and ignore the dynamic nature of Python. We attempt to design a type checker for a subset of the Python programming language which returns few false positives and takes an optimistic approach to Python's dynamism. We achieve this by accepting the modifications made to global variables are unpredictable and distinguishing between global and local variables in our algorithm. We take inspiration from a technique called success typings and infer the types of function arguments through the context they are used in the function body in order to prevent reliance on, potentially incorrect, types provided in function calls. We handle Python exceptions, which most type inferencers ignore, by assuming that all statements within a \texttt{try} are potentially exceptional. Finally we show that the subset of Python our tool covers is useful for real-world projects and how our work can be extended to cover the majority of Python functionality.
+Programmers spend a large percentage of their time debugging dysfunctional code. In dynamically typed languages bugs this problem is exacerbated due to the lack of the protection offered by a static compiler. Tools have been developed to ease this process but they often frustrate the user with false positives and ignore the dynamic nature of Python. We attempt to design a type checker for a subset of the Python programming language which returns few false positives and takes an optimistic approach to Python's dynamism. We achieve this by accepting the modifications made to global variables are unpredictable and distinguishing between global and local variables in our algorithm. We take inspiration from a technique called success typings and infer the types of function arguments through the context they are used in the function body in order to prevent reliance on, potentially incorrect, types provided in function calls. We handle Python exceptions, which most type inferencers ignore, by assuming that all statements within a \texttt{try} are potentially exceptional. Finally we show that the subset of Python our tool covers is useful for real-world projects and how our work can be extended to cover the majority of Python functionality.
 \end{abstract}
 
 % Acknowledgements
@@ -76,10 +76,10 @@ I would like to thank my supervisors, Jeroen Ketema and Alastair Donaldson, for 
 \subsection{Motivation}
 High level, dynamically typed languages such as Python have been gaining popularity in recent years. Python is now used as a teaching language in 80\% of the top ten Computer Science department in the USA, surpassing previous favourites such as Java~\cite{guoTeaching}. Python has also become a force in industry and has been picked up by influential software engineering companies such as Google and Yahoo!~\cite{organisationsPython}. One reason for this is a high level of productivity involved in using such languages, partly due to the programmer being free from having to declare the types of the variables used. However, the benefits gained from this design decision are at the expense of the security provided by a statically typed language. Type errors which are easily caught by a compiler for a statically typed language, such as Java or C++, can be left unnoticed in Python source code into the release stage of a product where its execution may prove fatal. \\ % Specifying types is regarded as superfluous by many in the Python community.
 \indent While there has been significant talk of adding optional static typing to Python~\cite{guido1, guido2, guido3, guidoLatest}, it seems that this will be limited to annotations similar to those currently employed in the open source project mypy~\cite{mypy}. This means that even if support is added in the near future it will be some time before this is incorporated into large projects. \\
-\indent Tools attempting to provide the benefits of a statically typed language to unedited Python do exist, such as Pylint~\cite{pylint} and PyChecker~\cite{pychecker}, however their usability is hampered by the number of false positives returned and the amount of configuration needed. \\
+\indent Tools attempting to provide the benefits of a statically typed language to unedited Python source code do exist, such as Pylint~\cite{pylint} and PyChecker~\cite{pychecker}, however their usability is hampered by the number of false positives returned and the amount of configuration needed. \\
 \indent This project aims to design and implement a type checker for Python which returns few false positives. The basis for our implementation is a method called success typings~\cite{lindhal06}. We harness this idea in order to provide a over-approximation of how a function is intended to be used without relying on how the function is actually used. This allows us to determine that a violation of a function's contract is guaranteed to be a programming error. We describe success typing as well as the general theory behind type systems in Chapter 3. We then examine similar products and techniques and show the limitations in their application. \\
 \indent Using the methods and techniques we described, we begin to define our solution and determine the best way to type inference each programming construct in Python. Once we decide upon the best methods we then set about evaluating the best 3\textsuperscript{rd} party software we can use to achieve these tasks and why we should not implement our own solutions. \\
-\indent In Chapter 6 we describe what we have done and evaluate it. We evaluate our implementation in four ways: the number of false positives it reports, accuracy, speed, and its ability to find bugs. We benchmark our solution against existing type checkers for Python.
+\indent In Chapter 6 we describe what we have done and evaluate it. We evaluate our implementation in four ways: the number of false positives it reports, accuracy, speed, and its ability to find bugs. We benchmark our solution against an existing type checker for Python.
 
 \subsection{Objectives}
 The objectives for this project are as follows:
@@ -144,14 +144,14 @@ This program will never raise a type error, despite the fact \texttt{5 + "Hello 
         character.hp += potion		
         return
 \end{lstlisting}
-Line 21 shows a legal and non-exception use of the code. A regular potion is used an argument to the function \texttt{add\_health}. However on line 25 the programmer neglected to invoke the \texttt{add\_health} function for the `special potion'. The types of \texttt{character.hp} on left hand side of the assignment, type \texttt{int}, and \texttt{potion} on the right hand side, type class \texttt{Potion}, are incompatible together with the \texttt{+=} operator and an un-caught type error will be raised if this branch is executed and program will crash. If the programmer also neglects to include this special potion in their test suite then this code may be shipped without this branch ever been executed. \\
-\indent We can see that while dynamic type systems provide freedom, it is far easier for type error to escape the attention of the programmer.
+Line 21 shows a legal and non-exceptional use of the code. A regular potion is used an argument to the function \texttt{add\_health}. However on line 25 the programmer neglected to invoke the \texttt{add\_health} function for the `special potion'. The types of \texttt{character.hp} on left hand side of the assignment, type \texttt{int}, and \texttt{potion} on the right hand side, type class instance \texttt{Potion}, are incompatible together with the \texttt{+=} operator and an un-caught type error will be raised if this branch is executed and the program will crash. If the programmer also neglects to include this special potion in their test suite then this code may be shipped without this branch ever been executed. \\
+\indent We can see that while dynamic type systems provide freedom, it is far easier for a type error to escape the attention of the programmer.
 
 \subsection{Type Inference}
-Type inference is the process of determining the types assigned to identifier using only the context in which they or used or the values they are assigned. When we are inferring types we assign each identifier a type variable. This type variable contains the set of all of the possible types that we believe that identifier can have at a given time. For instance, if we believe that the \texttt{x} can be an \texttt{int} or a \texttt{float} at a given time then we express this by giving it the type variable: \texttt{\{int, float\}}.
+Type inference is the process of determining the types assigned to an identifier using only the context in which they or used or the values they are assigned. When we are inferring types we assign each identifier a type variable. This type variable contains the set of all of the possible types that we believe that identifier can have at a given time. For instance, if we believe that the identifier \texttt{x} can be an \texttt{int} or a \texttt{float} at a given time then we express this by giving it the type variable: \texttt{\{int, float\}}.
 
 \subsubsection{Constraints and Constraint Solvers}
-Many algorithms for inferring the types involve solving a set of constraints. ``A constraint satisfaction problem [CSP] is a problem where one has to find a value for a (finite) set of variables satisfying a (finite) set of constraints.''~\cite{constraintBook} A CSP is typically described using the following notation: $\langle X, D, C \rangle$. Where $X$ represents a set of variables, $D$ is a set of corresponding domains and $C$ is a set of constraints that any solution must satisfy. Every variable must have a \textit{domain}. A domain specifies the values a variable can take. An example domain is the set of integers, $\mathbb{Z}$. A solution to a CSP is a mapping from the given variables to a value in the domain which satisfies the constraints provided. \\
+Many algorithms for inferring types involve solving a set of constraints. ``A constraint satisfaction problem [CSP] is a problem where one has to find a value for a (finite) set of variables satisfying a (finite) set of constraints.''~\cite{constraintBook} A CSP is typically described using the following notation: $\langle X, D, C \rangle$. Where $X$ represents a set of variables, $D$ is a set of corresponding domains and $C$ is a set of constraints that any solution must satisfy. Every variable must have a \textit{domain}. A domain specifies the values a variable can take. An example domain is the set of integers, $\mathbb{Z}$. A solution to a CSP is a mapping from the given variables to a value in the domain which satisfies the constraints provided. \\
 An example of a CSP is the following, where each letter must be replaced with a different number such that the sum evaluates correctly~\cite{constraintPrinciples}: \\
 \begin{equation*}
 \frac{
@@ -271,7 +271,7 @@ The generated bytecode in CPython is the following:~\cite{cpythonBytecode}
     36 RETURN_VALUE
 \end{verbatim}
 where \texttt{STORE\_FAST} stores the top of the stack (TOS) into a fast local register of the given name, \texttt{LOAD\_FAST} loads the given value in the fast local register of the given name onto the TOS, \texttt{DUP\_TOP} duplicates the reference on TOS, \texttt{BUILD\_LIST} creates a list, \texttt{LOAD\_GLOBAL} loads the value of global of the given name onto the stack, \texttt{LOAD\_CONST} loads of the value of the given constant on to the top of the stack, \texttt{CALL\_FUNCTION} calls a function and takes the given number of parameters, \texttt{LIST\_APPEND} calls \texttt{list.append} and looks the given number of positions from the TOS for the value, \texttt{GET\_ITER} sets the TOS to an iterator, \texttt{FOR\_ITER} calls the TOS's iterator, \texttt{DELETE\_FAST} deletes for value of the given register~\cite{disBytecode}, \texttt{JUMP\_ABSOLUTE} sets bytecode counter to the given value. \\
-\indent For the purposes of our application, for function \texttt{f} we need to know that the that we are returning a list comprehension in which \texttt{x} is being assigned the types in the contents of the list being returned by the \texttt{range} function. Learning this information from the bytecode would not be trivial. For instance, the \texttt{RETURN\_VALUE} statement provides the value on the top of the stack as a return type of the function. Without implementing an imaginary stack it would not be clear what is being returned. As we can see extracting information from such low-level bytecode is a much more difficult task than from accessing the designated field in the classes of an AST node. For this reason using a CFG built on bytecode presents needless complications. \\
+\indent In order to perform type inference on the body of function \texttt{f} we need to know that we are returning a list comprehension in which \texttt{x} is being assigned the types in the contents of the list being returned by the \texttt{range} function. Learning this information from the bytecode would not be trivial. For instance, the \texttt{RETURN\_VALUE} statement provides the value on the top of the stack as a return type of the function. Without implementing an imaginary stack it would not be clear what is being returned. As we can see extracting information from such low-level bytecode is a much more difficult task than from accessing the designated field in the classes of an AST node. For this reason using a CFG built on bytecode presents needless complications. \\
 \indent \textit{PyPy}, an alternative interpreter for Python which also uses CFG generation in its tool-chain~\cite{pypyCFG}. Unlike CPython, PyPy is written in Python, however its design is very similar to that of CPython meaning it also depends on a bytecode interpreter to generate its CFGs. \\
 \indent In 2013 a student named Ashwin Panchapakesan from the University of Ottawa built a tool to generated CFGs from Python source code~\cite{ashwinCFG}. To do this the program parses an AST created from the Python code into XML. The XML uses tags to indicate the type of a statement, such as if, while or expression. Within these tags is the line number of the statement. The XML format of the program is then analysed in order to determine where each line number is able to flow to. The CFG generated is easy to extract from this program, however the only information contained in this XML are the line numbers making it difficult to work with. While we could just extract the matching lines of raw source code, we would then need to break down the Python syntax ourselves to extract the information to analyse. There is also no simple way to extract the necessary information from the AST based on the line numbers.
 
@@ -298,7 +298,7 @@ A flow-sensitive algorithm is clearly the more accurate approach but requires a 
 A path-sensitive analysis recognises the path taken at control flow constructs such as \texttt{if}s and \texttt{while}s often involve deterministic choices. To exploit this the links between blocks in the control flow graphs are labelled with the condition which needs to met for the transfer of control to take place. The feasibility of this condition in the context of its location in the program is analysed. If the link is deemed infeasible then the link is removed. The result of this procedure is a control flow graph which more accurately represents the program being analysed.
 
 \subsection{SSA Naming}
-Primarily used in compilers, Single Static Assignment (SSA) is used to acquire ``unique names for distinct entities.''~\cite{ssaBook} What this means is that each variable should only be assigned to once. There are number of variants of SSA, each designed for a specialised purpose, such as Hashed SSA~\cite{ssaBook} form which intends to capture the fact that a single static use or definition (e.g.\ \texttt{*p} in C) could potentially impact multiple variables. In our case we are only to use a basic version of SSA, `vanilla' SSA which we will now describe. \\
+Primarily used in compilers, Single Static Assignment (SSA) is used to acquire ``unique names for distinct entities.''~\cite{ssaBook} What this means is that each variable should only be assigned to once. There are number of variants of SSA, each designed for a specialised purpose, such as Hashed SSA form~\cite{ssaBook} which intends to capture the fact that a single static use or definition (e.g.\ \texttt{*p} in C) could potentially impact multiple variables. In our case we are only to use a basic version of SSA, `vanilla' SSA, which we will now describe. \\
 Consider the following example:
 \begin{lstlisting}
     x = 5
@@ -317,7 +317,7 @@ It can be observed that the latest assignment of \texttt{x}  is used in all inst
 Note that the names of, both, \texttt{y} and \texttt{z} need not be changed in this case since they are only assigned to once. However it often makes the implementation of SSA easier to do so regardless.
 
 \subsubsection{The $\phi$ function}
-In a straight line program the manner used to number new variables is quite intuitive, we simply increment the number appended the end of the variable name. However as we introduce branching into our programs this method alone breaks down. Consider the following program:
+In a straight line program the manner used to number new variables is quite intuitive, we simply increment the number appended to the end of the variable name. However as we introduce branching into our programs this method alone breaks down. Consider the following program:
 \begin{lstlisting}
     x = 5
     if (y):
@@ -326,8 +326,8 @@ In a straight line program the manner used to number new variables is quite intu
       x = 6
     z = x + 1
 \end{lstlisting}
-The \textit{if} statement has two branches which both assign a new value to the variable \texttt{x}. Assigning new names to these variables is required by the rules of SSA, however it is unclear which name we are to use after the \texttt{if} and \texttt{else} when \texttt{x} is used in then assignment to the variable \texttt{z}. \\
-\indent To resolve this problem, we introduce the concept of the \emph{$\phi$ function}. The $\phi$ function is used ``to merge values from different incoming paths, at control-flow merge points.''~\cite{ssaBook} Put simply, the result of the $\phi$ can be said to be \emph{any} of the parameters given. 
+The \texttt{if} statement has two branches which both assign a new value to the variable \texttt{x}. Assigning new names to these variables is required by the rules of SSA, however it is unclear which name we are to use after the \texttt{then} and \texttt{else} bodies, when \texttt{x} is used in an assignment to the variable \texttt{z}. \\
+\indent To resolve this problem, we introduce the concept of the \emph{$\phi$ function}. The $\phi$ function is used ``to merge values from different incoming paths, at control-flow merge points.''~\cite{ssaBook} Put simply, the result of the $\phi$ function can be said to be \emph{any} of the parameters given to it. 
 \begin{lstlisting}[mathescape]
     x1 = 5
     if (y):
@@ -337,15 +337,15 @@ The \textit{if} statement has two branches which both assign a new value to the 
     x4 = $\phi$(x2, x3)
     z = x + 1
 \end{lstlisting}
-Since we only care about the possible types of each variable the $\phi$ function can viewed as a glorified union of all possible types of all parameters in our case. So in the above example we would have $x4 = \phi(x2, x3) = \{float\} \cup \{int\} = \{float, int\}$. \\
-A similar, slightly more complex case arises for loops. In this case, we must consider the types of the variables at each iteration of the loop as well as the exit. Consider the following trivial example:
+Since we only care about the possible types of each variable, the $\phi$ function can viewed as a glorified union of all possible types of all parameters. So in the above example we would have $\mathtt{x4 = \phi(x2, x3) = \{float\} \cup \{int\} = \{float, int\}}$. \\
+\indent A similar, slightly more complex case arises for loops. In this case, we must consider the types of the variables at each iteration of the loop as well as the exit. Consider the following trivial example:
 \begin{lstlisting}
     x = 5
     while (y):
       x = x + 1.0
     z = x + 1
 \end{lstlisting}
-At the entry of the loop, \texttt{x} can come from the statement immediately before the loop as well as the end of the loop. This can be seen clearly in Figure~\ref{phiCFG} where there are two entries into the loop header where \texttt{x} may take a value. We need to represent the fact that the value of \texttt{x} at the loop header could be either of the values. We do this using the $\phi$ function. The resulting program in SSA form is:
+At the entry of the loop test, \texttt{y}, \texttt{x} can come from the statement immediately before the loop test, \texttt{x = 5}, as well as at the end of the loop body, \texttt{x = x + 1.0}. This can be seen clearly in Figure~\ref{phiCFG} where there are two entries into the loop test where \texttt{x} may take a value. We need to represent the fact that the value of \texttt{x} at the loop test could be either of the values. We do this using the $\phi$ function. The resulting program in SSA form is:
 \begin{lstlisting}[mathescape]
     x1 = 5
     x2 = $\phi$(x1, x3)
@@ -353,7 +353,7 @@ At the entry of the loop, \texttt{x} can come from the statement immediately bef
       x3 = x2 + 1.0
     z = x2 + 1
 \end{lstlisting}
-The $\phi$ function can also be used for inferring the possible return types of a function. Consider the following Python function:
+The $\phi$ function can potentially be used for inferring the possible return types of a function. Consider the following Python function:
 \begin{lstlisting}[mathescape]
     def f():
         if ($p_1$):
@@ -374,23 +374,23 @@ Here we can see that the function \texttt{f} has a number of different \texttt{r
 \end{lstlisting}
 
 \paragraph*{Creating $\phi$ functions}\mbox{} \\
-Since most functions do contain a single set of variables constrained to a single control flow construct but instead have many local variables and many constructs, to create $\phi$ functions we need to know for which variables to create them for. There are two ways we can go about this:
+Since most functions don't contain a single set of variables constrained to a single control flow construct but instead have many local variables and many constructs, to create $\phi$ functions we need to know for which variables to create them. There are two ways we can go about this:
 \begin{itemize}
 	\item Method 1 - create a $\phi$ function for every variable within scope.
 	\item Method 2 - use dominance frontiers to calculate which $\phi$ functions are necessary
 \end{itemize}
-Method 1 is very simple to implement. However it clearly comes with some redundancy. It will cause to create $\phi$ functions for variables which are not modified and variables which are no longer referenced in future code. \\
+Method 1 is very simple to implement. However it clearly comes with some redundancy. It will cause us to create $\phi$ functions for variables which are not modified and variables which are no longer referenced in future code. \\
 \indent Method 2, dominance frontiers, eliminate redundancy at the expense of a more complicated algorithm. The algorithm is performed on code which has already been transformed into a control flow graph. The algorithm initially determines a \textit{dominance} relationship between the nodes in the CFG. Defining \textit{Entry} as the beginning of a function and \textit{Exit} as the leaving of a function, ``let X and Y be nodes in the CFG. $X$ dominates $Y$ (written $X≥Y$) if $X$ appears on every path from Entry to $Y$.''~\cite{ssaLecture} We extend this to a tighter relationship. We can say that ``$X>Y$ ($X$ strictly dominates $Y$) when $X$ dominates $Y$ but $X \neq Y$.''~\cite{ssaLecture} Using this information we can then begin to compute the dominance frontiers. ``$Y$ is in the dominance frontier of $X$ iff there exists a path from $X$ to Exit through $Y$ such that $Y$ is the first node not strictly dominated by $X$.''~\cite{ssaLecture} Having computed the dominance frontiers we add a $\phi$ function in the dominance frontier of a node for every variable assigned in that node. \\
-\indent We can see an example of this process in Figure~\ref{fig:dominanceFrontiers}. We have $N>M$ and so we do not insert a $\phi$ function at $N$. However we do not have $N>Z$ and so we must insert a $\phi$ function at block $Z$.
+\indent We can see an example of this process in Figure~\ref{fig:dominanceFrontiers}. We have $N>M$ and so we do not insert a $\phi$ function at $N$. However we do not have $N>Z$ and so we must insert a $\phi$ function at block $Z$. \\
 
 \begin{figure}
 	\centering
 	\includegraphics[scale=0.6]{images/ssaFrontiers.png}
 	\caption{$\phi$ functions being placed using dominance frontiers~\cite{domianceFrontiersImage}.}
 	\label{fig:dominanceFrontiers}
-\end{figure}
+\end{figure} 
 
-\indent The usefulness of SSA naming is immediately obvious. We need not track how the types of a variable may change over time. We may treat each new naming as a completely distinct variable. Managing the control-flow also becomes a much simpler task as we are easily able to express the fact that a variable can possibly be a number of different types depending on the path taken through the program.
+\indent The usefulness of SSA naming is immediately obvious. We need not track how the types of a variable may change over time. We may treat each new naming as a completely distinct variable. Managing the control flow of a program also becomes a much simpler task as we are easily able to express the fact that a variable at a given point can be a set of possible types regardless of the path taken through the program.
 
 \begin{figure}[h]
 \centering
@@ -417,13 +417,14 @@ We may wish to consider removing dead code from the program in order to type fun
 
 \newpage
 \section{Type Inferencing Algorithms}
-The main problem which is required to be solved by this project is how to statically infer the types in Python. \\
-\indent In this section we look at a number of the existing techniques to achieve this while keeping in mind the objectives described at the beginning of this report. Those were for it to return a low number of false positives, for it to statically analyse the code (not run it) and for it to be an out-of-the-box solution and for it to be reasonably fast.
+The main problem which is required to be solved by this project is how to statically infer the types in Python source code. \\
+\indent In this section we look at a number of the existing techniques to achieve this while keeping in mind the objectives described at the beginning of this report. Those were, for our tool to return a low number of false positives, for it to statically analyse the code (not run it), for it to be an out-of-the-box solution and for it to be reasonably fast.
 
 \subsection{Hindley-Milner}
 The Hindley-Milner algorithm was developed by Robin Milner based on the work of J. Roger Hindley. Hindley described the \textit{principal
 type schema}~\cite{hindley69}, ``which is the most general polymorphic type of an expression, and showed that if a combinatorial term has a type, then it has a principal type.''~\cite{cardelli87} Milner's contribution was an extension to Hindley's \textit{principal type schema} which included the ``notion of generic and non-generic type variables, which is essential for handling declarations of polymorphic functions.''~\cite{cardelli87} Milner's work culminated in the type inference system for the ML language~\cite{milner84}. \\
-\indent The Hindley-Milner algorithm uses the operations performed on expressions to generate constraints on the types of those expressions. This is done by annotating the nodes of an expression tree with the constraints in a bottom up fashion\footnote{The Hindley-Milner algorithm can be implemented top-down, called the $\mathcal{M}$ algorithm, or bottom-up, called $\mathcal{W}$~\cite{heeren02}. However, the bottom-up version appears to be much more common.}. \\ The constraint is solved to infer a type for a term using a \textit{unification} algorithm. \\
+\indent The Hindley-Milner algorithm uses the operations performed on expressions to generate constraints on the types of those expressions. This is done by annotating the nodes of an expression tree with the constraints in a bottom up fashion\footnote{The Hindley-Milner algorithm can be implemented top-down, called the $\mathcal{M}$ algorithm, or bottom-up, called $\mathcal{W}$~\cite{heeren02}. However, the bottom-up version appears to be much more common.}. \\ 
+\indent The constraint is solved to infer a type for a term using a \textit{unification} algorithm. \\
 \indent For an example of how the algorithm is performed, consider the following function written in Standard ML~\cite{cannonlocalizedtype}:
 \begin{lstlisting}
     fun foo x y =
@@ -432,10 +433,10 @@ type schema}~\cite{hindley69}, ``which is the most general polymorphic type of a
         else x + y
     ;
 \end{lstlisting}
-Using the $\mathcal{W}$ version of the algorithm, the function is determined to have parameter types \texttt{(\{int\}, \{int\})} and return type \texttt{\{int\}}. This calculated in five steps. \\
+Using the $\mathcal{W}$ version of the algorithm, the function is determined to have parameter types \texttt{(\{int\}, \{int\})} and return type \texttt{\{int\}}. This is calculated in five steps. \\
 \indent The first step is to initialise the function parameters to empty type variables, \texttt{a} and \texttt{b}. \\
-\indent Standard ML requires two variables to be of the same type to be legally compared. The statement on line 2, \texttt{if x = y}, imposes the constraint on the two type variables, \texttt{a = b}, or \texttt{a ⊆ b} and \texttt{b ⊆ a}. \\
-\indent The \texttt{then} branch is evaluated. Standard ML only permits the \texttt{int} type to be used in conjunction with the \texttt{-} operator. The types of \texttt{a}, and therefore \texttt{b}, is set to the \texttt{int} type. \\
+\indent In the second step we analyse the \texttt{if} test. Standard ML requires two variables to be of the same type to be legally compared. The statement on line 2, \texttt{if x = y}, imposes the constraint on the two type variables, \texttt{a = b}, or $\mathtt{a \subseteq b}$ and $\mathtt{b \subseteq a}$. \\
+\indent In the third step, the \texttt{then} branch is evaluated. Standard ML only permits the \texttt{int} type to be used in conjunction with the \texttt{-} operator. The types of \texttt{a}, and therefore \texttt{b}, is set to the \texttt{int} type. \\
 \indent For the fourth step, the \texttt{else} branch is evaluated but no new constraints are imposed. The restriction created by the \texttt{+} operator is the same as that for the \texttt{-} operator. \\
 \indent The final step determines the return type of the function. Since the \texttt{if} statement is the only expression in the function. Both branches result in an \texttt{int} type and so the return type of the function is determined be \texttt{int}. \\
 \indent Bugs can be detected using Hindley-Milner by determining whether there are inconsistencies in the set of constraints.
@@ -463,7 +464,7 @@ The Palsberg and Schwartzbach algorithm~\cite{Palsbergstatictyping} works by con
       
     f(3)
 \end{lstlisting}
-For this code, two constraints are generated. A subset constraint between the value \texttt{3} and the parameter \texttt{x} in \texttt{f}, $\mathtt{3 \subseteq x}$, and between the parameter \texttt{x} and the local variable \texttt{y} in \texttt{f}, $\mathtt{x \subseteq y}$.  \\
+For this code, two constraints are generated. A subset constraint between the value \texttt{3} and the parameter \texttt{x} in \texttt{f}, $\mathtt{type(3) \subseteq type(x)}$, and between the parameter \texttt{x} and the local variable \texttt{y} in \texttt{f}, $\mathtt{type(x) \subseteq type(y)}$.  \\
 \indent The algorithm is used for object-oriented code by copying the bodies of base classes inherited into the child classes. Similarly, class definitions are duplicated at all sites at which they are constructed and method bodies are duplicated at call sites.
 \paragraph*{Limitations}\mbox{}\\
 The excessive duplication makes the algorithm impractical. In the worst case, successive expansions squares the size of the program to be analysed.
@@ -478,7 +479,7 @@ The Cartesian Product Algorithm (CPA) was originally conceived by Agesen as an i
     else:
       x = 5.0  
 \end{lstlisting}
-The inferred types for $x$ would be the set $\left\{ {int, float}\right\}$, where the possible \textit{int} type is found in the \textit{then} branch and the \textit{float} type is found in the \textit{else} branch. The types from each branch are added to the set of possible types for $x$. The CPA algorithm guarantees that the type of the variable is contained within the set. \\
+The inferred types for \texttt{x} would be the set $\mathtt{\left\{ {int, float}\right\}}$, where the possible \texttt{int} type is found in the \texttt{then} branch and the \texttt{float} type is found in the \texttt{else} branch. The types from each branch are added to the set of possible types for \texttt{x}. The CPA algorithm guarantees that the type of the variable is contained within the set. \\
 \indent In order to infer the types handed to a function the cartesian product of the set of possible types for all given arguments is taken. Consider the following code:
 \begin{lstlisting}
     if (y):	
@@ -489,21 +490,21 @@ The inferred types for $x$ would be the set $\left\{ {int, float}\right\}$, wher
       z = True
     f(x, z)
 \end{lstlisting}
-The set of inferred types for $x$ is, as before, $\left\{ {int, float}\right\}$ and the set for $z$ is $\left\{ {str, bool}\right\}$. The possible types of the inputs to the function $f$ are: $\left\{ {int, float}\right\} \times \left\{ {str, bool}\right\} = \left\{ {(int, str), (int, bool), (float, str), (float, bool)}\right\}$, where each tuple represents the possible types of the variables given to $f$. \\
-The biggest shortcoming of the Palsberg and Schwartzbach algorithm, the expansions, was remedied by the CPA algorithm. This was done by duplicating function bodies such that they contain an argument list with monomorphic types which Agesen calls templates. Each argument list generated by taking the cartesian product at calls sites is connected with constraints to the corresponding template. The types of the values returned by each template are connected to the result of the function call. While duplication still occurs, it is bound the number of possible combinations of the types of the arguments, rather than being duplicated each time for every function call.
+The set of inferred types for \texttt{x} is, as before, $\mathtt{\left\{ {int, float}\right\}}$ and the set for \texttt{z} is $\mathtt{\left\{ {str, bool}\right\}}$. The possible types of the inputs to the function \texttt{f} are: $\mathtt{\left\{ {int, float}\right\} \times \left\{ {str, bool}\right\} = \left\{ {(int, str), (int, bool), (float, str), (float, bool)}\right\}}$, where each tuple represents the possible types of the variables given to \texttt{f}. \\
+\indent The biggest shortcoming of the Palsberg and Schwartzbach algorithm, the expansions, was remedied by the CPA algorithm. This was done by duplicating function bodies such that they contain an argument list with monomorphic types which Agesen calls templates. Each argument list generated by taking the cartesian product at calls sites is connected with constraints to the corresponding template. The types of the values returned by each template are connected to the result of the function call. While duplication still occurs, it is bound the number of possible combinations of the types of the arguments, rather than being duplicated each time for every function call.
 \paragraph*{Limitations}\mbox{}\\
 The size of the Cartesian products grows exponentially with the number of arguments given to the function call. However the size is bounded by the number of types available. \\
-The difficulty of implementation is greater than that of the Hindley-Milner algorithm which is known as being a fairly simple algorithm to implement~\cite{jones95}. \\
-Taking the cartesian product of the possible types given to a function call is unnecessary if the possible types the function can take are already known. \\
-While duplication has been reduced in comparison to the Palsberg and Schwartzbach algorithm, each function body is still duplicated to generate all possible templates.
+\indent The difficulty of implementation is greater than that of the Hindley-Milner algorithm which is known as being a fairly simple algorithm to implement~\cite{jones95}. \\
+\indent Taking the cartesian product of the possible types given to a function call is unnecessary if the possible types the function can take are already known. \\
+\indent While duplication has been reduced in comparison to the Palsberg and Schwartzbach algorithm, each function body is still duplicated to generate all possible templates.
 
 \subsubsection{Starkiller}
-Starkiller was designed by Michael Salib as a Python-to-C++ compiler~\cite{starkiller}. The type inference of algorithm used was based loosely on Agesen’s Cartesian Product Algorithm and achieves a complete type inference of Python source code.
+Starkiller was designed by Michael Salib as a Python-to-C++ compiler~\cite{starkiller}. The type inference of algorithm used was based loosely on Agesen’s Cartesian Product Algorithm and achieves complete type inference for a subset of Python.
 \paragraph*{Limitations}\mbox{}\\
-Starkiller is unable to infer types for the dynamic constructs such as \textit{eval}, or \textit{exec}. Strarkiller does not support exceptions of any kind. The implementation is flow-insensitive and so all variables contain all types inferred at all times. This means Starkiller is not precise. The types of function arguments are inferred from the call sites. This is not a problem since Starkiller is not a bug checker and so the Python source code being analysed, and thus the arguments given to a function call, are assumed to be correct.
+Starkiller is unable to infer types for the dynamic constructs such as \texttt{eval}, or \texttt{exec}, nor does it support exceptions of any kind. The implementation is flow-insensitive and so all variables contain all types inferred at all times. This means Starkiller is not precise. The types of function arguments are inferred from the call sites, however this is not a problem since Starkiller is not a bug checker and so the Python source code being analysed, and thus the arguments given to a function call, are assumed to be correct.
 
 \subsubsection{Shed Skin}
-Shed Skin is a Python-to-C++ compiler developed by Mark Dufour which boasts up to a 40-fold performance increase over an older Python-to-C++ compiler, Psyco~\cite{shedskin}. Shedskin employs the Cartesian Product Algorithm (CPA) alongside iterative class-splitting. The CPA algorithm is used to allow the user to know which functions need to be defined. For instance, if Shed Skin comes across $max(1, a)$ where $a$ can be the types in the set $\{int, float\}$ the $max$ function needs to be duplicated in C++ to cover $max(int, int)$ and $max(int, float)$ which need to be defined. Dufour also needs to define classes for the types used. For data polymorphic types such as lists, the class cannot always be shared so the the classes are `split' once they can longer share the same representation of data in the equivalent C++ program.
+Shed Skin is a Python-to-C++ compiler developed by Mark Dufour which boasts up to a 40-fold performance increase over an older Python-to-C++ compiler, Psyco~\cite{shedskin}. Shedskin employs the Cartesian Product Algorithm (CPA) alongside iterative class-splitting. The CPA algorithm is used to allow the user to know which functions need to be defined. For instance, if Shed Skin comes across \texttt{max(1, a)} where \texttt{a} can be the types in the set \texttt{\{int, float\}} the \texttt{max} function needs to be duplicated in C++ to cover \texttt{max(int, int)} and \texttt{max(int, float)}. Dufour also needs to define classes for the types used. For data polymorphic types such as lists, the class cannot always be shared so the the classes are `split' once they can no longer share the same representation of data in the equivalent C++ program.
 
 \paragraph*{Limitations}\mbox{}\\
 The programs consumed by Shed Skin are required to be implicitly statically typed. Meaning the type of a variable can not dynamically change. Shed Skin also does not support a number of Python features such as \texttt{eval} and \texttt{isinstance}.
@@ -1027,7 +1028,7 @@ The \texttt{int} type is immutable and so the function can in now way edit the v
 where \texttt{\_\_side\_effects} performs whatever the changes the function has on the contents of \texttt{x1}. The same must also be done for the built-in functions, such as \texttt{append} for \texttt{list} which adds the parameter to the list. \\
 \indent Unfortunately this process is either all-or-nothing since performing type inference only in some cases, such as only indexing which cause our tool to return false-positives. For example, if we encounter the following two statements: \texttt{some\_list[i] = 5; some\_list.append("hi")} only accepting new types from indexing would give \texttt{some\_list} the type set \texttt{\{int\}} when in fact it should have \texttt{\{int, string\}}. If an item is then taken from the list and used in a function which accepts only the \texttt{string} type then a false positive will occur. Due to this and the time and difficulty in calculating the side-effects of functions made it infeasible in the time frame of this project. For this reason we consider the contents of a container to always be the type \texttt{any}.
 
-\subsubsection{Inferring the Types in del statements}
+\subsubsection{Inferring the Types in del Statements}
 The \texttt{del} statement is used to remove an identifier binding. If the target of the \texttt{del}  statement is a variable then the type of that variable is set to \texttt{none}. Otherwise, if the target is an element in a list or \texttt{dict} then that single element is removed. In the case of a variable we can change the set of types assigned to this variable. However, it is more complicated in the case the target is an element of a \texttt{list} or \texttt{dict}. In theory we could simply remove the type(s) associated with that element from the types contained in the \texttt{list} or \texttt{dict} but this would only be correct if the element being removed was the \textit{only} element in the \texttt{list} or \texttt{dict} with that type. This may prove difficult to track. For instance, consider the following trivial example:
 \begin{lstlisting}[mathescape]
     from random import randomint
@@ -1035,7 +1036,12 @@ The \texttt{del} statement is used to remove an identifier binding. If the targe
     del l[randint(0, 2)]
 \end{lstlisting}
 This example will delete a random element from the list. It impossible to statically predict which element, and therefore type, that will be removed. A similar problem arises when a dynamic number of elements is added, such as when looping over a file and adding elements found until the end of the file is reached. In this case we cannot determine how many elements need to removed before we can safely remove the type from the set of types contained in the \texttt{list} or \texttt{dict}. \\
-For these reasons we do not change the set of types contained in the \texttt{list} or \texttt{dict} after a \texttt{del} operation.
+\indent For these reasons we do not change the set of types contained in the \texttt{list} or \texttt{dict} after a \texttt{del} operation.
+
+\subsubsection{Inferring the Types in Comprehensions}
+Python provides convenient syntax for generating a number of different container types, such as \texttt{list}, \texttt{dict} and \texttt{generator}. These are called comprehensions. For example, assume we have a Python \texttt{list}, \texttt{num\_list}, containing various \texttt{int}s and we wished to extract all numbers of a value less than 100 into a new \texttt{list}. We could do this using the following \texttt{list} comprehension: \texttt{[x < 100 for x in num\_list]}. The \texttt{for x in some\_list} generates an iterator over all values in \texttt{num\_list} and assigns each value to the variable \texttt{x}. Each value is then added to a new \texttt{list} if the condition \texttt{x < 100} evaluates to \texttt{True} for that value. \\
+\indent Each of the comprehensions are performed in similar ways but are differentiated by the syntax which surrounds the expression. \texttt{list} comprehensions use \texttt{[expr]} as above, \texttt{dict} comprehensions use \texttt{\{expr\}} and \texttt{generator} comprehensions use \texttt{(expr)}. \\
+\indent In each comprehension the return type is the type of comprehension, e.g.\ a \texttt{list} comprehension always returns a \texttt{list} type.
 
 \subsubsection{Inferring the Types in For/While Loops}
 The following shows a `raw' while loop and the same while loop in SSA form:
@@ -1084,6 +1090,7 @@ Variable-length function arguments, or \textit{vaargs}, are used to allow a func
 \paragraph*{Keyword Function Arguments}\mbox{} \\
 Keyword function arguments, or \textit{kwargs}, are similar to vaargs in that they allow unbounded number of arguments to be given to the function call. A kwarg is signified by preceding the identifier with \texttt{**}. For example, the function header \texttt{def f(x, **y)} has a regular argument and a kwarg. The difference between a kwarg and vaarg is that an identifier needs to be provided along with each value. Each identifier and value pair is then provided in a \texttt{dict}. For example, the function call \texttt{5, item1 = 1, item2 = 2} will cause \texttt{y} to take on the \texttt{dict} \texttt{\{item1 : 1, item2 : 2\}}. \\
 \indent kwargs are the least common `special' function argument. They are used only twice in our supported library functions. For this reason they are also not supported. Similarly to vaargs the kwargs only ever assume one type. Due to this we can always type the kwarg as a \texttt{dict}. However, again, we unable to type check the correct type are given to the call of a function using kwargs. \\
+\indent Keyword function arguments can be used without the \texttt{**} syntax by referring to the function arguments in the function call by the name they are given in the function header. This allows the function arguments to given out-of-order. For example, the function with the header \texttt{def f(x, y)} can be called in the following way: \texttt{f(y = 4, x = 5)}. Currently, this method of calling functions is not supported.
 
 
 
@@ -1637,6 +1644,17 @@ Our tool covers a number of `magic' functions, however there are some such as \t
         return self.total + other
 \end{lstlisting}
 In this case the class \texttt{C} takes only an \texttt{int} or a \texttt{float} as its right-side parameter. This means an acceptable use case for an instance of \texttt{C}, \texttt{c}, is: \texttt{c + 1}. Therefore, upon detecting a class implementing a method such as \texttt{\_\_add\_\_} the possible types of the parameters need to be inferred before adding the class type and the parameter to the list of possible combinations for their respective binary operators.
+
+\subsubsection*{The isinstance Function}
+Python provides a built-in function, \texttt{isinstance}, to determine whether a variable is a particular type at a given point in the program. For instance, \texttt{isinstance(x, int)} will return \texttt{True} if \texttt{x} is an \texttt{int} type and \texttt{False} otherwise. Most occurrences of the function, from our experience, are used in dictating control flow, which gives us an opportunity to refine the set of types we have inferred for the target variable. Consider the following block of code:
+\begin{lstlisting}[mathescape]
+    if isinstance(x, int):
+      # Do something
+    else:
+      # Do something
+\end{lstlisting}
+If we are able to determine that \texttt{isinstance} is being used to manage control flow then we refine our types for \texttt{x} in the \texttt{then} and \texttt{else} branches. For the \texttt{then} branch we can we can, assume \texttt{x} is a local variable, create a new naming of it (in the same vein as SSA naming) which contains only the type \texttt{int}. We do the opposite for the \texttt{else} branch, we carry over all types \texttt{x} contains before the \texttt{if} minus the type \texttt{int}. So, if \texttt{x} has been inferred to the type set \texttt{\{int, string\}} before the \texttt{if}, in the \texttt{then} branch \texttt{x} would have the type set \texttt{\{int\}} and in the \texttt{else} branch \texttt{x} would have the type set \texttt{\{string\}}. If \texttt{x} did not contain the type \texttt{int} before the \texttt{if} the process would be the same. We would not retreat through the program and update our types to, in this case, update our old inferences with the \texttt{int} since we have to consider that the type being compared with the variable may have been chosen in error. \\
+\indent All other uses of the function can be exploited in similar ways, the list comprehension \texttt{[isinstance(x, int) for x in list\_name]} will result in a \texttt{list} containing only the \texttt{int} type. If the types contained in containers are being tracked then this information can be used to refine the types of the new \texttt{list} being generated.
 
 \subsubsection*{Improving the Speed}
 The primary method of reducing the runtime of the tool would be to calculate the dominance frontiers of the basic blocks in the CFG before applying SSA naming. This would reduce the number of redundant operations performed in the type checker. This should result in a significant speed-up on projects with large functions with a large number of control flow constructs. This is due to the fact these functions are likely to have a large number of local variables and blocks which results in redundant $\phi$ functions.
