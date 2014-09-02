@@ -57,6 +57,18 @@
 
 \maketitle
 
+
+% Abstract
+\begin{abstract}
+Programmers spend a large percentage of their time debugging dysfunctional code. In dynamically typed languages bugs can go hidden more easily due to the lack of protection offered by a static compiler. Tools have been developed to ease this process but they often frustrate the user with false positives and ignore the dynamic nature of Python. We attempt to design a type checker for a subset of the Python programming language which returns few false positives and takes an optimistic approach to Python's dynamism. We achieve this by accepting the modifications made to global variables are unpredictable and distinguishing between global and local variables in our algorithm. We take inspiration from a technique called success typings and infer the types of function arguments through the context they are used in the function body in order to prevent reliance on, potentially incorrect, types provided in function calls. We handle Python exceptions, which most type inferencers ignore, by assuming that all statements within a \texttt{try} are potentially exceptional. Finally we show that the subset of Python our tool covers is useful for real-world projects and how our work can be extended to cover the majority of Python functionality.
+\end{abstract}
+
+% Acknowledgements
+\renewcommand{\abstractname}{Acknowledgements}
+\begin{abstract}
+I would like to thank my supervisors, Jeroen Ketema and Alastair Donaldson, for our many meetings and for their helpful comments.
+\end{abstract}
+
 \tableofcontents
 \newpage
 
@@ -137,6 +149,37 @@ Line 21 shows a legal and non-exception use of the code. A regular potion is use
 
 \subsection{Type Inference}
 Type inference is the process of determining the types assigned to identifier using only the context in which they or used or the values they are assigned. When we are inferring types we assign each identifier a type variable. This type variable contains the set of all of the possible types that we believe that identifier can have at a given time. For instance, if we believe that the \texttt{x} can be an \texttt{int} or a \texttt{float} at a given time then we express this by giving it the type variable: \texttt{\{int, float\}}.
+
+\subsubsection{Constraints and Constraint Solvers}
+Many algorithms for inferring the types involve solving a set of constraints. ``A constraint satisfaction problem [CSP] is a problem where one has to find a value for a (finite) set of variables satisfying a (finite) set of constraints.''~\cite{constraintBook} A CSP is typically described using the following notation: $\langle X, D, C \rangle$. Where $X$ represents a set of variables, $D$ is a set of corresponding domains and $C$ is a set of constraints that any solution must satisfy. Every variable must have a \textit{domain}. A domain specifies the values a variable can take. An example domain is the set of integers, $\mathbb{Z}$. A solution to a CSP is a mapping from the given variables to a value in the domain which satisfies the constraints provided. \\
+An example of a CSP is the following, where each letter must be replaced with a different number such that the sum evaluates correctly~\cite{constraintPrinciples}: \\
+\begin{equation*}
+\frac{
+    \begin{array}[b]{r}
+      SEND \\
+      + MORE
+    \end{array}
+  }{
+    MONEY
+  }
+\end{equation*}
+In this problem the  $\langle X, D, C \rangle$ are as follows:
+\begin{verbatim}
+    X:
+      S, E, N, D, M, O, R, Y 
+    D:
+      [1..9] for S, M
+      [0..9] for E, N, D, O, R, Y
+    C:
+      AllDifferent([S, E, N, D, M, O, R, Y])
+      ExactSum([SEND, MORE], MONEY)
+\end{verbatim}
+where \texttt{AllDifferent} is shorthand for $S \neq E \neq N \ldots$ and similarly \texttt{ExactSum} is shorthand for $(S \times 1000 + E \times 100 \ldots)  + (M \times 1000 + O \times 100 \ldots) = (M \times 10000 + O \times 1000 \ldots) $ \\
+\indent There is a single solution to this CSP:
+\begin{verbatim}
+    S = 9, E = 5, N = 6, D = 7, M = 1, O = 0, R = 8, Y = 2
+\end{verbatim}
+Constraints are frequently solved using constraint solvers. % A third-party constraint solving package for Python called \textit{python-constraint}. python-constraint provides a number of built-in constraint types to use such as \textit{NotInSetConstraint}, \textit{AllEqualConstraint} and \textit{ExactSumConstraint}. However, it also allows you use a \textit{FunctionConstraint} to which you provide a function defining the constraint logic. This means the constraints it can handle are endless.
 
 \newpage
 \section{Background}
@@ -372,39 +415,8 @@ We may wish to consider removing dead code from the program in order to type fun
 \indent As well a \texttt{return} statements this problem also applies to \texttt{breaks} and \texttt{continues}. \\
 \indent Unfortunately there are no out-of-the-box solutions to this problem for Python programs. \\
 
-\subsection{Constraints and Constraint Solvers}
-``A constraint satisfaction problem [CSP] is a problem where one has to find a value for a (finite) set of variables satisfying a (finite) set of constraints.''~\cite{constraintBook} A CSP is typically described using the following notation: $\langle X, D, C \rangle$. Where $X$ represents a set of variables, $D$ is a set of corresponding domains and $C$ is a set of constraints that any solution must satisfy. Every variable must have a \textit{domain}. A domain specifies the values a variable can take. An example domain is the set of integers, $\mathbb{Z}$. A solution to a CSP is a mapping from the given variables to a value in the domain which satisfies the constraints provided. \\
-An example of a CSP is the following, where each letter must be replaced with a different number such that the sum evaluates correctly~\cite{constraintPrinciples}: \\
-\begin{equation*}
-\frac{
-    \begin{array}[b]{r}
-      SEND \\
-      + MORE
-    \end{array}
-  }{
-    MONEY
-  }
-\end{equation*}
-In this problem the  $\langle X, D, C \rangle$ are as follows:
-\begin{verbatim}
-    X:
-      S, E, N, D, M, O, R, Y 
-    D:
-      [1..9] for S, M
-      [0..9] for E, N, D, O, R, Y
-    C:
-      AllDifferent([S, E, N, D, M, O, R, Y])
-      ExactSum([SEND, MORE], MONEY)
-\end{verbatim}
-where \texttt{AllDifferent} is shorthand for $S \neq E \neq N \ldots$ and similarly \texttt{ExactSum} is shorthand for $(S \times 1000 + E \times 100 \ldots)  + (M \times 1000 + O \times 100 \ldots) = (M \times 10000 + O \times 1000 \ldots) $ \\
-\indent There is a single solution to this CSP:
-\begin{verbatim}
-    S = 9, E = 5, N = 6, D = 7, M = 1, O = 0, R = 8, Y = 2
-\end{verbatim}
-Constraints are frequently solved using constraint solvers. % A third-party constraint solving package for Python called \textit{python-constraint}. python-constraint provides a number of built-in constraint types to use such as \textit{NotInSetConstraint}, \textit{AllEqualConstraint} and \textit{ExactSumConstraint}. However, it also allows you use a \textit{FunctionConstraint} to which you provide a function defining the constraint logic. This means the constraints it can handle are endless.
-
 \newpage
-\section{Type Inference}
+\section{Type Inferencing Algorithms}
 The main problem which is required to be solved by this project is how to statically infer the types in Python. \\
 \indent In this section we look at a number of the existing techniques to achieve this while keeping in mind the objectives described at the beginning of this report. Those were for it to return a low number of false positives, for it to statically analyse the code (not run it) and for it to be a out-of-the-box solution and for it to be reasonably fast.
 
