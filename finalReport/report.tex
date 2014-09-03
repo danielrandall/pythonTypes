@@ -78,8 +78,8 @@ High level, dynamically typed languages such as Python have been gaining popular
 \indent While there has been significant talk of adding optional static typing to Python~\cite{guido1, guido2, guido3, guidoLatest}, it seems that this will be limited to annotations similar to those currently employed in the open source project mypy~\cite{mypy}. This means that even if support is added in the near future it will be some time before this is incorporated into large projects. \\
 \indent Tools attempting to provide the benefits of a statically typed language to unedited Python source code do exist, such as Pylint~\cite{pylint} and PyChecker~\cite{pychecker}, however their usability is hampered by the number of false positives returned and the amount of configuration needed. \\
 \indent This project aims to design and implement a type checker for Python which returns few false positives. The basis for our implementation is a method called success typings~\cite{lindhal06}. We harness this idea in order to provide a over-approximation of how a function is intended to be used without relying on how the function is actually used. This allows us to determine that a violation of a function's contract is guaranteed to be a programming error. We describe success typing as well as the general theory behind type systems in Chapter 3. We then examine similar tools and techniques and show the limitations in their application. \\
-\indent Using the methods and techniques we described, we begin to define our solution and determine the best way to infer a type for each programming construct in Python. Once we decide upon the best methods we then set about evaluating the best 3\textsuperscript{rd} party software we can use to achieve these tasks and why we should not implement our own solutions. \\
-\indent In Chapter 6 we evaluate our implementation. We evaluate it in four ways: the number of false positives it reports, accuracy, speed, and its ability to find bugs. We benchmark our solution against an existing type checker for Python.
+\indent Using the methods and techniques we described, we begin to define our solution and determine the best way to infer a type for each programming construct in Python. \\
+\indent In Chapter~\ref{chap:evaluation} we evaluate our implementation. We evaluate it in four ways: the number of false positives it reports, accuracy, speed, and its ability to find bugs. We benchmark our solution against an existing type checker for Python.
 
 \subsection{Objectives}
 The objectives for this project are as follows:
@@ -663,7 +663,7 @@ The function \texttt{f} has the return type \texttt{\{int, None\}}. In line 7, t
 \newpage
 \section{Implementation}
 All of the implementation was created using the Python language. As this allows us to use the built-in \texttt{ast} module which provided the base from which this project was built. No other language offered such a critical component out-of-the-box. \\
-\indent Our project uses a flow-sensitive approach. This was decided in order to increase accuracy. To implement flow-sensitivity, we use single static assignment. SSA allows us to use a flow-sensitive approach while implementing a simpler flow-insensitive algorithm in our type checker. \\
+\indent To implement flow-sensitivity for local variables, we use single static assignment. SSA allows us to use a flow-sensitive approach while implementing a simpler flow-insensitive algorithm in our type checker. \\
 \indent The basic structure of our system can be seen in Figure~\ref{fig:systemStructure}. The basic components are the AST, CFG, SSA, Preprocessing and Type Inference. Each component will be described here. \\
 \indent This traverser used to navigate the AST are taken from Edward K. Ream's \textit{stc}~\footnote{\url{https://code.launchpad.net/~edreamleo/python-static-type-checking/trunk} Revision \#448 was used for this project.}.
 
@@ -919,7 +919,7 @@ The exit block for the inner \texttt{if} is not needed as there are no further s
 \subsection{SSA Form}
 The implementation of SSA renaming was performed as described in the background section. However, a few Python specific additions were necessary which are described in this section. \\
 \indent Having created the CFG our SSA renaming can ignore specific programming constructs such as \texttt{for}, \texttt{if} and \texttt{while}. The knowledge required to successfully create the $\phi$ functions for these constructs is encapsulated in the CFG. \\
-\indent The algorithm works by analysing one function at a time. A dictionary is maintained with each variable name eligible within the current scope. The dictionary is reset to containing only module/class wide variables at the end of each function. When a identifier is encountered it is determined whether we wish to rename it. If we do then we check whether it is a \texttt{store} or \texttt{load} operation. A \texttt{store} checks whether the identifier has been referenced beforehand. If it hasn't we add the identifier to the dictionary along with the value \texttt{1} and we modify the node containing the variable name by appending that value to the end of the name, so, for instance, \texttt{x} becomes \texttt{x1}. Otherwise the identifier's value is incremented and renamed with the new value. A \texttt{load} operation uses the latest value for that identifier for renaming. Once we reach the end of a basic block the state of current block's dictionary is forwarded to all of the block's.
+\indent The algorithm works by analysing one function at a time. A dictionary is maintained with each variable name eligible within the current scope. The dictionary is reset to containing only module/class wide variables at the end of each function. When a identifier is encountered it is determined whether we wish to rename it. If we do then we check whether it is a \texttt{store} or \texttt{load} operation. A \texttt{store} checks whether the identifier has been referenced beforehand. If it hasn't we add the identifier to the dictionary along with the value \texttt{1} and we modify the node containing the variable name by appending that value to the end of the name, so, for instance, \texttt{x} becomes \texttt{x1}. Otherwise the identifier's value is incremented and renamed with the new value. A \texttt{load} operation uses the latest value for that identifier for renaming. Once we reach the end of a basic block the state of current block's dictionary is forwarded to all of the block's successors.
 
 \subsubsection{Global and Local Variables}
 \label{chap:ssaGlobals}
@@ -977,7 +977,8 @@ In function \texttt{f} the global keyword is not used with \texttt{x} and so we 
 Two methods for generating $\phi$ functions were described in the background section. These were: to calculate dominance frontiers, or to naively place them for all variables at the beginning of each block. The decision was made to implement the naive approach. This decision was taken as we felt it was more important, and interesting, to cover more of the Python language rather than to increase the speed of the tool. We currently generate $\phi$ functions for all local variables within a function.
 
 \subsection{Type Inference}
-Type inference in our system works by creating a network modelling the data flow of types. The inference works by propagating primitive types through constraints until the system has been completely satisfied. The types supported by this system are:
+Type inference in our system works by creating a network modelling the data flow of types. The inference works by propagating primitive types through constraints until the system has been completely satisfied. \\
+\indent A thorough description of all of Pythons built-in types can be found~\cite{pythonTypeDocs}. The types supported by our tool are:
 \begin{itemize}
 	\item \texttt{int} - A numeric type to represent an integer. It has unlimited precision.
 	\item \texttt{float} - A numeric type to represent a floating-point number.
@@ -995,7 +996,7 @@ Type inference in our system works by creating a network modelling the data flow
 	\item \texttt{class instance} - a type which represents an instantiation of a class definition
 	\item \texttt{function} - a type representing a function.
 \end{itemize}
-A thorough description of these types can be found~\cite{pythonTypeDocs}. \\
+The built-in types not supported by our tool are \texttt{bytearray} and \texttt{complex}. However, from our experience, they are not very common. \\
 
 \subsubsection{Built-in Functions}
 \indent All built-in types but \texttt{int} and \texttt{float} have functions as class members which can be called from instances of these types. Almost all of these are supported. In total, across all built-in types, 177 functions are supported at the time of writing. For brevity they have not be been documented here. For a significant number of these functions, the information necessary to support them in our tool was extracted from mypy~\cite{mypy}. \\
@@ -1067,7 +1068,7 @@ No container in Python is restricted to elements of any one type. In the example
     g(x)
     print(x)    # prints 5
 \end{lstlisting}
-The \texttt{int} type is immutable and so the function can in no way edit the value of the \texttt{int} object. Since the \texttt{list} is mutable the function call was able to change the contents of the list and therefore the types contained in the list. What this means in the context of the type checking is that if we wish to accurately track the possible types of the contents of a container type then we must also keep track of the possible side-effects of functions. In the case above we must express that the function \texttt{f} will always add the type \texttt{string} to its first (and only) parameter. When the function is called we must update the possible types the elements of the \texttt{list} can contain. So, for example:
+The \texttt{int} type is immutable and so the function can in no way edit the value of the \texttt{int} object. Since the \texttt{list} is mutable the function call was able to change the contents of the list and therefore the types of the elements contained in the list. What this means in the context of the type checking is that if we wish to accurately track the possible types of the contents of a container type then we must also keep track of the possible side-effects of functions. In the case above we must express that the function \texttt{f} will always add the type \texttt{string} to its first (and only) parameter. When the function is called we must update the possible types the elements of the \texttt{list} can contain. So, for example:
 \begin{lstlisting}
     def g():
       x1 = [3]
@@ -1111,9 +1112,9 @@ The following shows a `raw' while loop and the same while loop in SSA form:
       y1 = x2
       x3 = "Hi"
 \end{lstlisting}
-A problem raised by this is that the $\phi$ function at the beginning of the loop depends on the types which can not be determined until the end of the loop body. In between there may be other variables which use the result of the $\phi$ function in their own assignment, like \texttt{y1} above. Due to the manner we deal with simple assignment, using the subset relation, we can treat the $\phi$ function as a number of different assignments to the variable created by the $\phi$ function. Thus, while in the example above \texttt{x3} may be an empty type variable once we set up the relationship the types will flow through to \texttt{x4} as \texttt{x3} receives them. \\
-\indent The case for \texttt{while} loop tests require no significant effort since any type can be compared to \texttt{True} and \texttt{False}, however \texttt{for} loops use the Python concept of \texttt{iterators}. \texttt{iterators} work by systematically yielding each object that they contain until all objects have been exhausted.
-A Python type qualifies as an iterator if it implements the \texttt{\_\_iter\_\_} function. The built-in types which implement \texttt{\_\_iter\_\_} are \texttt{list}, \texttt{sting}, \texttt{tuple}, \texttt{dict} and \texttt{set}.
+A problem raised by this is that the $\phi$ function at the beginning of the loop depends on the types which can not be determined until the end of the loop body. In between there may be other variables which use the result of the $\phi$ function in their own assignment, like \texttt{y1} above. Due to the manner we deal with simple assignment, using the subset relation, we can treat the $\phi$ function as a number of different assignments to the variable created by the $\phi$ function. So, for example, \texttt{x2 = $\phi$(x1, x3)} would translate to $\mathtt{x2 \subseteq x1}$ and $\mathtt{x2 \subseteq x3}$. Thus, while in the example above \texttt{x3} may be an empty type variable once we set up the relationship the types will flow through to \texttt{x4} as \texttt{x3} receives them. \\
+\indent We need to consider what types can be legally used in the loop tests. The case for \texttt{while} loop tests require no significant effort since any type can be compared to \texttt{True} and \texttt{False}, however \texttt{for} loops use the Python concept of \texttt{iterators}. \texttt{iterators} work by systematically yielding each object that they contain until all objects have been exhausted. \\
+\indent A Python type qualifies as an iterator if it implements the \texttt{\_\_iter\_\_} function. The built-in types which implement \texttt{\_\_iter\_\_} are \texttt{list}, \texttt{sting}, \texttt{tuple}, \texttt{dict} and \texttt{set}.
 
 
 \subsubsection{Inferring the Possible Types of Function Arguments}
@@ -1171,7 +1172,7 @@ It was felt that more was to be gained using the bottom-up approach since we wou
 	\item Whether the parameter is iterated over
 \end{itemize}
 In each case we use the types which are legally allowed in each operation to infer the types for the parameter. \\
-\indent We do not currently use whether the parameter is called to infer the types, e.g.\ if \texttt{x} is parameter and used in the following way: \texttt{x()}. This is because any function, class definition or class instance which implements \texttt{\_\_call\_\_} can satisfy this context. There are hundreds of built-in functions and classes which it could possibly be and cataloguing would take more time than it is worth. \\
+\indent We do not currently use whether the parameter is called to infer the types, e.g.\ if \texttt{x} is parameter and used in the following way: \texttt{x()}. This is because any function, class definition or class instance which implements \texttt{\_\_call\_\_} can satisfy this context. There are hundreds of built-in functions and classes which it could possibly be and cataloguing all of these would take more time than it is worth. \\
 \indent There are times when the same context of the parameter should be used differently. Consider the following two functions:
 \begin{lstlisting}[mathescape]
 	def f(x, y):
@@ -1354,7 +1355,7 @@ Consider the following class definition:
         print("calling")
 \end{lstlisting}
 A class instance is initialised using the following syntax: \texttt{instance = C()}. Implementing the \texttt{\_\_call\_\_} method allows the programmer to use the same syntax on the class instance to perform some task. Executing the code \texttt{instance()} will print ``calling''. \\
-\indent If a class instance is called then it must define the \texttt{\_\_call\_\_} method.
+\indent If a class instance is called then it must define the \texttt{\_\_call\_\_} method. We handle this by checking whether the identifier being called is an instance of a class. If it is then we check whether \texttt{\_\_call\_\_} is a class member.
 
 
 \subsubsection{Highly Dynamic Features}
@@ -1525,6 +1526,7 @@ Here \texttt{\_\_init\_\_} of \texttt{Wrapper} is called when the function \text
 
 \newpage
 \section{Evaluation}
+\label{chap:evaluation}
 Python can be used in many different kinds of projects. From single module scripts with no classes to larger projects across multiple modules and classes. In the interest of seeing how our tool performs on  all possible types of Python source code, we tested with a combination of these. \\
 \indent In order to see how it runs on genuine scripts, samples have been taken from those posted in an online discussion~\cite{pythonScripts}. \\
 \indent The larger projects have been taken from the beginning of the list of all open source Python3 projects on the Python package index, Pypi~\cite{python3Projects}.
@@ -1552,7 +1554,7 @@ Python can be used in many different kinds of projects. From single module scrip
 
 
 \subsection{False-positives}
-The number of false positives can be seen in Table~\ref{table:toolResults}. The highest amount of false positives returned by any of the projects tested on was two. However each of these false positives was the result of a feature not yet supported. For example, the two false positives in \texttt{sshmap} involve calling a function and providing arguments using the argument name.
+The number of false positives can be seen in Table~\ref{table:toolResults}. The errors issued were determined to be false positives by manual checking. The highest number of false positives returned by any of the projects tested on was two. However each of these false positives was the result of a feature not yet supported. For example, the two false positives in \texttt{sshmap} involve calling a function and providing arguments using the argument name.
 
 \subsection{Accuracy}
 The greatest sources of inaccuracy in our tool is the use of built-in modules and being unable to infer the contents of container types. We will discuss the practical implications of each separately.
@@ -1655,7 +1657,7 @@ At this time our tool is not accurate enough to currently be used as a full-blow
 
 \newpage
 \section{Conclusion}
-Throughout this project we have looked at types in programming languages, type inference and how it can be performed, we looked at how we can use techniques such as control flow graphs and single static assignment to create our system and how we can solve potential issues in the \textit{Design of the Type Inferencing Algorithm} section. From there we described the structure of our work, the trade-offs of our decisions and went on to evaluate it in a number of ways. We benchmarked our system against an existing type checker, looked at its accuracy and what errors it is capable of checking. \\
+Throughout this project we have looked at types in programming languages, type inference and how it can be performed, we looked at how we can use techniques such as control flow graphs and single static assignment to create our system and how we can solve potential issues in the \textit{Design of the Type Inferencing Algorithm} section. We described the structure of our work, the trade-offs of our decisions and went on to evaluate it in a number of ways. We benchmarked our system against an existing type checker, looked at its accuracy and what errors it is capable of checking. \\
 \indent This project aims to infer bugs involving type errors in Python code without the burden of having to check to see which errors are false positives and which are genuine. Our solution achieves this by using a flow-sensitive approach for local variables, a flow-insensitive approach for global variables and an algorithm based on success typings for inferring function arguments. This is done out-of-the-box, without troubling the users with the technicalities of annotations. \\
 \indent However our achievements are just the beginning in what could be a very promising line of work. It appears our solution may be usefully used alongside a more aggressive and false-positive sensitive tool.
 
@@ -1663,7 +1665,7 @@ Throughout this project we have looked at types in programming languages, type i
 The majority of the future work available is improving upon the accuracy of our tool. This can be done in the following ways:
 
 \subsubsection*{Supporting Built-in Modules}
-In order to build a type checker which can infer types accurately enough to become a tool of real use, the built-in modules need to be supported. Some built-in module was used in all of the examples we evaluated our tool on. Typing the import as the \texttt{any} type causes great inaccuracy to propagate through our analysis. However dealing with these modules is not simple. One possible solution would be to run our tool on these modules and use the types we are able to infer. Unfortunately, this is not a realistic option since a large number of Python built-in modules, such as \texttt{os}, are largely written in \texttt{C} for the purposes of speed. Parsing the modules by hand is also not a realistic option due to the sheer number of modules and their size. We believe that the best way to support these would be utilise the work of others. Similar to the manner we supported built-in functions, mypy has inferred the types of functions and global variables within a number of these modules~\cite{mypy}. At the time of writing, mypy's documentation of the modules is not complete. For example, there is currently no support for the \texttt{datetime} module. But with the most frequently used modules largely covered, such as \texttt{re}, \texttt{os} and \texttt{math}, there is certainly enough information to act as a promising starting point.
+In order to build a type checker which can infer types accurately enough to become a tool of real use, the built-in modules need to be supported. Some built-in module was used in all of the examples we evaluated our tool on. Typing the import as the \texttt{any} type causes great inaccuracy to propagate through our analysis. However dealing with these modules is not simple. One possible solution would be to run our tool on these modules and use the types we are able to infer. Unfortunately, this is not a realistic option since a large number of Python built-in modules, such as \texttt{os}, are largely written in \texttt{C} for the purposes of speed. Parsing the modules by hand is also not a realistic option due to the sheer number of modules and their size. We believe that the best way to support these would be utilise the work of others, such as mypy. Similar to the manner we supported built-in functions, mypy has inferred the types of functions and global variables within a number of these modules~\cite{mypy}. At the time of writing, mypy's documentation of the modules is not complete. For example, there is currently no support for the \texttt{datetime} module. But with the most frequently used modules largely covered, such as \texttt{re}, \texttt{os} and \texttt{math}, there is certainly enough information to act as a promising starting point.
 
 \subsubsection*{Calculating the Side-Effects of Functions}
 As we saw in the Evaluation section, one of the greatest weaknesses of our tool is its inability to keep track of the types in container types. Due to the fact that most containers are mutable types, the side-effects of functions needs to be tracked before solving this problem becomes plausible. Calculating the side-effects of functions will also open the gateway to inferring the possible states of objects at a given point in the source code. \\
