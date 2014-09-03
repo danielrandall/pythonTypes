@@ -621,8 +621,8 @@ Created by Yusuke Shinyama, Pyntch uses type inference in Python in order to fin
 \paragraph{Limitations}\mbox{}\\
 Pyntch completely disregards execution order. In the following example given by the author:
 \begin{lstlisting}[mathescape]
-	x = 1
-	x = 'a'
+    x = 1
+    x = 'a'
 \end{lstlisting}
 The variable \textit{x} will always have the type \texttt{\{int, string\}} after analysing the second statement. \\
 \indent Pyntch is unable to infer types in code which use the following functions: \texttt{globals},  \texttt{locals},  \texttt{getattr},  \texttt{setattr},  \texttt{eval},  \texttt{compile} or  \texttt{exec}. \\
@@ -646,9 +646,19 @@ Ruby is a dynamically typed scripting language, similar to Python. Due to the si
 \section{Design of the Type Inferencing Algorithm}
 Our primary aim is to create a type checker for Python which returns a minimum amount of false positives. This decision has largely dictated the design of our algorithm. We take a cautious approach to handling exceptions. We do this by assuming that every statement within a \texttt{try} is capable of causing an exception and leading to the exception handlers. \\
 \indent We assume that any code written by the programmer is possibly incorrect. Due to this restriction we can not use the function calls to determine the types taken by function arguments, the technique adopted by most of the type inferencers described in our background research. For this reason we follow the ethos of success typings which is to infer types for function arguments by observing the context in which they are used in the function body. \\
-\indent We treat global variables separately from local variables. We do not attempt to determine which types a global variable can have at certain points in a program, a task which is perhaps impossible. Therefore we assume global variables can be all of the possible types they can take at all times. However the path taken by local variables is easier to determine and so we perform this analysis. Due to this it can be said we take a flow-sensitive approach for local variables and flow-insensitive approach for global variables.
-
-
+\indent We treat global variables separately from local variables. We do not attempt to determine which types a global variable can have at certain points in a program, a task which is perhaps impossible. Therefore we assume global variables can be all of the possible types they can take at all times. However the path taken by local variables is easier to determine and so we perform this analysis. Due to this it can be said we take a flow-sensitive approach for local variables and flow-insensitive approach for global variables. \\
+\indent We only issue an error if there is no type which can be legally used in a given context. This decision was made to minimise the number of false positives. Consider the following code:
+\begin{lstlisting}[mathescape]
+    def f():
+      if some_condition:
+        return 5
+      else:
+        return None
+        
+    x = f()
+    y = x + 1
+\end{lstlisting}
+The function \texttt{f} has the return type \texttt{\{int, None\}}. In line 7, the variable \texttt{x} has been assigned the return values of \texttt{f} and so also has the type \texttt{\{int, None\}}. In line 8, \texttt{x} has been used in the binary operation \texttt{+} with the integer \texttt{1}. The only legal types which can be legally used in conjunction with the \texttt{int} type in a binary \texttt{+} operation is \texttt{int} and \texttt{float}. This means that if the function \texttt{f} returns the \texttt{None} type then there will be a type error on line 8. However we do not know that the \texttt{if} in line 2 will ever evaluate to false and cause function \texttt{f} to return \texttt{None}. If the \texttt{if} always evaluates to true then issuing  an error will constitute a false positive. For this reason we do not issue an error if there is at least one type which can be legally used in a given context.
 
 \newpage
 \section{Implementation}
