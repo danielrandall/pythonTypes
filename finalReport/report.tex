@@ -1080,14 +1080,8 @@ where \texttt{\_\_side\_effects} performs whatever the changes the function has 
 \indent Unfortunately this process is either all-or-nothing. Performing type inference only in some cases, such as only indexing would cause our tool to return false-positives. For example, if we encounter the following two statements: \texttt{some\_list[i] = 5; some\_list.append("hi")} only accepting new types from indexing would give \texttt{some\_list} the type \texttt{\{int\}} when in fact it should have type \texttt{\{int, string\}}. If an item is then taken from the list and used in a function which accepts only the \texttt{string} type then a false positive will occur. Due to this and the time and difficulty in calculating the side-effects of functions we consider the contents of a container to always be of type \texttt{any}.
 
 \subsubsection{Inferring the Types in del Statements}
-The \texttt{del} statement is used to remove an identifier binding. If the target of the \texttt{del}  statement is a variable then the type of that variable is set to \texttt{none}. Otherwise, if the target is an element of a list or \texttt{dict} then that single element is removed. In the case of a variable we can change the type assigned to this variable to \texttt{none}. However, it is more complicated in the case the target is an element of a \texttt{list} or \texttt{dict}. In theory we could simply remove the type(s) associated with that element from the types contained in the \texttt{list} or \texttt{dict} but this would only be correct if the element being removed was the \textit{only} element in the \texttt{list} or \texttt{dict} with that type. This may prove difficult to track. For instance, consider the following trivial example:
-\begin{lstlisting}[mathescape]
-    from random import randomint
-    l = ["Hi", 5, 5.0]
-    del l[randint(0, 2)]
-\end{lstlisting}
-This example will delete a random element from the list. It impossible to statically predict which element, and therefore type, that will be removed. A similar problem arises when a dynamic number of elements is added, such as when looping over a file and adding elements found until the end of the file is reached. In this case we cannot determine how many elements need to removed before we can safely remove the type from the set of types contained in the \texttt{list} or \texttt{dict}. \\
-\indent For these reasons we do not change the set of types contained in the \texttt{list} or \texttt{dict} after a \texttt{del} operation.
+\label{chap:del}
+The \texttt{del} statement is used to remove an identifier binding. If the target of the \texttt{del}  statement is a variable then the type of that variable is set to the Python type \texttt{None}. Otherwise, if the target is an element of a list or \texttt{dict} then that single element is removed. In the case of a variable we can change the type assigned to this variable to \texttt{none}. In the case that the target is an element of a container we do nothing. Since we do not track the types in a container we are able to ignore this operation.
 
 \subsubsection{Inferring the Types in If Expressions}
 Python allows the \texttt{if} keyword to be used in expressions. These expressions are typically used to conditionally assign values to a variable. For example: \texttt{x = 5 if some\_condition else "Hi"}. In the case that \texttt{some\_condition} evaluates to true then \texttt{x} is assigned the value \texttt{5}, otherwise \texttt{x} is assigned the value \texttt{"Hi"}. No attempts are made to determine the likely path taken by the \texttt{if} condition and so we set the resulting type of the \texttt{if} expression to the type of the union of the \texttt{then} branch and the \texttt{else} branch.
@@ -1691,8 +1685,18 @@ For example, consider the following function:
 Line 2 has no side-effects and so we ignore it. Line 3 makes a change to the parameter \texttt{x} by adding a type \texttt{int} to the contents. Line 4 makes a change to the global variable \texttt{self.f} and adds the type \texttt{int} to the keys and the type \texttt{float} to the values. On line 5 the function \texttt{g} is called and so any side-effects that the function \texttt{g} causes, we say that \texttt{f} also causes. \\
 \indent If the function \textit{may} make cause a side-effect, such as if the change is within a \texttt{if} block, then a conservative approach may need to be taken and assume that it always causes it.
 
-\subsubsection*{varargs and kwargs}
-TODO
+\subsubsection*{Tracking the Types of Elements in a Container Type}
+The main problem involved in tracking the types of elements in a container type is the fact they are mutable. This problem is resolved by calculating the side-effects of functions since we are able to infer what changes functions may make to the elements of the container. \\
+\indent As well as functions, types can be added through indexing, such as \texttt{some\_list[i] = value}. The types of the elements can be updated by adding the type of the value to the types of the elements. In some cases this may overwrite an element, possibly removing a type from the contents. However which element is overwritten  and how many elements need to removed before a container no longer contains elements of that type, is likely difficult to statically predict. A similar problem arises when an element of a container is removed using the \texttt{del} keyword described in Chapter~\ref{chap:del}. For instance, consider the following trivial example:
+\begin{lstlisting}[mathescape]
+    from random import randomint
+    l = ["Hi", 5, 5.0]
+    del l[randint(0, 2)]
+\end{lstlisting}
+This example will delete a random element from a \texttt{list} type. Since random numbers are being generated, it is impossible to statically predict which element, and therefore type, will be removed. A similar problem arises when a dynamic number of elements is added, such as when looping over a file and adding elements found until the end of the file is reached. In this case we cannot determine how many elements need to removed before we can safely remove the type from the types of the elements. A solution to this problem is to never remove any type inferred from the elements in a container.
+
+%\subsubsection*{varargs and kwargs}
+%TODO
 
 \subsubsection*{Improving Exceptions}
 Currently our tool assumes that all statements within a \texttt{try} block can cause an exception. This is, of course, not true. As an extreme example, the statement \texttt{pass} in Python has no effect, yet currently our tool assumes it is capable of causing an exception. Improving upon this will result in a boost in, both, accuracy and speed. The increased accuracy will result from the values of variables only being sent to the \texttt{finally} or \texttt{except} block if they are statements which can cause an exception. The speed of the tool will increase due to the fact that the CFG and SSA are required to do less work and their will be less $\phi$ functions to evaluate in the type checker. \\
