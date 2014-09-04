@@ -697,7 +697,7 @@ When dealing with objects which need to be built up before their use and cleaned
       # Clean up
       file.close()
 \end{lstlisting}
-The code ensures the the object is constructed before use, due to flow restrictions, and destroyed after being used since all paths exiting the \texttt{try} must lead to the \texttt{finally}. Python 2.5 introduced the \texttt{with} keyword to make this code cleaner. Using \texttt{with}, the example can be rewritten:
+The code ensures the object is constructed before use, due to flow restrictions, and destroyed after being used since all paths exiting the \texttt{try} must lead to the \texttt{finally}. Python 2.5 introduced the \texttt{with} keyword to make this code cleaner. Using \texttt{with}, the example can be rewritten:
 \begin{lstlisting}[mathescape]
     with open("file.txt") as file:
       data = file.read()
@@ -731,7 +731,7 @@ The main difficulty involved with this transformation is simulating the variable
 
 \subsubsection{Augmenting Assignments}
 An augmenting assignment performs a binary operation and a store operation on a variable in a single statement. An example of this is: \texttt{x += 1}, which is equivalent to: \texttt{x = x + 1}. The benefit to using an augmented assignment rather than the two-statement equivalent is three-fold. An increase in clarity of the intentions of the programmer, a reduction in code size and a possible performance boost. The increase in performance arises from being able to express that ``the left-hand operand in question [\ldots] should operate `on itself', rather than creating a modified copy of itself.''~\cite{pepAugAssign} \\
-\indent To deal with augmenting assignments in our tool we simply convert the augmenting assignments into regular assignments with the the binary operation equivalent. The different binary operators permitted in augmenting assignments and how they are transformed can be seen in Table~\ref{table:augAssign}. This transformation saves us from having to repeat the typechecking logic for augmenting assignments that is already present in regular assignments and binary operations.
+\indent To deal with augmenting assignments in our tool we simply convert the augmenting assignments into regular assignments with the binary operation equivalent. The different binary operators permitted in augmenting assignments and how they are transformed can be seen in Table~\ref{table:augAssign}. This transformation saves us from having to repeat the typechecking logic for augmenting assignments that is already present in regular assignments and binary operations.
 
 	\begin{table}
 	\centering
@@ -799,7 +799,7 @@ The \texttt{ast} module being used by our tool `de-sugars' the \texttt{elif} in 
 
 \subsubsection{For and While Loops}
 For the purposes of our control flow graph generation, \texttt{for} and \texttt{while} loops are similar and so are dealt with in a similar manner. The process is similar to that of the \texttt{if}.  We create a new block as the initial block for the body of the loop. However, the loop test is given a block to itself and the last block to be active at the end of the loop body is linked the the test block rather than the `exit' block. \\
-\indent Python allows an \texttt{else} block to be added the end the loop. An example of this is as follows:
+\indent Python allows an \texttt{else} block to be added at the end the loop. An example of this is as follows:
 \begin{lstlisting}
     for entry in some_list:
       if entry == thing_i_want_to_find:
@@ -808,7 +808,7 @@ For the purposes of our control flow graph generation, \texttt{for} and \texttt{
     else:
       found = not_found_value
 \end{lstlisting}
-The \texttt{else} body is always entered if the loop test evaluates to \texttt{False}. In the case of \texttt{for} loops reaching the end of the specified iteration is equivalent to \texttt{False}. The \texttt{else} block is not entered when a \texttt{break}, \texttt{exception} or a \texttt{return} occurs. \\
+The \texttt{else} body is always entered if the loop test evaluates to false. In the case of \texttt{for} loops reaching the end of the specified iteration is equivalent to false. The \texttt{else} block is not entered when a \texttt{break}, \texttt{exception} or a \texttt{return} occurs. \\
 \indent In the case of an \texttt{else} being present the loop test links to the initial \texttt{else} block and the last block in the \texttt{else} to the `exit' block. Otherwise the test links to the `exit' block. The resulting CFG can be observed in Figure~\ref{fig:loopElseCFG}.
 
 \begin{figure}
@@ -881,7 +881,7 @@ The statement \texttt{open("myfile.txt")} will raise an \texttt{IOError} excepti
       print("finally 2")
 \end{lstlisting}
 Then ``finally 1'' and ``finally 2'' will be printed in that order. \\
-\indent The keywords \texttt{finally} and \texttt{except} can be simultaneously used with a \texttt{try}. In this case the relevant \texttt{except} block is executed first and then passes control to the finally block. \\
+\indent The keywords \texttt{finally} and \texttt{except} can be simultaneously used with a \texttt{try}. In this case the relevant \texttt{except} block is executed first and then passes control to the \texttt{finally} block. \\
 \indent If a \texttt{try}/\texttt{finally} is within a \texttt{try}/\texttt{except} then exceptions raised still lead to the \texttt{finally} before passing control to the outer \texttt{except} block. For example:
 \begin{lstlisting}
     try:
@@ -906,7 +906,7 @@ In the above example after the exception is raised then ``finally'' and ``except
 When an \texttt{else} is used in conjunction with a \texttt{finally} then the \texttt{else} body is executed before the body of the \texttt{finally}. \\
 \indent It is illegal for a \texttt{continue} statement to be inside of \texttt{finally} block. This will be detected in the CFG generation. An error regarding this will be printed and the program will terminate. \\
 \indent The \texttt{break} and \texttt{continue} statements are illegal outside of a loop. However, unlike a \texttt{continue} inside of a \texttt{finally} block, this does not damage the integrity of the CFG. For this reason an error is printed and processing is continued. \\
-\indent If a \texttt{break}, \texttt{return} or \texttt{continue} occurs inside of the \texttt{try} body of a \texttt{try}/\texttt{finally}, control is transferred to the \texttt{finally} block before being transferred to the end of the loop for a \texttt{break}, the end of the function for a \texttt{return} and the loop test for a \texttt{continue}. For this reason, similar to loops, we push a \texttt{F\_BLOCK\_FINALLY} onto our stack when we analyse the \texttt{try} body of a \texttt{try}/\texttt{finally}. The stack is checked for a \texttt{F\_BLOCK\_FINALLY} when we encounter a \texttt{break}, \texttt{return} or \texttt{continue}. If one is found then we set an edge between the block containing the keyword and the \texttt{finally} block. An edge is also set between the \texttt{finally} block and the appropriate destination for the given keyword.
+\indent If a \texttt{break}, \texttt{return} or \texttt{continue} occurs inside of the \texttt{try} body of a \texttt{try}/\texttt{finally}, control is transferred to the \texttt{finally} block before being transferred to the end of the loop for a \texttt{break}, the end of the function for a \texttt{return} and the loop test for a \texttt{continue}. For this reason, similar to loops, we push a \texttt{F\_BLOCK\_FINALLY} onto our stack when we analyse the \texttt{try} body of a \texttt{try}/\texttt{finally}. The stack is checked for a \texttt{F\_BLOCK\_FINALLY} when we encounter a \texttt{break}, \texttt{return} or \texttt{continue}. If one is found then we set an edge between the block containing the keyword and the \texttt{finally} block. An edge is also set between the \texttt{finally} block and the appropriate destination for the given keyword. If the keyword used is a \texttt{break} or a \texttt{continue} and a \texttt{F\_BLOCK\_LOOP} label is higher up the stack than the \texttt{F\_BLOCK\_FINALLY} label then this process does not occur since the keyword will not cause the \texttt{try} body to be left.
 
 
 
