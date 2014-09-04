@@ -1545,16 +1545,20 @@ Python can be used in many different kinds of projects. From single module scrip
     numconv & 352 & 3 & 1 & 3 \\ \hline
     cchardet & 602 & 2 & 2 & 47  \\ \hline
     sshmap & 1102 & 6 & 3 & 33 \\ \hline
-%    Glances & 6801 & & 50 & 300 \\ \hline
+    Glances & 6801 & 41 & 50 & 300 \\ \hline
+    urllib3 & 6907 & 35 & 72 & 343 \\ \hline
+    Requests & 17048 & 70 & 115 & 620 \\ \hline
     \end{tabular}
-    \caption{Information regarding the projects used to test the tool. Given in ascending order by the number of lines of code. \texttt{birthday-script} and \texttt{subtitle-downloader} are from~\cite{pythonScripts}. All others are from~\cite{python3Projects}.}
+    \caption{Information regarding the projects used to test the tool. Given in ascending order by the number of lines of code. \texttt{birthday-script} and \texttt{subtitle-downloader} are scripts~\cite{pythonScripts}. All others are from Pypi~\cite{python3Projects}.}
 	\label{table:toolTests}
     \end{table}
     
 
 
 \subsection{False-positives}
-The number of false positives can be seen in Table~\ref{table:toolResults}. The errors issued were determined to be false positives by manual checking. The highest number of false positives returned by any of the projects tested on was two. However each of these false positives was the result of a feature not yet supported. For example, the two false positives in \texttt{sshmap} involve calling a function and providing arguments using the argument name.
+The number of false positives can be seen in Table~\ref{table:toolResults}. The errors issued were determined to be false positives by manual checking. The highest number of false positives returned by any of the projects tested on, other than \texttt{urrlib3} and \texttt{Requests}, was two. However each of these false positives was the result of a feature not yet supported. For example, the two false positives in \texttt{sshmap} involve calling a function and providing arguments using the argument name. \\
+\indent In the case of \texttt{urrlib3} and \texttt{Requests} the false positives issued propagated throughout the codebase resulting in the high number reported. \\
+\indent It can be seen that as the size of the projects grow, the more likely it is that features not currently supported are used.
 
 \subsection{Accuracy}
 The greatest sources of inaccuracy in our tool is the use of built-in modules and being unable to infer the contents of container types. We will discuss the practical implications of each separately.
@@ -1564,15 +1568,17 @@ The greatest sources of inaccuracy in our tool is the use of built-in modules an
 	\centering
     \begin{tabular}{ | c | c | c | c | c | c |}
     \hline
-    \textbf{Name} & \textbf{Runtime} & \textbf{Pylint Runtime} & \textbf{False Positives} \\ \hline
+    \textbf{Name} & \textbf{Our Runtime} & \textbf{Pylint Runtime} & \textbf{False Positives} \\ \hline
     birthday-script & 0.2475 & 0.2334 & 0 \\ \hline
     subtitle-downloader & 0.2444 & 0.6609 & 0 \\ \hline
     futen & 0.1827 & 0.8556 & 0 \\ \hline
     fluent-logger-pyramid & 0.1474 & 1.1554 & 0 \\ \hline
-    numconv & 0.6218 & TODO & 0 \\ \hline
+    numconv & 0.6218 & 0.6118 & 0 \\ \hline
     cchardet &  1.9117 & 1.0991 & 0  \\ \hline
     sshmap & 1.9816 & 1.9566 & 2 \\ \hline
- %   Glances & 14.1534  &  & 2 \\ \hline
+    Glances & 14.1534  & 7.8523 & 2 \\ \hline
+    urllib3 & 13.3731  & 12.6151 & 74 \\ \hline
+    Requests & 23.9292  & 51.2973 & 119 \\ \hline
     \end{tabular}
     \caption{The results of the tests. Each project was run 10 times. The runtime given is the mean of the runtimes. Times are given in seconds.}
 	\label{table:toolResults}
@@ -1588,7 +1594,6 @@ To demonstrate both of these, consider the following function taken from \texttt
 \begin{lstlisting}[mathescape]
     def commentall(wallposts):
       """Comments thank you on all posts"""
-      #TODO convert to batch request later
       for wallpost in wallposts:
 
         r = requests.get('https://graph.facebook.com/%s' %
@@ -1636,7 +1641,7 @@ where \texttt{self.radix} and \texttt{self.alphabet} are class variables which h
 
 \subsection{Runtime}
 The runtime of our tool and of Pylint can be seen in Table~\ref{table:toolResults}. The runtime of our tool is in-line with the runtime of Pylint. \\
-\indent It is interesting to note that our tool either matches or slightly out-performs Pylint on all projects aside from \texttt{cchardet}. The stand-out difference between \texttt{cchardet} and other projects is that \texttt{cchardet} has noticeably higher ratio of functions to LoC and modules. A possible reason for this slower performance is perhaps that more functions result in more CFGs and a higher number of basic blocks. This would show the weakness of our naive approach to $\phi$ function generation and may result in the sub-par performance shown on this project.
+\indent It is interesting to note that our tool either matches or slightly out-performs Pylint on all projects. A noticeable exception to this is the project \texttt{cchardet}. The stand-out difference between \texttt{cchardet} and other projects is that \texttt{cchardet} has noticeably higher ratio of functions to LoC and modules. A possible reason for this slower performance is perhaps that more functions result in more CFGs and a higher number of basic blocks. This would show the weakness of our naive approach to $\phi$ function generation and may result in the sub-par performance shown on this project.
 
 \subsection{Bug Checking Capabilities}
 Our system is capable of finding errors regarding the following:
