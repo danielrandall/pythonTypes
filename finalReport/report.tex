@@ -151,36 +151,6 @@ Line 21 shows a legal and non-exceptional use of the code. A regular potion is u
 \subsection{Type Inference}
 Type inference is the process of determining the types assigned to identifiers using the context in which they or used or the values they are assigned. When we are inferring types we assign each identifier a type. This type is a set consisting of the possible types that we believe that identifier can have at a given time. For instance, if we believe that the identifier \texttt{x} can be an \texttt{int} or a \texttt{float} at a given time then we express this by giving it the type: \texttt{\{int, float\}}.
 
-\subsubsection{Constraints and Constraint Solvers}
-Many algorithms for inferring types involve solving a set of constraints. ``A constraint satisfaction problem [CSP] is a problem where one has to find a value for a (finite) set of variables satisfying a (finite) set of constraints.''~\cite{constraintBook} A CSP is typically described using the following notation: $\langle X, D, C \rangle$. Where $X$ represents a set of variables, $D$ is a set of corresponding domains and $C$ is a set of constraints that any solution must satisfy. Every variable must have a \textit{domain}. A domain specifies the values a variable can take. An example domain is the set of integers, $\mathbb{Z}$. A solution to a CSP is a mapping from the given variables to a value in the domain which satisfies the constraints provided. \\
-\indent An example of a CSP is the following, where each letter must be replaced with a different number such that the sum evaluates correctly~\cite{constraintPrinciples}: \\
-\begin{equation*}
-\frac{
-    \begin{array}[b]{r}
-      SEND \\
-      + MORE
-    \end{array}
-  }{
-    MONEY
-  }
-\end{equation*}
-In this problem the  $\langle X, D, C \rangle$ are as follows:
-\begin{verbatim}
-    X:
-      S, E, N, D, M, O, R, Y 
-    D:
-      [1..9] for S, M
-      [0..9] for E, N, D, O, R, Y
-    C:
-      AllDifferent([S, E, N, D, M, O, R, Y])
-      ExactSum([SEND, MORE], MONEY)
-\end{verbatim}
-where \texttt{AllDifferent} is shorthand for $S \neq E \neq N \ldots$ and similarly \texttt{ExactSum} is shorthand for $(S \times 1000 + E \times 100 \ldots)  + (M \times 1000 + O \times 100 \ldots) = (M \times 10000 + O \times 1000 \ldots) $ \\
-\indent There is a single solution to this CSP:
-\begin{verbatim}
-    S = 9, E = 5, N = 6, D = 7, M = 1, O = 0, R = 8, Y = 2
-\end{verbatim}
-Constraints are frequently solved using constraint solvers. % A third-party constraint solving package for Python called \textit{python-constraint}. python-constraint provides a number of built-in constraint types to use such as \textit{NotInSetConstraint}, \textit{AllEqualConstraint} and \textit{ExactSumConstraint}. However, it also allows you use a \textit{FunctionConstraint} to which you provide a function defining the constraint logic. This means the constraints it can handle are endless.
 
 \newpage
 \section{Background}
@@ -420,6 +390,37 @@ An example of this is:
 \end{lstlisting}
 Here, \texttt{return "Hi"} can never be reached. In addition to performance advantages, we may wish to consider removing dead code from the program in order to type functions more accurately. In the example above, if we did not eliminate dead code we will determine that the return type of the function \texttt{foo} is \texttt{\{int, string\}}. Since \texttt{int} is still part of the type, this is not incorrect but a needless overestimate. Dead code also raises some issues in how it should be handled in the CFG. Should \texttt{return c} link to \texttt{b = 24}? However, there is also an argument for type checking dead code. This code may become important later and flagging the errors may save the engineer time later on. \\
 \indent Unfortunately there are no out-of-the-box solutions to this problem for Python programs. \\
+
+\subsection{Constraints and Constraint Solvers}
+Many algorithms for inferring types involve solving a set of constraints. ``A constraint satisfaction problem [CSP] is a problem where one has to find a value for a (finite) set of variables satisfying a (finite) set of constraints.''~\cite{constraintBook} A CSP is typically described using the following notation: $\langle X, D, C \rangle$. Where $X$ represents a set of variables, $D$ is a set of corresponding domains and $C$ is a set of constraints that any solution must satisfy. Every variable must have a \textit{domain}. A domain specifies the values a variable can take. An example domain is the set of integers, $\mathbb{Z}$. A solution to a CSP is a mapping from the given variables to a value in the domain which satisfies the constraints provided. \\
+\indent An example of a CSP is the following, where each letter must be replaced with a different number such that the sum evaluates correctly~\cite{constraintPrinciples}: \\
+\begin{equation*}
+\frac{
+    \begin{array}[b]{r}
+      SEND \\
+      + MORE
+    \end{array}
+  }{
+    MONEY
+  }
+\end{equation*}
+In this problem the  $\langle X, D, C \rangle$ are as follows:
+\begin{verbatim}
+    X:
+      S, E, N, D, M, O, R, Y 
+    D:
+      [1..9] for S, M
+      [0..9] for E, N, D, O, R, Y
+    C:
+      AllDifferent([S, E, N, D, M, O, R, Y])
+      ExactSum([SEND, MORE], MONEY)
+\end{verbatim}
+where \texttt{AllDifferent} is shorthand for $S \neq E \neq N \ldots$ and similarly \texttt{ExactSum} is shorthand for $(S \times 1000 + E \times 100 \ldots)  + (M \times 1000 + O \times 100 \ldots) = (M \times 10000 + O \times 1000 \ldots) $ \\
+\indent There is a single solution to this CSP:
+\begin{verbatim}
+    S = 9, E = 5, N = 6, D = 7, M = 1, O = 0, R = 8, Y = 2
+\end{verbatim}
+Constraints are frequently solved using constraint solvers. % A third-party constraint solving package for Python called \textit{python-constraint}. python-constraint provides a number of built-in constraint types to use such as \textit{NotInSetConstraint}, \textit{AllEqualConstraint} and \textit{ExactSumConstraint}. However, it also allows you use a \textit{FunctionConstraint} to which you provide a function defining the constraint logic. This means the constraints it can handle are endless.
 
 \newpage
 \section{Type Inferencing Algorithms}
