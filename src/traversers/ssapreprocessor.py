@@ -31,7 +31,7 @@ class SSA_Pre_Processor(AstFullTraverser):
         for dependent in node.import_dependents:
             self.ssa_exempts.add(dependent.get_as_name())
             
-        self.process_blocks(node.initial_block)
+ #       self.process_blocks(node.initial_block)
         for z in node.body:
             self.visit(z)
             
@@ -166,7 +166,7 @@ class SSA_Pre_Processor(AstFullTraverser):
         if node.id in BUILTIN_TYPE_DICT:
             return
         
-        self.current_block.referenced_vars.add(node.id)
+  #      self.current_block.referenced_vars.add(node.id)
         
         
     def process_blocks(self, block):
@@ -177,8 +177,8 @@ class SSA_Pre_Processor(AstFullTraverser):
         self.current_block = block
         block.global_phis = set()
         self.global_phis = block.global_phis
-        pred_nos = [block.start_line_no for block in block.predecessors]
-        exit_nos = [block.start_line_no for block in block.exit_blocks]
+#       pred_nos = [block.start_line_no for block in block.predecessors]
+#        exit_nos = [block.start_line_no for block in block.exit_blocks]
    #     pprint("Block starting at: " + str(block.start_line_no) + " to " + str(exit_nos))
    #     pprint("Block starting at: " + str(block.start_line_no) + " preceded by " + str(pred_nos))
    #     print(block.statements)
