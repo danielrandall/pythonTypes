@@ -60,7 +60,7 @@
 
 % Abstract
 \begin{abstract}
-Programmers spend a large percentage of their time debugging dysfunctional code. In dynamically typed languages bugs this problem is exacerbated due to the lack of the protection offered by a static compiler. Tools have been developed to ease this process but they often frustrate the user with false positives and ignore the dynamic nature of Python. We attempt to design a type checker for a subset of the Python programming language which returns few false positives and takes an optimistic approach to Python's dynamism. We achieve this by accepting the modifications made to global variables are unpredictable and distinguishing between global and local variables in our algorithm. We take inspiration from a technique called success typings and infer the types of function arguments through the context they are used in the function body in order to prevent reliance on potentially incorrect types provided in function calls. We handle Python exceptions, which most type inferencers ignore, by assuming that all statements within a \texttt{try} are potentially exceptional. Finally we show that the subset of Python our tool covers is useful for real-world projects and how our work can be extended to cover the majority of Python functionality.
+Programmers spend a large percentage of their time debugging dysfunctional code. In dynamically typed languages this problem is exacerbated due to the lack of protection offered by a static compiler. Tools have been developed to ease this process but they often frustrate the user with false positives or require modification to source code. We design an out-of-the-box type checker for a subset of the Python programming language which returns few false positives and takes an optimistic approach to Python's dynamism. We achieve this by accepting the modifications made to global variables are unpredictable and distinguishing between global and local variables in our algorithm. We take inspiration from a technique called success typings and infer the types of function arguments through the context they are used in the function body in order to prevent reliance on potentially incorrect types provided as arguments in function calls. We handle Python exceptions, which most type inferencers ignore, by assuming that all statements within a \texttt{try} are potentially exceptional. Finally we show that the subset of Python our tool covers is useful for real-world projects and how our work can be extended to cover the majority of Python functionality.
 \end{abstract}
 
 % Acknowledgements
@@ -76,8 +76,9 @@ I would like to thank my supervisors, Jeroen Ketema and Alastair Donaldson, for 
 \subsection{Motivation}
 High level, dynamically typed languages such as Python have been gaining popularity in recent years. Python is now used as a teaching language in 80\% of the top ten Computer Science department in the USA, surpassing previous favourites such as Java~\cite{guoTeaching}. Python has also become a force in industry and has been picked up by influential software engineering companies such as Google and Yahoo!~\cite{organisationsPython}. One reason for this is a high level of productivity involved in using such languages, partly due to the programmer being free from having to declare the types of the variables used. However, the benefits gained from this design decision are at the expense of the security provided by a statically typed language. Type errors which are easily caught by a compiler for a statically typed language, such as Java or C++, can be left unnoticed in Python source code into the release stage of a product where its execution may prove fatal. \\ % Specifying types is regarded as superfluous by many in the Python community.
 \indent While there has been significant talk of adding optional static typing to Python~\cite{guido1, guido2, guido3, guidoLatest}, it seems that this will be limited to annotations similar to those currently employed in the open source project mypy~\cite{mypy}. This means that even if support is added in the near future it will be some time before this is incorporated into large projects. \\
-\indent Tools attempting to provide the benefits of a statically typed language to unedited Python source code do exist, such as Pylint~\cite{pylint} and PyChecker~\cite{pychecker}, however their usability is hampered by the number of false positives returned and the amount of configuration needed. \\
-\indent This project aims to design and implement a type checker for Python which returns few false positives. The basis for our implementation is a method called success typings~\cite{lindhal06}. We harness this idea in order to provide a over-approximation of how a function is intended to be used without relying on how the function is actually used. This allows us to determine that a violation of a function's contract is guaranteed to be a programming error. We describe success typing as well as the general theory behind type systems in Chapter 3. We then examine similar tools and techniques and show the limitations in their application. \\
+\indent Tools attempting to provide the benefits of a statically typed language to unedited Python source code do exist, such as the popular Pylint~\cite{pylint} and PyChecker~\cite{pychecker}, however their type checking ability is limited. More thorough type checker have been designed, such as Pyty~\cite{pyty} and Pyntch~\cite{pyntch}, however their usability is hampered by the the amount of configuration needed and the number of false positives returned, respectively. \\
+\indent This project aims to design and implement a type checker for Python which returns few false positives. The basis for our implementation is a method called success typings~\cite{lindhal06}. We harness this idea in order to provide a over-approximation of how a function is intended to be used without relying on how the function is actually used. This allows us to determine that a violation of a function's contract is guaranteed to be a programming error. \\
+\indent We introduce the general theory behind type systems in the rest of this chapter. In Chapter~\ref{chap:background} we discuss useful techniques to extract information from source code. We describe success typing as well as other type inferencing algorithms in Chapter~\ref{chap:typeinferencering}. We then examine similar tools and techniques and show the limitations in their application. \\
 \indent Using the methods and techniques we described, we begin to define our solution and determine the best way to infer a type for each programming construct in Python. \\
 \indent In Chapter~\ref{chap:evaluation} we evaluate our implementation. We evaluate it in four ways: the number of false positives it reports, accuracy, speed, and its ability to find bugs. We benchmark our solution against an existing type checker for Python.
 
@@ -183,6 +184,7 @@ Constraints are frequently solved using constraint solvers. % A third-party cons
 
 \newpage
 \section{Background}
+\label{chap:background}
 In this chapter we will discuss some background necessary to understand the remainder of this report. We will look at Abstract Syntax Trees which will provide a base from which we can build our algorithms. From there we will look at ways to extract information from the AST and reduce it into to a form which is easier to reason about with control flow graphs and single static assignment.
 
 \subsection{Abstract Syntax Tree}
@@ -226,7 +228,7 @@ The control flow of an application is the route taken when the program is execut
 	2. x = x + 1
 	3. print(x)
 \end{lstlisting}
-The route taken by this program is simply $1 \rightarrow 2 \rightarrow 3$. However with the introduction of conditional statements such as \textit{if}, \textit{for} and \textit{while} the path taken in the program is dynamically decided by the evaluation of a condition. While the introduction of these statements undoubtedly provide more power to an engineer, in general, impossible to statically predict the route taken. An example of this is as follows:
+The route taken by this program is simply $1 \rightarrow 2 \rightarrow 3$. However with the introduction of conditional statements such as \texttt{if}, \texttt{for} and \texttt{while} the path taken in the program is dynamically decided by the evaluation of a condition. While the introduction of these statements undoubtedly provide more power to an engineer, in general, impossible to statically predict the route taken. An example of this is as follows:
 \begin{lstlisting}[mathescape]
 	1. if ($p_1$):
 	2. 	x = 5
@@ -242,7 +244,7 @@ A control flow graph (CFG) is a way of depicting the control flow of a program. 
 \indent CFGs introduce the concept of a \textit{basic block} which consists of only straight line code and no branching statements such as ifs and loops. ``The nodes of the flow 
 graph are the basic blocks. There is an edge from block B to block C if and 
 only if it is possible for the first instruction in block C to immediately follow 
-the last instruction in block B.''~\cite{dragonBook} Control flow statements introduce new basic blocks for each branch created by them. For example, an if statement creates two basic blocks, one for the then body and one for the else body. The basic blocks are then linked using directed edges with each block pointing towards its successors. \\
+the last instruction in block B.''~\cite{dragonBook} Control flow statements introduce new basic blocks for each branch created by them. For example, an \texttt{if} statement creates two basic blocks, one for the then body and one for the else body. The basic blocks are then linked using directed edges with each block pointing towards its successors. \\
 \indent Using the example of \texttt{if} statement from the previous section we get:
 \begin{figure}[h]
 \centering
@@ -271,7 +273,7 @@ CPython generates the following bytecode for this function:~\cite{cpythonBytecod
     33 DELETE_FAST                    0 (_[1])
     36 RETURN_VALUE
 \end{verbatim}
-where \texttt{STORE\_FAST} stores the top of the stack (TOS) into a fast local register of the given name, \texttt{LOAD\_FAST} loads the given value in the fast local register of the given name onto the TOS, \texttt{DUP\_TOP} duplicates the reference on the TOS, \texttt{BUILD\_LIST} creates a list, \texttt{LOAD\_GLOBAL} pushes the value of the given global variable onto the stack, \texttt{LOAD\_CONST} pushes the value of the given constant on to the top of the stack, \texttt{CALL\_FUNCTION} calls a function and takes the given number of parameters, \texttt{LIST\_APPEND} calls \texttt{list.append} and looks at the given number of positions from the TOS for the value, \texttt{GET\_ITER} sets the TOS to an iterator, \texttt{FOR\_ITER} calls the TOS's iterator, \texttt{DELETE\_FAST} deletes for value of the given register~\cite{disBytecode}, \texttt{JUMP\_ABSOLUTE} sets bytecode counter to the given value. Since \texttt{f} is a one line function and results in a CFG with a single block, the CFG has been left out for brevity. \\
+where \texttt{STORE\_FAST} stores the top of the stack (TOS) into a fast local register of the given name, \texttt{LOAD\_FAST} loads the given value in the fast local register of the given name onto the TOS, \texttt{DUP\_TOP} duplicates the reference on the TOS, \texttt{BUILD\_LIST} creates a list, \texttt{LOAD\_GLOBAL} pushes the value of the given global variable onto the stack, \texttt{LOAD\_CONST} pushes the value of the given constant on to the top of the stack, \texttt{CALL\_FUNCTION} calls a function and takes the given number of parameters, \texttt{LIST\_APPEND} calls \texttt{list.append} and looks at the given number of positions from the TOS for the value, \texttt{GET\_ITER} sets the TOS to an iterator, \texttt{FOR\_ITER} calls the TOS's iterator, \texttt{DELETE\_FAST} deletes for value of the given register and \texttt{JUMP\_ABSOLUTE} sets bytecode counter to the given value~\cite{disBytecode}. Since \texttt{f} is a one line function and results in a CFG with a single block, the CFG generated has been left out for brevity. \\
 \indent In order to perform type inference on the body of function \texttt{f} we need to know that we are returning a list comprehension in which \texttt{x} is being assigned the types in the contents of the list being returned by the \texttt{range} function. Learning this information from the bytecode would not be trivial. For instance, the \texttt{RETURN\_VALUE} statement provides the value on the top of the stack as a return type of the function. Without implementing an imaginary stack it would not be clear what is being returned. Thus extracting information from such low-level bytecode is much more difficult than through accessing the designated fields in AST nodes. For this reason using a CFG built on bytecode presents needless complications and instead we shall use a CFG generated from an AST. \\
 \indent \textit{PyPy} is an alternative interpreter for Python which also uses CFG generation in its tool-chain~\cite{pypyCFG}. Unlike CPython, PyPy is written in Python, however its design is very similar to that of CPython meaning it also depends on a bytecode generator to construct its CFGs. \\
 \indent In 2013 a student named Ashwin Panchapakesan from the University of Ottawa built a tool to generate CFGs from Python source code~\cite{ashwinCFG}. To this end the program transforms an AST created from Python code into XML. The XML uses tags to indicate the type of a statement, such as if, while or expression. Within these tags is the line number of the statement. The XML format of the program is then analysed in order to determine where each line number is able to flow to. The CFG generated is easy to extract from this program, however the only information contained in the XML are the line numbers making it difficult to work with. While we could just extract the matching lines of raw source code, we would then need to break down the Python syntax ourselves to extract the information to analyse. There is also no simple way to extract the necessary information from the AST based on the line numbers.
@@ -286,13 +288,13 @@ A flow insensitive analysis of a program does not consider the order of executio
       x = 5.0   # S2
     f(x)        # S3
 \end{lstlisting}
-A flow-sensitive algorithm would infer the type of \texttt{x} at \texttt{S1} to be $\left\{ {int}\right\}$ and $\left\{ {float}\right\}$ at \texttt{S2}, while a flow-insensitive algorithm would infer the type of $x$ to be $\left\{ {int, float}\right\}$ at \texttt{S1}, \texttt{S2} and \texttt{S3}. \\
+A flow-sensitive algorithm would infer the type of \texttt{x} at \texttt{S1} to be \texttt{\{int\}} and \texttt{\{float\}} at \texttt{S2}, while a flow-insensitive algorithm would infer the type of \texttt{x} to be \texttt{\{int, float\}} at \texttt{S1}, \texttt{S2} and \texttt{S3}. \\
 \indent Another case in which ignoring the flow of execution can change the types inferred is represented by the following trivial block of code:
 \begin{lstlisting}
     x = 5
     x = 5.0
 \end{lstlisting}
-A flow-insensitive algorithm would infer the type of \textit{x}, for any future occurrences of \texttt{x}, to be in the set $\left\{ {int, float}\right\}$. A flow-sensitive algorithm is able to recognise that the second statement `overwrites' the first. This permits a more accurate representation of the flow, allowing it to infer more accurately the type of \texttt{x} as the set $\left\{ {float}\right\}$. \\
+A flow-insensitive algorithm would infer the type of \textit{x}, for any future occurrences of \texttt{x}, to be in the set \texttt{\{int, float\}}. A flow-sensitive algorithm is able to recognise that the second statement `overwrites' the first. This permits a more accurate representation of the flow, allowing it to infer more accurately the type of \texttt{x} as the set \texttt{\{float\}}. \\
 \indent A flow-sensitive algorithm is clearly the more accurate approach but requires a comparatively more complex algorithm than a flow-insensitive since the value of variables needs to be tracked at each assignment. \\
 \indent Ryder~\cite{ryder03} suggests that the difference between a flow-sensitive and flow-insensitive approach is minimal in regards to object-oriented programs due to the size of methods being small. While Python can be, and is, used for object-oriented programming, a significant number of Python programs are written as scripts and so the benefits of a flow-sensitive algorithm cannot ruled out in our case.
 
@@ -316,7 +318,7 @@ This code violates the SSA requirements since the variable \texttt{x} is assigne
     z1 = x2 + 1
 \end{lstlisting}
 It can be observed that the most recent assignment of \texttt{x}  is used in all instances of \texttt{x} where \texttt{x} isn't being assigned a new value. This can be seen in the assignments to \texttt{y} and \texttt{z} where \texttt{x1} and \texttt{x2} is used respectively. \\
-Note that the names of, both, \texttt{y} and \texttt{z} need not be changed in this case since they are only assigned to once. However it often makes the implementation of SSA easier to do so regardless.
+\indent Note that the names of, both, \texttt{y} and \texttt{z} need not be changed in this case since they are only assigned to once. However it often makes the implementation of SSA easier to do so regardless.
 
 \subsubsection{The $\phi$ function}
 In a straight line program the manner used to number new variables is quite intuitive, we simply increment the number appended to the end of the variable name. However, as we introduce branching into our programs this method alone breaks down. Consider the following program:
@@ -421,6 +423,7 @@ Here, \texttt{return "Hi"} can never be reached. In addition to performance adva
 
 \newpage
 \section{Type Inferencing Algorithms}
+\label{chap:typeinferencering}
 The main problem which is required to be solved by this project is how to statically infer the types for Python programs. \\
 \indent In this section we look at a number of the existing techniques to achieve this while keeping in mind the objectives described at the beginning of this report. Those were, for our tool to return a low number of false positives, for it to statically analyse the code (not run it), for it to be an out-of-the-box solution and for it to be reasonably fast.
 
@@ -461,7 +464,7 @@ Developed by Jeff Ruberg~\cite{pyty}, Pyty is a bug checker which analyses annot
 Pyty requires annotations to the source code in a specific format, such as the following: \texttt{fib : int -> int} where the function \texttt{fib} accepts an \texttt{int} as an argument and returns an \texttt{int}. This is quite tedious and prevents it from being an `out-of-the-box' solution to our problem.
 
 \subsection{Palsberg and Schwartzbach Algorithm}
-The Palsberg and Schwartzbach algorithm~\cite{Palsbergstatictyping} works by constructing a network of constraints where each expression in the analysed program is represented by a node in the network. The node contains the types which the expression may assume during execution. All types are initially set to be empty except from constants and literals. The constraints between the nodes are created in response to statements in the program. In the Palsberg and Schwartzbach algorithm there are two ways in which a constraint can generated: assignments and function calls. An assignment such as $x := y$ is represented by the constraint $\mathtt{type(x) \subseteq type(y)}$. Function calls generate constraints between the \textit{actual} arguments used in the function call and the formal arguments in the function definition. The constraints are solved by propagating types through the constraint edges until a fixed-point is reached. Consider the following toy example: 
+The Palsberg and Schwartzbach algorithm~\cite{Palsbergstatictyping} works by constructing a network of constraints where each expression in the analysed program is represented by a node in the network. The node contains the types which the expression may assume during execution. All types are initially set to be empty except from constants and literals. The constraints between the nodes are created in response to statements in the program. In the Palsberg and Schwartzbach algorithm there are two ways in which a constraint can generated: assignments and function calls. An assignment such as $\mathtt{x := y}$ is represented by the constraint $\mathtt{type(x) \subseteq type(y)}$. Function calls generate constraints between the \textit{actual} arguments used in the function call and the formal arguments in the function definition. The constraints are solved by propagating types through the constraint edges until a fixed-point is reached. Consider the following toy example: 
 \begin{lstlisting}
     fun f(x):
       y = x
@@ -505,7 +508,7 @@ The size of the Cartesian products grows exponentially with the number of argume
 \subsubsection{Starkiller}
 Starkiller was designed by Michael Salib as a Python-to-C++ compiler~\cite{starkiller}. The type inference of algorithm used was based loosely on Agesen’s Cartesian Product Algorithm. Starkiller generates a dataflow networks which is populated with nodes for all variables and expressions in the program and links these nodes together through a series of constraints. Concrete types are then propagated through these constraints. Starkiller achieves complete type inference for a subset of Python.
 \paragraph*{Limitations}\mbox{}\\
-Starkiller is unable to infer types for the dynamic constructs such as \texttt{eval}, or \texttt{exec}, nor does it support exceptions of any kind. The implementation is flow-insensitive and so all variables are typed as the union of all types it can have at each of its occurrences. This means Starkiller is not precise. Frequently used language constructs such as exceptions, iterators and generators are not supported. The types of function arguments are inferred from the call sites, however this is not a problem since Starkiller is not a bug checker and so the Python source code being analysed, and thus the arguments given to a function call, as well as all other code in the program, are assumed to be correct.
+Starkiller is unable to infer types for the dynamic constructs such as \texttt{eval}, or \texttt{exec}, nor does it support exceptions of any kind. The implementation is flow-insensitive and so all variables are typed as the union of all types it can have at each of its occurrences. This means Starkiller is not precise. Frequently used language constructs such as exceptions, iterators and generators are not supported. The types of function arguments are inferred from the call sites, however this is not a problem since Starkiller is not a bug checker and so the Python source code being analysed, and thus the arguments given to a function call, are assumed to be correct.
 
 \subsubsection{Shed Skin}
 Shed Skin is a Python-to-C++ compiler developed by Mark Dufour which boasts an up to a 40-fold performance increase over an older Python-to-C++ compiler, Psyco~\cite{shedskin}. Shedskin employs the Cartesian Product Algorithm (CPA) alongside iterative class-splitting. The CPA algorithm is used to allow the user to know which functions need to be defined. For instance, if Shed Skin comes across \texttt{max(1, a)} where \texttt{a} can be the types in the set \texttt{\{int, float\}} the \texttt{max} function needs to be duplicated in C++ to cover \texttt{max(int, int)} and \texttt{max(int, float)}. Dufour also needs to define classes for the types used. For data polymorphic types such as lists, the class cannot always be shared so the the classes are `split' once they can no longer share the same representation of data in the equivalent C++ program.
@@ -514,7 +517,7 @@ Shed Skin is a Python-to-C++ compiler developed by Mark Dufour which boasts an u
 The programs consumed by Shed Skin are required to be implicitly statically typed. Meaning the type of a variable can not dynamically change. Shed Skin also does not support a number of Python features such as \texttt{eval} and \texttt{isinstance}.
 
 \subsubsection{Localized Type Inference of Atomic Types in Python}
-For his masters thesis, Brett Cannon attempted to infer the types for local, atomic (built-in) variables. This is done in an attempt to improve the performance of Python~\cite{cannonlocalizedtype}. The algorithm used by Cannon is based on a variation of the CPA algorithm. The difference being that the type inference is performed by intercepting bytecode from the interpreter. The bytecode is then modified by injecting additional bytecode relating the the types of variables. The aim is to provide type information which can be utilised to improve performance. Cannon's work differs to Psyco, a previous performance-boosting tool, in that the work is done inside Python's compiler, rather than the interpreter.
+For his masters thesis, Brett Cannon attempted to infer the types for local, atomic (built-in) variables. This is done in an attempt to improve the performance of Python~\cite{cannonlocalizedtype}. The algorithm used by Cannon is based on a variation of the CPA algorithm. The difference being that the type inference is performed by intercepting bytecode from the interpreter. The bytecode is then modified by injecting additional bytecode relating to the types of variables. The aim is to provide type information which can be utilised to improve performance. Cannon's work differs to Psyco, a previous performance-boosting tool, in that the work is done inside Python's compiler, rather than the interpreter.
 \paragraph{Limitations}\mbox{}\\
 The inference is limited to built-in types: \texttt{integrals}, \texttt{float}, \texttt{complex}, \texttt{basestring}, \texttt{list}, \texttt{tuple} and \texttt{dict} so any user-defined types are ignored. \\
 \indent Cannon's work is only able to infer types for local variables, meaning that the implementation is largely useless when used on programs designed with Object Oriented Programming (OOP) in mind, as noted by Cannon. While not a real limitation, Cannon's solution intercepts the compiler in order to improve performance. This is not our aim and we need not complicate things by working with bytecode.
@@ -547,13 +550,13 @@ where the symbol `\_' represents a \textit{don't care} option for pattern matchi
 	P \coloncolonequals integer() \mid float() \mid atom() \mid pid()\text{ } | \text{ 42 } | \text{ foo } | \ldots
 \end{align*}
 and the judgement $A \vdash e : \tau, C$ should be read as ``given the environment $A$ the expression $e$ has type $Sol(\tau)$ whenever $Sol$ is a solution to the constraints in C.'' \\
-Then one such derivation rule is the rule for a struct:
+\indent Then one such derivation rule is the rule for a struct:
                 \[
 \inference*[STRUCT]{  A \vdash  e_1 : \tau_1, C_1 \ldots e_n : \tau_n, C_n}
                                         {A \vdash  c(e_1, \ldots, e_n) : c(\tau_1, \ldots, \tau_n), C_1 \land \ldots \land C_n}
                 \]
 The rule states that given a number of elements, each with its own type, it is possible to group them into a tuple structure with each individual element retaining their type. The constraints for each element are added to the environment in a conjunction. \\
-$Sol$ is a mapping from type expressions and type variables to concrete types. $Sol$ is a solution to a constraint set $C$ if:
+\indent $Sol$ is a mapping from type expressions and type variables to concrete types. $Sol$ is a solution to a constraint set $C$ if:
 \begin{align*} 
 	Sol \models T_1 \subseteq T_2 \iff none() \subset Sol(T_1) \subseteq Sol(T_2)
 \end{align*}
@@ -600,16 +603,17 @@ To the best of our knowledge, there is currently no bug finder for type errors i
 %Psyco only attempts to infer locally defined \textit{ints} and \textit{strings} and pays little interest to any other types.
 
 \subsubsection{Pylint}
-Pylint~\cite{pylint} is an error checking tool for Python which statically analyses Python source code to look for errors, including type errors, and to assess the coding style. Pylint is a static analyser and so it looks for errors without running the source code. \\
+Pylint~\cite{pylint} is an error checking tool for Python which statically analyses Python source code to look for errors and to assess the coding style. Pylint is a static analyser and so it looks for errors without running the source code. \\
 \indent Documentation on Pylint is almost non-existent and the source code is also quite difficult to understand so, unfortunately, we currently do not understand the type inference algorithm of Pylint.
 \paragraph{Limitations}\mbox{}\\
-Can often return a lot of false positives and offers a large number of command-line options in an attempt to allow users to manually suppress them.
+Pylint can often return a lot of false positives and offers a large number of command-line options in an attempt to allow users to manually suppress them. However the false positives are generally not related to the type checking performed by Pylint. The reason for this is that type checking performed by Pylint is limited. For example, the types of the arguments passed to functions are not checked.
 
 \subsubsection{PyChecker}
-PyChecker~\cite{pychecker} is an bug checker for Python which checks for type errors among a host of other errors. PyChecker is similar to Pylint except it does not check the coding style of the source program. PyChecker also differs in that it needs to runs the code in order to analyse it.
+PyChecker~\cite{pychecker} is a bug checker for Python which checks for type errors among a host of other errors. PyChecker is similar to Pylint except it does not check the coding style of the source program. PyChecker also differs in that it needs to runs the code in order to analyse it.
 \paragraph{Limitations}\mbox{}\\
-The type inference is quite limited. PyChecker focuses on 'softer' type errors, such as whether a variable exists and whether \texttt{self} is the first method argument. \\
-\indent PyChecker can return spurious errors and warnings. PyChecker imports the code it is analysing which, due to the fact importing executes top-level code, can have undesirable side effects, such as executing a database query in the code.
+The type inference is quite limited. PyChecker focuses on `softer' type errors, such as whether a variable exists and whether \texttt{self} is the first method argument. \\
+\indent PyChecker can return spurious errors and warnings. PyChecker imports the code it is analysing which, due to the fact importing executes top-level code, can have undesirable side effects, such as executing a database query in the code. \\
+
 
 \subsubsection{PySonar}
 PySonar was developed by Yin Wang while an intern at Google between 2009 and 2010 and was intended for the internal use within Google's Grok project~\cite{pySonar}. PySonar was primarily developed as a tool to allow the user to better search and understand Python code. It includes a type inferer in order for the types of variables to be displayed in a tooltip. It also includes an indexer to allow quick search through code. PySonar uses abstract interpretation to infer the types of the variables. PySonar claims to be able to resolve the names of 97\% of the Python standard library.
@@ -617,7 +621,7 @@ PySonar was developed by Yin Wang while an intern at Google between 2009 and 201
 PySonar is focused on indexing the code it analyses and so it does not report any possible type errors. The program focuses mainly on a less dynamic subset of Python which is `easier' to analyse.
 
 \subsubsection{Pyntch}
-Created by Yusuke Shinyama, Pyntch uses type inference in Python in order to find bugs~\cite{pyntch}. The method used is `type flow analysis', which is a form of a data flow analysis where the types are tracked as they flow from variable to variable. Project activity seems to have ceased since 2009.
+Created by Yusuke Shinyama, Pyntch uses type inference in Python in order to find bugs~\cite{pyntch}. The method used is `type flow analysis', which is a form of data flow analysis where the types are tracked as they flow from variable to variable. The documentation on the algorithm used by Pyntch is limited. For this reason we do not fully understand the method used. Project activity seems to have ceased since 2009.
 \paragraph{Limitations}\mbox{}\\
 Pyntch completely disregards execution order. In the following example given by the author:
 \begin{lstlisting}[mathescape]
@@ -644,9 +648,10 @@ Ruby is a dynamically typed scripting language, similar to Python. Due to the si
 
 \newpage
 \section{Design of the Type Inferencing Algorithm}
+\label{chap:designAlg}
 Our primary aim is to create a type checker for Python which returns a minimum amount of false positives. This decision has largely dictated the design of our algorithm. We take a cautious approach to handling exceptions. We do this by assuming that every statement within a \texttt{try} is capable of causing an exception and leading to the exception handlers. \\
 \indent We assume that any code written by the programmer is possibly incorrect. Due to this restriction we can not use the function calls to determine the types taken by function arguments, the technique adopted by most of the type inferencers described in our background research. For this reason we follow the ethos of success typings which is to infer types for function arguments by observing the context in which they are used in the function body. \\
-\indent We treat global variables separately from local variables. We do not attempt to determine which types a global variable can have at certain points in a program, a task which is perhaps impossible. Therefore we assume global variables can be all of the possible types they can take at all times. However the path taken by local variables is easier to determine and so we perform this analysis. Due to this it can be said we take a flow-sensitive approach for local variables and flow-insensitive approach for global variables. \\
+\indent We treat global variables separately from local variables. We do not attempt to determine which types a global variable can have at certain points in a program, a task which is perhaps impossible. Therefore we assume global variables can be all of the possible types they can take at all times. However the path taken by local variables is easier to determine and so we perform this analysis in order to improve accuracy. Due to this it can be said we take a flow-sensitive approach for local variables and flow-insensitive approach for global variables.  \\
 \indent We only issue an error if there is no type which can be legally used in a given context. This decision was made to minimise the number of false positives. Consider the following code:
 \begin{lstlisting}[mathescape]
     def f():
@@ -691,7 +696,7 @@ When dealing with objects which need to be built up before their use and cleaned
       # Clean up
       file.close()
 \end{lstlisting}
-The code ensures the the object is constructed before use, due to flow restrictions, and destroyed after being used since all paths exiting the \texttt{try} must lead to the finally. Python 2.5 introduced the \texttt{with} keyword to make this code cleaner. Using \texttt{with}, the example can be rewritten:
+The code ensures the the object is constructed before use, due to flow restrictions, and destroyed after being used since all paths exiting the \texttt{try} must lead to the \texttt{finally}. Python 2.5 introduced the \texttt{with} keyword to make this code cleaner. Using \texttt{with}, the example can be rewritten:
 \begin{lstlisting}[mathescape]
     with open("file.txt") as file:
       data = file.read()
@@ -712,7 +717,7 @@ The \texttt{with} keyword works by calling the \texttt{\_\_enter\_\_} function o
       ex.do_something()
 \end{lstlisting}
 The \texttt{type}, \texttt{value} and \texttt{trace} parameters provide information which can used to handle exceptions. \\
-\indent We can handle the \texttt{with} keyword by de-sugaring it back into its equivalent try-finally. The set-up code will involve assignment to the specified variable and a call to the \texttt{\_\_enter\_\_} function. The finally block will simply consist of a call the \texttt{\_\_exit\_\_} function. Our transformed \texttt{with} using the \texttt{Example} class will now be as follows:
+\indent We can handle the \texttt{with} keyword by de-sugaring it back into its equivalent \texttt{try}/\texttt{finally}. The set-up code will involve assignment to the specified variable and a call to the \texttt{\_\_enter\_\_} function. The \texttt{finally} block will simply consist of a call to the \texttt{\_\_exit\_\_} function. Our transformed \texttt{with} using the \texttt{Example} class will now be as follows:
 \begin{lstlisting}[mathescape]
     ex = Example()
     ex.__enter__()
@@ -721,7 +726,7 @@ The \texttt{type}, \texttt{value} and \texttt{trace} parameters provide informat
     finally:
       ex.__exit__(p1, p2, p3)
 \end{lstlisting}
-The main difficulty involved with this transformation is simulating the variables passed to the \texttt{\_\_exit\_\_} function. The simplest way to deal with this is to pass temporary variable which have the type \textit{any}.
+The main difficulty involved with this transformation is simulating the variables passed to the \texttt{\_\_exit\_\_} function. The simplest way to deal with this is to pass temporary variables which have the type \texttt{any}.
 
 \subsubsection{Augmenting Assignments}
 An augmenting assignment performs a binary operation and a store operation on a variable in a single statement. An example of this is: \texttt{x += 1}, which is equivalent to: \texttt{x = x + 1}. The benefit to using an augmented assignment rather than the two-statement equivalent is three-fold. An increase in clarity of the intentions of the programmer, a reduction in code size and a possible performance boost. The increase in performance arises from being able to express that ``the left-hand operand in question [\ldots] should operate `on itself', rather than creating a modified copy of itself.''~\cite{pepAugAssign} \\
@@ -757,12 +762,14 @@ Due to the limitations of the CFG generators for Python as previously described 
 For \texttt{if} nodes we add the test to the current block. A new block is created for each of the \texttt{then} and \texttt{else} branches to be used as their initial blocks. These new blocks are set as the current block before each of the branches are processed. A block is created as an `exit' node and the last active blocks in each of the \texttt{then} and \texttt{else} branches are linked to the exit node. An \texttt{if} with a \texttt{then} and no \texttt{else} is legal Python. In this case the block containing the \texttt{if} is linked directly to the `exit' block in place of the initial \texttt{else} block. These can be seen in Figure~\ref{fig:ifcfgs}. \\
 \indent Python offers syntactic sugar for using \texttt{if}s in the manner of Java-like \texttt{case}, where an \texttt{if} is used in the \texttt{else} branch of another \texttt{if}. This can be written using the keyword \texttt{elif}. The following code demonstrates the use of an \texttt{if} in an \texttt{else} branch and its equivalent representation using the \texttt{elif} keyword:
 \begin{lstlisting}[mathescape]
+    # Using a regular if/else
     if c1:
       # Do something
     else:
       if c2:
         # Do something else
-	    
+	   
+    # Using elif 
     if c1:
       # Do something
     elif c2:
@@ -790,7 +797,7 @@ The \texttt{ast} module being used by our tool `de-sugars' the \texttt{elif} in 
 
 
 \subsubsection{For and While Loops}
-For the purposes of our control flow graph generation \texttt{for} and \texttt{while} loops are similar and so are dealt with in a similar manner. The process is similar to that of the \texttt{if}.  We create a new block as the initial block for the body of the loop. However, the loop test is given a block to itself and the last block to be active at the end of the loop body is linked the the test block rather than the `exit' block. \\
+For the purposes of our control flow graph generation, \texttt{for} and \texttt{while} loops are similar and so are dealt with in a similar manner. The process is similar to that of the \texttt{if}.  We create a new block as the initial block for the body of the loop. However, the loop test is given a block to itself and the last block to be active at the end of the loop body is linked the the test block rather than the `exit' block. \\
 \indent Python allows an \texttt{else} block to be added the end the loop. An example of this is as follows:
 \begin{lstlisting}
     for entry in some_list:
@@ -811,7 +818,7 @@ The \texttt{else} body is always entered if the loop test evaluates to \texttt{F
 \end{figure}
 
 \paragraph*{Breaks and Continues} \mbox{} \\
-In Python, along with most modern languages, a \texttt{break} is used to terminate the inner-most loop and a \texttt{continue} is used to jump to the next iteration of the loop. Taking inspiration from the CFG generation in PyPy, a stack was implemented on which labels are pushed alongside their corresponding nodes. When we reach a loop definition a create a block for the loop `exit' and we push a \texttt{F\_BLOCK\_LOOP} onto the stack. Once we encounter a \texttt{break} or a \texttt{continue} statement we cycle through the labels until we encounter the top-most \texttt{F\_BLOCK\_LOOP} label. Then for a \texttt{break} statement we add an exit for the current block to the loop's `exit' block. For a \texttt{continue} statement we link the current block to the loop head itself. We pop the top of the stack when we finish analysing the loop body. Consider the following function:
+In Python, along with most modern languages, a \texttt{break} is used to terminate the inner-most loop and a \texttt{continue} is used to jump to the next iteration of the loop. Taking inspiration from the CFG generation in PyPy, a stack was implemented on which labels are pushed alongside their corresponding nodes. When we reach a loop definition we create a block for the loop `exit' and we push a \texttt{F\_BLOCK\_LOOP} onto the stack. Once we encounter a \texttt{break} or a \texttt{continue} statement we cycle through the labels until we encounter the top-most \texttt{F\_BLOCK\_LOOP} label. Then for a \texttt{break} statement we add an edge between the current block to the loop's `exit' block. For a \texttt{continue} statement we link the current block to the loop head itself. We pop the top of the stack when we finish analysing the loop body. Consider the following function:
 \begin{lstlisting}
     def f():
       while some_condition:
@@ -822,7 +829,7 @@ In Python, along with most modern languages, a \texttt{break} is used to termina
           continue
       y = 5.0
 \end{lstlisting}
-The resulting CFG for this function can be seen in Figure~\ref{fig:whileCFG}. When we encounter the \texttt{while} loop a \texttt{F\_BLOCK\_LOOP} label along with references to the block containing the loop condition, \texttt{while some\_condition}, as well as a reference to the block containing the loop exit, \texttt{y = 5.0}, is pushed onto the stack. When our analysis encounters the \texttt{break} or \texttt{continue} on line 5 or 7, respectively, we search on the stack for the first instance of an \texttt{F\_BLOCK\_LOOP}. In this case there will be only the single label on the stack. We then extract the reference to the relevant block, the loop exit for \texttt{break} and loop test for \texttt{continue} set it as an exit for block containing these statements.
+The resulting CFG for this function can be seen in Figure~\ref{fig:whileCFG}. When we encounter the \texttt{while} loop, a \texttt{F\_BLOCK\_LOOP} label along with references to the block containing the loop condition, \texttt{while some\_condition}, as well as a reference to the block containing the loop exit, \texttt{y = 5.0}, is pushed onto the stack. When our analysis encounters the \texttt{break} or \texttt{continue} on line 5 or 7, respectively, we search on the stack for the first instance of an \texttt{F\_BLOCK\_LOOP}. In this case there will only be the single label on the stack. We then extract the reference to the relevant block, the loop exit for \texttt{break} and loop test for \texttt{continue} and set the extracted block as an exit for block containing these statements.
 
 \begin{figure}
     \centering
@@ -832,7 +839,7 @@ The resulting CFG for this function can be seen in Figure~\ref{fig:whileCFG}. Wh
 \end{figure}
 
 \subsubsection{Try, Except and Finally}
-The \texttt{try} keyword can be used in a few different ways in Python. Firstly, it can be used as part of a \texttt{try}/\texttt{except} block to handle exceptions, much like \texttt{try}/\texttt{catch} blocks in Java. Also like in Java, different exceptions in the same try block can be caught and dealt with separately. Consider the following example:
+The \texttt{try} keyword can be used in a few different ways in Python. Firstly, it can be used as part of a \texttt{try}/\texttt{except} block to handle exceptions, much like \texttt{try}/\texttt{catch} blocks in Java. Also like in Java, different exceptions in the same \texttt{try} block can be caught and dealt with separately. Consider the following example:
 \begin{lstlisting}
     try:
       if some_condition:
@@ -844,7 +851,7 @@ The \texttt{try} keyword can be used in a few different ways in Python. Firstly,
     except ZeroDivisionError:
       # Deal with error
 \end{lstlisting}
-The statement \texttt{open("myfile.txt")} will raise an \texttt{IOError} exception if, for instance, the file does not exist. The \texttt{x = 5 / y} will raise an \texttt{ZeroDivisionError} if \texttt{y} is equal to \texttt{0} at the time of execution. The matching except block will be executed in the case one of the exceptions is raised. In order to accurately create a control flow graph for \texttt{try} and \texttt{excepts} we need to know which statements can create exceptions and which exceptions they can create. While very time consuming, this knowledge can be gathered from the built-in exceptions and statements in the Python language and standard library and then hardcoded into our CFG generator. But Python permits the creation of unique exceptions by creating a class which inherits from the built-in \texttt{Exception} class. This would be very difficult to track. For this reason the design decision was made to attempt to minimise any false positives which may result from not creating an edge from potentially exceptional statements to their corresponding \texttt{except} blocks. This was done by determining that every statement in a \texttt{try} block can lead to every \texttt{except} block. This method results in an over-approximation of the possible paths taken inside of the \texttt{try} block. The CFG generated for the above example can be observed in Figure~\ref{fig:tryExceptCFG}. \\
+The statement \texttt{open("myfile.txt")} will raise an \texttt{IOError} exception if, for instance, the file does not exist. The \texttt{x = 5 / y} will raise an \texttt{ZeroDivisionError} if \texttt{y} is equal to \texttt{0} at the time of execution. The matching \texttt{except} block will be executed in the case one of the exceptions is raised. In order to accurately create a control flow graph for \texttt{try} and \texttt{except}s we need to know which statements can create exceptions and which exceptions they can create. While very time consuming, this knowledge can be gathered from the built-in exceptions and statements in the Python language and standard library and then hardcoded into our CFG generator. But Python permits the creation of unique exceptions by creating a class which inherits from the built-in \texttt{Exception} class. This would be very difficult to track. For this reason the design decision was made to attempt to minimise any false positives which may result from not creating an edge from potentially exceptional statements to their corresponding \texttt{except} blocks. This was done by determining that every statement in a \texttt{try} block can lead to every \texttt{except} block. This method results in an over-approximation of the possible paths taken inside of the \texttt{try} block. The CFG generated for the above example can be observed in Figure~\ref{fig:tryExceptCFG}. \\
 
 \begin{figure}
     \centering
@@ -853,7 +860,7 @@ The statement \texttt{open("myfile.txt")} will raise an \texttt{IOError} excepti
     \label{fig:tryExceptCFG}
 \end{figure}
 
-\indent Another application of \texttt{try} is to ensure that a particular block of code is unconditionally executed. This is done by using the \texttt{finally} keyword. All code in the \texttt{finally} block is executed no matter how the \texttt{try} body is exited. Normally \texttt{finallys} are used for clean up code. For example:
+\indent Another application of \texttt{try} is to ensure that a particular block of code is unconditionally executed. This is done by using the \texttt{finally} keyword. All code in the \texttt{finally} block is executed no matter how the \texttt{try} body is exited. Normally \texttt{finally}s are used for clean up code. For example:
 \begin{lstlisting}
     try:
       file = open(filePath, 'w')
@@ -873,8 +880,8 @@ The statement \texttt{open("myfile.txt")} will raise an \texttt{IOError} excepti
       print("finally 2")
 \end{lstlisting}
 Then ``finally 1'' and ``finally 2'' will be printed in that order. \\
-\indent \texttt{finallys} and \texttt{excepts} can be used together. In this case the relevant \texttt{except} block is executed first and then passes control to the finally block. \\
-\indent If a \texttt{try-finally} is within a \texttt{try-except} then exceptions raised still lead to the \texttt{finally} before passing control to the outer \texttt{except} block. For example:
+\indent The keywords \texttt{finally} and \texttt{except} can be simultaneously used with a \texttt{try}. In this case the relevant \texttt{except} block is executed first and then passes control to the finally block. \\
+\indent If a \texttt{try}/\texttt{finally} is within a \texttt{try}/\texttt{except} then exceptions raised still lead to the \texttt{finally} before passing control to the outer \texttt{except} block. For example:
 \begin{lstlisting}
     try:
       x = 1
@@ -886,7 +893,7 @@ Then ``finally 1'' and ``finally 2'' will be printed in that order. \\
       print("except")
 \end{lstlisting}
 In the above example after the exception is raised then ``finally'' and ``except'' are printed in that order. \\
-\indent Python provides a way for the \texttt{else} keyword to be used in conjunction with \texttt{trys}. The \texttt{else} block is executed after the \texttt{try} body providing no exception is raised. This is typically used in cases where one action is to be taken for exceptional execution and another for non-exceptional execution. For example:
+\indent Python provides a way for the \texttt{else} keyword to be used in conjunction with \texttt{try}s. The \texttt{else} block is executed after the \texttt{try} body providing no exception is raised. This is typically used in cases where one action is to be taken for exceptional execution and another for non-exceptional execution. For example:
 \begin{lstlisting}
     try:
       result = 1 / f(x)
@@ -895,15 +902,15 @@ In the above example after the exception is raised then ``finally'' and ``except
     else:
       logging.info('Finite result')
 \end{lstlisting}
-When an \texttt{else} is used in conjunction with a \texttt{finally} then the \texttt{else} body is executed before the \texttt{body} of the \texttt{finally}. \\
+When an \texttt{else} is used in conjunction with a \texttt{finally} then the \texttt{else} body is executed before the body of the \texttt{finally}. \\
 \indent It is illegal for a \texttt{continue} statement to be inside of \texttt{finally} block. This will be detected in the CFG generation. An error regarding this will be printed and the program will terminate. \\
-\indent \texttt{break} and \texttt{continue} statements are illegal outside of a loop. However, unlike a \texttt{continue} inside of a \texttt{finally} block, this does not damage the integrity of the CFG. For this reason an error is printed and processing is continued. \\
-\indent If a \texttt{break}, \texttt{return} or \texttt{continue} occurs inside of the \texttt{try} body of a \texttt{try}/\texttt{finally}, control is transferred to the \texttt{finally} block before being transferred to the end of the loop for a \texttt{break}, the end of the function for a \texttt{return} and the loop test for a \texttt{continue}. For this reason, similar to loops, we push a \texttt{F\_BLOCK\_FINALLY} onto our stack when we analyse the \texttt{try} body of a \texttt{try}/\texttt{finally}. The stack is checked when we encounter a \texttt{break}, \texttt{return} or \texttt{continue} for a \texttt{F\_BLOCK\_FINALLY}. If one is found then we set an edge between the block containing the keyword and the \texttt{finally} block. An edge is also set between the \texttt{finally} block and the appropriate destination for the given keyword.
+\indent The \texttt{break} and \texttt{continue} statements are illegal outside of a loop. However, unlike a \texttt{continue} inside of a \texttt{finally} block, this does not damage the integrity of the CFG. For this reason an error is printed and processing is continued. \\
+\indent If a \texttt{break}, \texttt{return} or \texttt{continue} occurs inside of the \texttt{try} body of a \texttt{try}/\texttt{finally}, control is transferred to the \texttt{finally} block before being transferred to the end of the loop for a \texttt{break}, the end of the function for a \texttt{return} and the loop test for a \texttt{continue}. For this reason, similar to loops, we push a \texttt{F\_BLOCK\_FINALLY} onto our stack when we analyse the \texttt{try} body of a \texttt{try}/\texttt{finally}. The stack is checked for a \texttt{F\_BLOCK\_FINALLY} when we encounter a \texttt{break}, \texttt{return} or \texttt{continue}. If one is found then we set an edge between the block containing the keyword and the \texttt{finally} block. An edge is also set between the \texttt{finally} block and the appropriate destination for the given keyword.
 
 
 
 \subsubsection{Merging Empty Exit Blocks}
-At the end of the programming constructs dictating control flow a new block is created as an `exit' block to which the blocks exiting the construct (such as a \texttt{break} in a loop) are linked. However redundant blocks are generated when constructs are nested. Consider the following:
+At the end of the programming constructs dictating control flow, a new block is created as an `exit' block to which the blocks exiting the construct (such as a \texttt{break} in a loop) are linked. However, redundant blocks are generated when constructs are nested. Consider the following:
 \begin{lstlisting}
     if c1:
       # First then block
@@ -919,13 +926,13 @@ The exit block for the inner \texttt{if} is not needed as there are no further s
 
 \subsection{SSA Form}
 The implementation of SSA renaming was performed as described in the background section. However, a few Python specific additions were necessary which are described in this section. \\
-\indent Having created the CFG our SSA renaming can ignore specific programming constructs such as \texttt{for}, \texttt{if} and \texttt{while}. The knowledge required to successfully create the $\phi$ functions for these constructs is encapsulated in the CFG. \\
+\indent Having created the CFG, our SSA renaming can ignore specific programming constructs such as \texttt{for}, \texttt{if} and \texttt{while}. The knowledge required to successfully create the $\phi$ functions for these constructs is encapsulated in the CFG. \\
 \indent The algorithm works by analysing one function at a time. A dictionary is maintained with each variable name eligible within the current scope. The dictionary is reset to containing only module/class wide variables at the end of each function. When a identifier is encountered it is determined whether we wish to rename it. If we do then we check whether it is a \texttt{store} or \texttt{load} operation. A \texttt{store} checks whether the identifier has been referenced beforehand. If it hasn't we add the identifier to the dictionary along with the value \texttt{1} and we modify the node containing the variable name by appending that value to the end of the name, so, for instance, \texttt{x} becomes \texttt{x1}. Otherwise the identifier's value is incremented and renamed with the new value. A \texttt{load} operation uses the latest value for that identifier for renaming. Once we reach the end of a basic block the state of current block's dictionary is forwarded to all of the block's successors.
 
 \subsubsection{Global and Local Variables}
 \label{chap:ssaGlobals}
-We consider a global variable to be a variable in the Module-wide or Class-wide namespace. This includes all imports, function identifiers and all of the built-in functions and classes. A local variable is one which is limited to the scope of a function. \\
-Consider the following snippet of Python code:
+We consider a global variable to be a variable in the module-wide or class-wide namespace. This includes all imports, function identifiers and all of the built-in functions and classes. A local variable is one which is limited to the scope of a function. \\
+\indent Consider the following snippet of Python code:
 \begin{lstlisting}
     class C():
       def f(self):
@@ -937,7 +944,7 @@ Consider the following snippet of Python code:
       def h(self):
         a + self.x 
 \end{lstlisting}
-The references to \texttt{self.x} refer to the same variable. The principles of SSA naming state that a variable should only be assigned to once. But which \texttt{x} should be labelled \texttt{x1} and which should be labelled \texttt{x2}? Or, rather, which of the assignments to \texttt{x} in function \textit{f} and function \textit{g} will be called first? Without any analysis of the call sites or typical run-time behaviour it is impossible to determine this statically. A similar problem arises when we attempt to decide which reference to give to the instance of \textit{self.x} in function \textit{h}. Without knowledge of the order the functions are called (if a consistent ordering even exists) we cannot predict which is the correct label. For this reason SSA naming is only performed on local variables. \\
+The references to \texttt{self.x} refer to the same variable. The principles of SSA naming state that a variable should only be assigned to once. But which \texttt{x} should be labelled \texttt{x1} and which should be labelled \texttt{x2}? Or, rather, which of the assignments to \texttt{x} in function \texttt{f} and function \texttt{g} will be called first? Without any analysis of the call sites or typical run-time behaviour it is impossible to determine this statically. A similar problem arises when we attempt to decide which reference to give to the instance of \texttt{self.x} in function \texttt{h}. Without knowledge of the order the functions are called (if a consistent ordering even exists) we cannot predict which is the correct label. For this reason SSA naming is only performed on local variables. \\
 \indent Separating which variables are global and which are local is not simple due to the fact it can change line-by-line.
 
 \paragraph*{The \texttt{global} Keyword}\mbox{} \\
@@ -955,7 +962,7 @@ The keyword \texttt{global} is used in Python to enable the programmer to write 
       y = x
 \end{lstlisting}
 Function \texttt{f} does not modify the global variable. Instead a local variable is created which masks the global variable \texttt{x} from the scope. In the rest of the function \texttt{x} will reference the local variable created. The global \texttt{x} cannot be accessed unless a highly dynamic method is used, such as \texttt{globals().get("x")} where the function \texttt{globals} returns a dictionary containing all global variables. \\
-\indent It is common in Python to use the \texttt{global} keyword at the beginning of a function to increase clarity, however Python code in which the global keyword is used \textit{after} the variable has been assigned functions correctly, i.e.\ $x$ in the global namespace is assigned the value (despite the Python interpreter issuing a warning to the programmer.) Therefore we need to be careful if the variable name is used in conjunction with the keyword \textit{somewhere} in the function. \\
+\indent It is common in Python to use the \texttt{global} keyword at the beginning of a function to increase clarity, however Python code in which the global keyword is used \textit{after} the variable has been assigned functions correctly, i.e.\ \texttt{x} in the global namespace is assigned the value (despite the Python interpreter issuing a warning to the programmer.) Therefore we need to be careful if the variable name is used in conjunction with the keyword \textit{somewhere} in the function. \\
 \indent Using this knowledge, every time a global variable is modified inside a function we begin the SSA naming unless the identifier is inside of a list of variables which are used in conjunction with the \texttt{global} keyword at some point in the function. For example:
 \begin{lstlisting}
     # Set x to be a module-wide global
@@ -979,12 +986,12 @@ Two methods for generating $\phi$ functions were described in the background sec
 
 \subsection{Type Inference}
 Type inference in our system works by creating a network modelling the data flow of types. The inference works by propagating primitive types through constraints until the system has been completely satisfied. \\
-\indent A thorough description of all of Pythons built-in types can be found~\cite{pythonTypeDocs}. The types supported by our tool are:
+\indent A thorough description of all of Python's built-in types can be found~\cite{pythonTypeDocs}. The types supported by our tool are:
 \begin{itemize}
-	\item \texttt{int} - A numeric type to represent an integer. It has unlimited precision.
-	\item \texttt{float} - A numeric type to represent a floating-point number.
-	\item \texttt{bool} - A subtype of \texttt{int}. Used in comparisons.
-	\item \texttt{bytes} - A sequence of integers.
+	\item \texttt{int} - a numeric type to represent an integer. It has unlimited precision.
+	\item \texttt{float} - a numeric type to represent a floating-point number.
+	\item \texttt{bool} - a subtype of \texttt{int}. Used in comparisons.
+	\item \texttt{bytes} - a sequence of integers.
 	\item \texttt{string} - stores a sequences of Unicode code characters. There is no distinction for single characters.
 	\item \texttt{list} - a type used to store sequences of items.
 	\item \texttt{tuple} - a type used to store sequences of items.
@@ -997,7 +1004,7 @@ Type inference in our system works by creating a network modelling the data flow
 	\item \texttt{class instance} - a type which represents an instantiation of a class definition
 	\item \texttt{function} - a type representing a function.
 \end{itemize}
-The built-in types not supported by our tool are \texttt{bytearray} and \texttt{complex}. However, from our experience, they are not very common. \\
+The built-in types not supported by our tool are \texttt{bytearray} and \texttt{complex}. However, from our experience, they are not very common.
 
 \subsubsection{Built-in Functions}
 \indent All built-in types but \texttt{int} and \texttt{float} have functions as class members which can be called from instances of these types. Almost all of these are supported. In total, across all built-in types, 177 functions are supported at the time of writing. For brevity they have not be been documented here. For a significant number of these functions, the information necessary to support them in our tool was extracted from mypy~\cite{mypy}. \\
@@ -1014,7 +1021,7 @@ All changes to the types of variables involve assignments. For each assignment t
 \end{lstlisting}
  If the RHS is a function then we assign all of the types the function can possibly return. \\
 \indent We simulate this flow of types with a simple subset relationship. The set of types the RHS can assume must be a subset of the set of types the LHS can assume. An example of this can be observed in Figure~\ref{fig:assignConstraint}. \\
-\indent Python allows assignment to variables to be performed inside of lists or tuples. For example:
+\indent Python allows assignment to variables to be performed inside of \texttt{list}s or \texttt{tuple}s. For example:
 \begin{lstlisting}
     (x, y) = (1, 1.0)   # 1
     [x, y] = [1, 1.0]   # 2
@@ -1022,7 +1029,7 @@ All changes to the types of variables involve assignments. For each assignment t
          x = [1, 1.0]   # 4
 \end{lstlisting}
 In the first and second cases \texttt{x} is assigned an \texttt{int} type and \texttt{y} is assigned a \texttt{float} type. However in the third and fourth cases we want to assign a \texttt{tuple} and \texttt{list} type to \texttt{x} respectively. \\
-Python also supports double assignment such as the following:
+\indent Python also supports double assignment such as the following:
 \begin{lstlisting}
     x = y = 5
 \end{lstlisting}
@@ -1031,13 +1038,13 @@ This is equivalent to \texttt{x = 5; y = 5} rather than \texttt{x = 5; y = x}. F
 \begin{figure}
 \centering
 \includegraphics[scale=0.3]{images/assignment_constraint.pdf}
-\caption{The constraint network generated by the assignments, \texttt{x = 5} and \texttt{y = x}.}
+\caption{The network generated by the assignments, \texttt{x = 5} and \texttt{y = x}.}
 \label{fig:assignConstraint}
 \end{figure}
 
 \subsubsection{Inferring the Types of Binary Operations}
 Binary operators are handled by our type inferencer by first inferring the types of the left and right hand side of the operator. We then determine whether there is at least one combination between the two sets of types which can be legally used with the operator. \\
-A comprehensive list of the binary operators and the types which can be legally used in combination with them can be seen in Appendix~\ref{App:AppendixBinary}.
+\indent A comprehensive list of the binary operators and the types which can be legally used in combination with them can be seen in Appendix~\ref{App:AppendixBinary}.
 
 
 \subsubsection{Inferring the Types of Unary Assignments}
@@ -1052,8 +1059,8 @@ By a `container' we refer to any type which can contain a sequence of other type
     x[0] = 5        # Indexing
     x.append(5.0)   # Using a function
 \end{lstlisting}
-No container in Python is restricted to elements of any one type. In the example above the elements of \texttt{list} \texttt{x} are of type \texttt{int} and \texttt{float} after the function \texttt{append} has been called. In the case of a \texttt{dict} which is mapping of key/values it is not limited in the types it contains for keys or values. For instance a single \texttt{dict} instance could contains mappings from \texttt{strings} to \texttt{ints} and \texttt{floats} to \texttt{lists}. \\
-\indent All of these container types, aside from \texttt{tuple}, are \textit{mutable}. A type is mutable if the value of an of instance of the type is liable to change. The value of an instance of an \textit{immutable} type is not liable to change to chance once it is created~\cite{pythonMutable}. The effect of this is the following:
+No container in Python is restricted to elements of any one type. In the example above the elements of \texttt{list} \texttt{x} are of type \texttt{int} and \texttt{float} after the function \texttt{append} has been called. In the case of a \texttt{dict}, which is a mapping of key/values pairs, it is not limited in the types it contains for keys or values. For instance a single \texttt{dict} instance could contains mappings from \texttt{strings} to \texttt{ints} and \texttt{floats} to \texttt{lists}. \\
+\indent All of these container types, aside from \texttt{tuple}, are \textit{mutable}. A type is mutable if the value of an instance of the type is liable to change. The value of an instance of an \textit{immutable} type is not liable to change to chance once it is created~\cite{pythonMutable}. The effect of this is the following:
 \begin{lstlisting}
     def f(y):
       y.append("mutable")
@@ -1069,7 +1076,7 @@ No container in Python is restricted to elements of any one type. In the example
     g(x)
     print(x)    # prints 5
 \end{lstlisting}
-The \texttt{int} type is immutable and so the function can in no way edit the value of the \texttt{int} object. Since the \texttt{list} is mutable the function call was able to change the contents of the list and therefore the types of the elements contained in the list. What this means in the context of the type checking is that if we wish to accurately track the possible types of the contents of a container type then we must also keep track of the possible side-effects of functions. In the case above we must express that the function \texttt{f} will always add the type \texttt{string} to its first (and only) parameter. When the function is called we must update the possible types the elements of the \texttt{list} can contain. So, for example:
+The \texttt{int} type is immutable and so the function \texttt{g} can in no way edit the value of the \texttt{int} object. Since the \texttt{list} is mutable the function call to \texttt{f} on line 8 was able to change the contents of the list and therefore the types of the elements contained in the list. What this means in the context of the type checking is that if we wish to accurately track the possible types of the contents of a container type then we must also keep track of the possible side-effects of functions. In the case above we must express that the function \texttt{f} will always add the type \texttt{string} to its first (and only) parameter. When the function is called we must update the possible types the elements of the \texttt{list} can contain. So, for example:
 \begin{lstlisting}
     def g():
       x1 = [3]
@@ -1088,7 +1095,7 @@ The \texttt{del} statement is used to remove an identifier binding. If the targe
 Python allows the \texttt{if} keyword to be used in expressions. These expressions are typically used to conditionally assign values to a variable. For example: \texttt{x = 5 if some\_condition else "Hi"}. In the case that \texttt{some\_condition} evaluates to true then \texttt{x} is assigned the value \texttt{5}, otherwise \texttt{x} is assigned the value \texttt{"Hi"}. No attempts are made to determine the likely path taken by the \texttt{if} condition and so we set the resulting type of the \texttt{if} expression to the type of the union of the \texttt{then} branch and the \texttt{else} branch.
 
 \subsubsection{Inferring the Types in Comprehensions}
-Python provides convenient syntax for generating a number of different container types, such as \texttt{list}, \texttt{dict} and \texttt{generator}. These are called comprehensions. For example, assume we have a Python \texttt{list}, \texttt{num\_list}, containing various \texttt{int}s and we wished to extract all numbers of a value less than 100 into a new \texttt{list}. We could do this using the following \texttt{list} comprehension: \texttt{[x < 100 for x in num\_list]}. The \texttt{for x in some\_list} generates an iterator over all values in \texttt{num\_list} and assigns each value to the variable \texttt{x}. Each value is then added to a new \texttt{list} if the condition \texttt{x < 100} evaluates to \texttt{True} for that value. \\
+Python provides convenient syntax for generating a number of different container types, such as \texttt{list}, \texttt{dict} and \texttt{generator}. These are called comprehensions. For example, assume we have a Python \texttt{list}, \texttt{num\_list}, containing various \texttt{int}s and we wished to extract all numbers of a value less than 100 into a new \texttt{list}. We could do this using the following \texttt{list} comprehension: \texttt{[x < 100 for x in num\_list]}. The \texttt{for x in some\_list} generates an iterator over all values in \texttt{num\_list} and assigns each value to the variable \texttt{x}. Each value is then added to a new \texttt{list} if the condition \texttt{x < 100} evaluates to true for that value. \\
 \indent Each of the comprehensions are performed in similar ways but are differentiated by the syntax which surrounds the expression. \texttt{list} comprehensions use \texttt{[expr]} as above, \texttt{dict} comprehensions use \texttt{\{expr\}} and \texttt{generator} comprehensions use \texttt{(expr)}. \\
 \indent In each comprehension the return type is the type of comprehension, e.g.\ a \texttt{list} comprehension always returns a \texttt{list} type.
 
@@ -1108,8 +1115,8 @@ The following shows a `raw' while loop and the same while loop in SSA form:
       x3 = "Hi"
 \end{lstlisting}
 A problem raised by this is that the $\phi$ function at the beginning of the loop depends on the types which can not be determined until the end of the loop body. In between there may be other variables which use the result of the $\phi$ function in their own assignment, like \texttt{y1} above. Due to the manner we deal with simple assignment, using the subset relation, we can treat the $\phi$ function as a number of different assignments to the variable created by the $\phi$ function. So, for example, \texttt{x2 = $\phi$(x1, x3)} would translate to $\mathtt{x2 \subseteq x1}$ and $\mathtt{x2 \subseteq x3}$. Thus, while in the example above \texttt{x3} may be an empty type variable once we set up the relationship the types will flow through to \texttt{x4} as \texttt{x3} receives them. \\
-\indent We need to consider what types can be legally used in the loop tests. The case for \texttt{while} loop tests require no significant effort since any type can be compared to \texttt{True} and \texttt{False}, however \texttt{for} loops use the Python concept of \texttt{iterators}. \texttt{iterators} work by systematically yielding each object that they contain until all objects have been exhausted. \\
-\indent A Python type qualifies as an iterator if it implements the \texttt{\_\_iter\_\_} function. The built-in types which implement \texttt{\_\_iter\_\_} are \texttt{list}, \texttt{sting}, \texttt{tuple}, \texttt{dict} and \texttt{set}.
+\indent We need to consider what types can be legally used in the loop tests. The case for \texttt{while} loop tests require no significant effort since any type can be compared to a boolean value, however \texttt{for} loops use the Python concept of \texttt{iterators}. \texttt{iterators} work by systematically yielding each object that they contain until all objects have been exhausted. \\
+\indent A Python type qualifies as an iterator if it implements the \texttt{\_\_iter\_\_} function. The built-in types which implement \texttt{\_\_iter\_\_} are \texttt{list}, \texttt{sting}, \texttt{tuple}, \texttt{dict} and \texttt{set}. Therefore, when we encounter a \texttt{for} loop we check whether the iterator used implements the \texttt{\_\_iter\_\_} function.
 
 
 \subsubsection{Inferring the Possible Types of Function Arguments}
@@ -1127,18 +1134,18 @@ We will briefly discuss each of these and how we deal with them.
 Regular function arguments work in largely the same way as in C and Java. All regular function arguments are required to be given a value when the function is called. A regular argument is signified in the function definition by listing the identifier of the argument only. For example, \texttt{def f(x, y)} is a function header with regular arguments only.
 
 \paragraph*{Default Function Arguments}\mbox{} \\
-A default argument is similar to regular function argument apart from the fact it doesn't need to be given a value when the function is called. When the argument is not given a value, it takes on a default value which is specified in the function header. For example, the function header \texttt{def f(x, y = 2.0)} has \texttt{x} as regular function argument and \texttt{y} as default argument with a default value of \texttt{2.0}. This function can be called in the following styles: \texttt{f(1, 1.0)}, \texttt{f(1)}. In the first case the argument \texttt{y} takes on the value of \texttt{1.0} as given, but in the second case the \texttt{y} takes on the default value of \texttt{2.0}. \\
+A default argument is similar to a regular function argument apart from the fact it doesn't need to be given a value when the function is called. When the argument is not given a value, it takes on a default value which is specified in the function header. For example, the function header \texttt{def f(x, y = 2.0)} has \texttt{x} as regular function argument and \texttt{y} as default argument with a default value of \texttt{2.0}. This function can be called in the following styles: \texttt{f(1, 1.0)}, \texttt{f(1)}. In the first case the argument \texttt{y} takes on the value of \texttt{1.0} as given, but in the second case the \texttt{y} takes on the default value of \texttt{2.0}. \\
 \indent Any number of default arguments can be given, however they must succeed all regular function arguments. The header \texttt{def f(x, y = 1.0, z)} is illegal. This error is caught by the AST parser and so we do not have to consider it. \\
-\indent Default arguments are the most common of the `special' function arguments. We consider them only during function calls. We record the number of default arguments and allow the function call to be short of a maximum of that many arguments. We do not use the default value in our type inference since the type may well be incorrect. \\
+\indent Default arguments are the most common of the `special' function arguments. We consider them only during function calls. We record the number of default arguments and allow the function call to be short of a maximum of that many arguments. We do not use the default value in our type inference since the type may well be incorrect.
 
 \paragraph*{Variable-length Function Arguments}\mbox{} \\
 Variable-length function arguments, or \textit{varargs}, are used to allow a function call to provide an unbounded number of arguments. A vararg is signified by preceding the identifier with a \texttt{*}. For example, the function header \texttt{def f(x, *y)} has a regular argument and a vararg. Similarly to the default argument, the vararg does not need to be given a value in a function call. The type of the vararg is always a \texttt{tuple} and will contain all arguments given after the required arguments and default arguments. For example, the call \texttt{f(1, 2, 3, "hi")} will give the parameter \texttt{y} the \texttt{tuple} \texttt{(2, 3, "hi")}. \\
-\indent varargs are not very common. In the library functions we have supported in our system they have occurred seven times out of the 230 built-in functions supported by our tool. However, not supporting varargs does not raise any false positives. Since the type of a vararg is always \texttt{tuple} we can type the function argument accurately. The only downside is that the cannot type check the parameters in a function call to a function using varargs. 
+\indent varargs are not very common. In the library functions we have supported in our system they have occurred 7 times out of the 230 built-in functions supported by our tool. However, not supporting varargs does not raise any false positives. Since the type of a vararg is always \texttt{tuple} we can type the function argument accurately. The only downside is that the cannot type check the parameters in a function call to a function using varargs. 
 
 \paragraph*{Keyword Function Arguments}\mbox{} \\
-Keyword function arguments, or \textit{kwargs}, are similar to varargs in that they allow unbounded number of arguments to be given to the function call. A kwarg is signified by preceding the identifier with \texttt{**}. For example, the function header \texttt{def f(x, **y)} has a regular argument and a kwarg. The difference between a kwarg and vaarg is that an identifier needs to be provided along with each value. Each identifier and value pair is provided in a \texttt{dict}. For example, the function call \texttt{f(5, item1 = 1, item2 = 2)} will cause \texttt{y} to take on the \texttt{dict} \texttt{\{item1 : 1, item2 : 2\}}. \\
-\indent kwargs are the least common `special' function argument. They are used only twice in our supported library functions. For this reason they are also not type checked. Similarly to vaargs the kwargs only ever assume one type. Due to this we can always type the kwarg as a \texttt{dict}. However, again, we unable to check the correct parameter types are given to the call of a function using kwargs. \\
-\indent Keyword function arguments can be used without the \texttt{**} syntax by referring to the function arguments in the function call by the name they are given in the function header. This allows the function arguments to given out-of-order. For example, the function with the header \texttt{def f(x, y)} can be called in the following way: \texttt{f(y = 4, x = 5)}. Currently, this method of calling functions is not supported.
+Keyword function arguments, or \textit{kwargs}, are similar to varargs in that they allow unbounded number of arguments to be given to the function call. A kwarg is signified by preceding the identifier with \texttt{**}. For example, the function header \texttt{def f(x, **y)} has a regular argument and a kwarg. The difference between a kwarg and a vararg is that an identifier needs to be provided along with each value. Each identifier and value pair is provided in a \texttt{dict}. For example, the function call \texttt{f(5, item1 = 1, item2 = 2)} will cause \texttt{y} to take on the \texttt{dict} \texttt{\{item1 : 1, item2 : 2\}}. \\
+\indent kwargs are the least common `special' function argument. They are used only twice in our supported library functions. For this reason they are also not type checked. Similarly to varargs the kwargs only ever assume one type. Due to this we can always type the kwarg as a \texttt{dict}. However, again, we unable to check the correct parameter types are given to the call of a function using kwargs. \\
+\indent Keyword function arguments can be used without the \texttt{**} syntax by referring to the function arguments in the function call by the name they are given in the function header. This allows the function arguments to given out-of-order. For example, the function with the header \texttt{def f(x, y)} can be called in the following way: \texttt{f(y = 4, x = 5)}. Currently, this method of calling functions is not supported. \\
 
 
 
@@ -1153,7 +1160,7 @@ A top-down approach involves finding all of the calls to a function and determin
     # Only call to function f
     add_one("Hi")
 \end{lstlisting}
-Analysing the given code with a top-down approach would see that the only the function call to \texttt{add\_one} gives the argument \texttt{x} a \texttt{string} type thus giving the argument a type set containing only \texttt{string}. Due to this an error will be flagged on the use of the \texttt{int} \texttt{1} in a binary \texttt{+} operation with \texttt{x}. While an error will certainly occur at that line when the function is called with a string, the line \texttt{x + 1} is not the cause of error but instead the function call. In this case, assuming that the types given to function calls are correct is not a reasonable assumption and will cause the type checker to raise errors in wrong places.
+Analysing the given code with a top-down approach would see that the only the function call to \texttt{add\_one} gives the argument \texttt{x} a \texttt{string} type thus giving the argument a type set containing only \texttt{string}. Due to this an error will be flagged on the use of the \texttt{int} \texttt{1} in a binary \texttt{+} operation with \texttt{x}. While an error will certainly occur at that line when the function is called with a string, the line \texttt{x + 1} is not the cause of error but instead the function call. In this case, assuming that the types given to function calls are correct is not a reasonable assumption and will cause the type checker to raise errors in the wrong places.
 
 \paragraph*{Bottom-Up: Extracting Information From Parameter Use}\mbox{} \\
 A bottom-up approach involves determining the types of arguments solely by how they are used within the function body. To do this we make use of pre-existing knowledge from the types which other functions and built-in operators accept. If a parameter is used within a context then the types that parameter can take are changed to the types applicable in that context. \\
@@ -1656,7 +1663,7 @@ At this time our tool is not accurate enough to currently be used as a full-blow
 
 \newpage
 \section{Conclusion}
-Throughout this project we have looked at types in programming languages, type inference and how it can be performed, we looked at how we can use techniques such as control flow graphs and single static assignment to create our system and how we can solve potential issues in the \textit{Design of the Type Inferencing Algorithm} section. We described the structure of our work, the trade-offs of our decisions and went on to evaluate it in a number of ways. We benchmarked our system against an existing type checker, looked at its accuracy and what errors it is capable of checking. \\
+Throughout this project we have looked at types in programming languages, type inference and how it can be performed, we looked at how we can use techniques such as control flow graphs and single static assignment to create our system and how we can solve potential issues in Chapter~\ref{chap:designAlg}. We described the structure of our work, the trade-offs of our decisions and went on to evaluate it in a number of ways. We benchmarked our system against an existing type checker, looked at its accuracy and what errors it is capable of checking. \\
 \indent This project aims to infer bugs involving type errors in Python code without the burden of having to check to see which errors are false positives and which are genuine. Our solution achieves this by using a flow-sensitive approach for local variables, a flow-insensitive approach for global variables and an algorithm based on success typings for inferring function arguments. This is done out-of-the-box, without troubling the users with the technicalities of annotations. \\
 \indent However our achievements are just the beginning in what could be a very promising line of work. It appears our solution may be usefully used alongside a more aggressive and false-positive sensitive tool.
 
