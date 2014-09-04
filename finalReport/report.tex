@@ -897,7 +897,8 @@ In the above example after the exception is raised then ``finally'' and ``except
 \end{lstlisting}
 When an \texttt{else} is used in conjunction with a \texttt{finally} then the \texttt{else} body is executed before the \texttt{body} of the \texttt{finally}. \\
 \indent It is illegal for a \texttt{continue} statement to be inside of \texttt{finally} block. This will be detected in the CFG generation. An error regarding this will be printed and the program will terminate. \\
-\indent \texttt{break} and \texttt{continue} statements are illegal outside of a loop. However, unlike a \texttt{continue} inside of a \texttt{finally} block this does not damage the integrity of the CFG. For this reason an error is printed and processing is continued.
+\indent \texttt{break} and \texttt{continue} statements are illegal outside of a loop. However, unlike a \texttt{continue} inside of a \texttt{finally} block, this does not damage the integrity of the CFG. For this reason an error is printed and processing is continued. \\
+\indent If a \texttt{break}, \texttt{return} or \texttt{continue} occurs inside of the \texttt{try} body of a \texttt{try}/\texttt{finally}, control is transferred to the \texttt{finally} block before being transferred to the end of the loop for a \texttt{break}, the end of the function for a \texttt{return} and the loop test for a \texttt{continue}. For this reason, similar to loops, we push a \texttt{F\_BLOCK\_FINALLY} onto our stack. The stack is checked when we encounter a \texttt{break}, \texttt{return} or \texttt{continue} for a \texttt{F\_BLOCK\_FINALLY}. If one is found then we set an edge between the block containing the keyword and the \texttt{finally} block. An edge is also set between the \texttt{finally} block and the appropriate destination for the given keyword.
 
 
 
