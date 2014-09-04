@@ -898,7 +898,7 @@ In the above example after the exception is raised then ``finally'' and ``except
 When an \texttt{else} is used in conjunction with a \texttt{finally} then the \texttt{else} body is executed before the \texttt{body} of the \texttt{finally}. \\
 \indent It is illegal for a \texttt{continue} statement to be inside of \texttt{finally} block. This will be detected in the CFG generation. An error regarding this will be printed and the program will terminate. \\
 \indent \texttt{break} and \texttt{continue} statements are illegal outside of a loop. However, unlike a \texttt{continue} inside of a \texttt{finally} block, this does not damage the integrity of the CFG. For this reason an error is printed and processing is continued. \\
-\indent If a \texttt{break}, \texttt{return} or \texttt{continue} occurs inside of the \texttt{try} body of a \texttt{try}/\texttt{finally}, control is transferred to the \texttt{finally} block before being transferred to the end of the loop for a \texttt{break}, the end of the function for a \texttt{return} and the loop test for a \texttt{continue}. For this reason, similar to loops, we push a \texttt{F\_BLOCK\_FINALLY} onto our stack. The stack is checked when we encounter a \texttt{break}, \texttt{return} or \texttt{continue} for a \texttt{F\_BLOCK\_FINALLY}. If one is found then we set an edge between the block containing the keyword and the \texttt{finally} block. An edge is also set between the \texttt{finally} block and the appropriate destination for the given keyword.
+\indent If a \texttt{break}, \texttt{return} or \texttt{continue} occurs inside of the \texttt{try} body of a \texttt{try}/\texttt{finally}, control is transferred to the \texttt{finally} block before being transferred to the end of the loop for a \texttt{break}, the end of the function for a \texttt{return} and the loop test for a \texttt{continue}. For this reason, similar to loops, we push a \texttt{F\_BLOCK\_FINALLY} onto our stack when we analyse the \texttt{try} body of a \texttt{try}/\texttt{finally}. The stack is checked when we encounter a \texttt{break}, \texttt{return} or \texttt{continue} for a \texttt{F\_BLOCK\_FINALLY}. If one is found then we set an edge between the block containing the keyword and the \texttt{finally} block. An edge is also set between the \texttt{finally} block and the appropriate destination for the given keyword.
 
 
 
@@ -940,7 +940,7 @@ Consider the following snippet of Python code:
 The references to \texttt{self.x} refer to the same variable. The principles of SSA naming state that a variable should only be assigned to once. But which \texttt{x} should be labelled \texttt{x1} and which should be labelled \texttt{x2}? Or, rather, which of the assignments to \texttt{x} in function \textit{f} and function \textit{g} will be called first? Without any analysis of the call sites or typical run-time behaviour it is impossible to determine this statically. A similar problem arises when we attempt to decide which reference to give to the instance of \textit{self.x} in function \textit{h}. Without knowledge of the order the functions are called (if a consistent ordering even exists) we cannot predict which is the correct label. For this reason SSA naming is only performed on local variables. \\
 \indent Separating which variables are global and which are local is not simple due to the fact it can change line-by-line.
 
-\paragraph*{global Keyword}\mbox{} \\
+\paragraph*{The \texttt{global} Keyword}\mbox{} \\
 The keyword \texttt{global} is used in Python to enable the programmer to write to the global namespace within a function. By default the programmer has immediate read access to the global scope and read/write access to the local scope. This means the \texttt{global} keyword is only necessary when a write to the global scope is to take place within a function. With the \texttt{global} keyword global variables can be defined dynamically at runtime. If an attempt is made to modify a global variable without specifying the variable as global, then a local variable with the same name is created instead. Consider the following code:
 \begin{lstlisting}
     x =  5
@@ -1584,8 +1584,7 @@ Some variation of a container type is used in every sample of Python source code
 
 \paragraph*{Built-in Modules}\mbox{}\\
 Built-in Modules, such as \texttt{re} and \texttt{os} have been used in all of our sample projects. Since these are not supported their identifier is given \texttt{any} type. Any function call or variable access made on these imports will return \texttt{any}. Anything but light use of these modules would see the inaccuracy propagate throughout the code. \\
-
-To demonstrate both of these, consider the following function taken from \texttt{birthday-script}:
+\indent To demonstrate both of these, consider the following function taken from \texttt{birthday-script}:
 \begin{lstlisting}[mathescape]
     def commentall(wallposts):
       """Comments thank you on all posts"""
