@@ -1166,7 +1166,7 @@ Analysing the given code with a top-down approach would see that the only the fu
 A bottom-up approach involves determining the types of arguments solely by how they are used within the function body. To do this we make use of pre-existing knowledge from the types which other functions and built-in operators accept. If a parameter is used within a context then the types that parameter can take are changed to the types applicable in that context. \\
 
 It was felt that more was to be gained using the bottom-up approach since we would be able to detect errors caused by incorrect types being passed to a function. It is important to note that useful information can be extracted from the calls. There is a possibility of using this information when we are unable to infer the types of the parameters using the function body in isolation. However this is currently not done. \\
-\indent To do this we observe how each parameter is used and what possible types that it can legally assume in these contexts. When we are unable to infer any useful context in which the parameter is used, we resort to labelling the parameter as having any \texttt{any} type. \\
+\indent To implement this approach we observe how each parameter is used and what possible types that it can legally assume in these contexts. When we are unable to infer any useful context in which the parameter is used, we resort to labelling the parameter as having \texttt{any} type. \\
 \indent We observe the following contexts to infer types for parameters:
 \begin{itemize}
 	\item Whether the parameter is indexed
@@ -1185,7 +1185,7 @@ In each case we use the types which are legally allowed in each operation to inf
 	    return x + y
 	  return 0
 \end{lstlisting}
-Both functions apply the $+$ operator to the parameters. However, due to the \textit{if} statement the constraint this imposes on the types they can take is quite different. In function \textit{f} the operation is unconditional and so we know that both parameters are required to be of a type (or a sub-type of a type) which can used in this operation. On the other hand, in the function \textit{g} this statement may not be executed in which case we can see that no type errors can occur. This leads us to conclude that we must take the context of the statement into account before we issue a constraint.
+Both functions apply the \texttt{+} operator to the parameters. However, due to the \texttt{if} statement the constraint this imposes on the types they can take is quite different. In function \texttt{f} the operation is unconditional and so we know that both parameters are required to be of a type (or a sub-type of a type) which can used in this operation. On the other hand, in the function \texttt{g} this statement may not be executed in which case we can see that no type errors can occur. This leads us to conclude that we must take the context of the statement into account before we issue a constraint.
 
 \subsubsection{Inferring the Possible Return Types of a Function}
 To infer return types, we simply create a type variable to represent the return type of the function, $\alpha$. For every \texttt{return} statement we come across we create a subset relationship between the value of the return statement and our type variable. For example:
@@ -1198,7 +1198,7 @@ To infer return types, we simply create a type variable to represent the return 
       return
 \end{lstlisting}
 Here we create the subset relationships $\texttt{int} \subseteq \alpha$, $\texttt{string} \subseteq \alpha$, $\texttt{none} \subseteq \alpha$ which would result in $\alpha$ assuming the type set $\{\texttt{int}, \texttt{string}, \texttt{none}\}$. \\
-\indent There is a the possibility of a relationship between the types of the parameters and the return types, e.g.\ a string is always returned if an integer is given. While this addition would improve the accuracy of our type inference, it would be complex to implement and so we currently do not do this.
+\indent There is the possibility of a relationship between the types of the parameters and the return types, e.g.\ a string is always returned if an integer is given. While this addition would improve the accuracy of our type inference, it would be complex to implement and so we currently do not do this.
 
 \subsubsection{Generator Functions and the \texttt{yield} Keyword}
 The \texttt{generator} type is an iterator which lazily generates values to be iterated over. Functions which return a \texttt{generator} type use the \texttt{yield} keyword in place of \texttt{return}. For example:
@@ -1210,7 +1210,7 @@ The \texttt{generator} type is an iterator which lazily generates values to be i
     for x in f():
       print(x)
 \end{lstlisting}
-The function \texttt{f} returns a \texttt{generator} type which iterates over the values from 1 to 10. When the function \texttt{f} is first called a \texttt{generator} type is returned and no computation takes place. When the iteration begins on line 6, the function \texttt{f} is entered for the first time and the function body is executed until a \texttt{yield} is reached. The value is returned and computation is paused until another value is required. This continues until the function returns. \\
+The function \texttt{f} returns a \texttt{generator} type which iterates over the values from 1 to 10. When the function \texttt{f} is first called, a \texttt{generator} type is returned and no computation takes place. When the iteration begins on line 6, the function \texttt{f} is entered for the first time and the function body is executed until a \texttt{yield} is reached. The value is returned and computation is paused until another value is required. This continues until the function returns. \\
 \indent The types contained in the \texttt{generator} can be inferred by determining all types which can be `yielded'. However since we currently do not track the types in containers we do not do this either. \\
 \indent Any function which contains the keyword \texttt{yield} returns a \texttt{generator} type. For instance, despite never being able to reach a \texttt{yield} the following function returns a \texttt{generator} type when first called:
 \begin{lstlisting}[mathescape]
@@ -1251,11 +1251,11 @@ In statically typed languages such as Java and C++ the class members are require
 \end{lstlisting}
 You may also notice that the class member held by C can be different types - \texttt{int} or \texttt{float} depending on which of the functions \texttt{f} and \texttt{g} was called last. To infer the types of these variables we can use a few different methods.
 
-\paragraph{Method One: Any Possible Type at Any Time}\mbox{}\\
+\paragraph{Method 1: Any Possible Type at Any Time}\mbox{}\\
 Whilst analysing the functions of the class we can keep track of all of the possible types of each class member. We do this on a function-by-function basis. So once we have analysed function \texttt{f} we believe that the variable \texttt{x} can be the set of types \texttt{\{int\}}. We update this to \texttt{\{int, float\}} after the analysis of the function \texttt{g}. Once the entire class has been analysed we return all of the possible types a variable can have. This method is not very accurate, and does not take into account the changes that the function calls make to the object.
 
-\paragraph{Method Two: Treat Function Calls as Object Modifiers}\mbox{}\\
-Whilst analysing the functions of a class, instead of recording all of the types a variable can take we can tag the function with the variable modifications it makes. So for the example given above we would tag for the function \texttt{f} as modifying the variable \texttt{x} to \texttt{\{int\}} and function \texttt{g} as modifying \texttt{x} to \texttt{\{float\}}. However to take advantage of this information we are required to manipulate the calling code somewhat. If we are stating that the functions change the state of the object then we need to explicitly indicate this as we did with `normal' variables with SSA naming. For example, consider the calling code for the class \texttt{C} example we gave above. We would edit this to be something similar to the following:
+\paragraph{Method 2: Treat Function Calls as Object Modifiers}\mbox{}\\
+Whilst analysing the functions of a class, instead of recording all of the types a variable can take we can tag the function with the variable modifications it makes. So for the example given above we would tag the function \texttt{f} as modifying the variable \texttt{x} to \texttt{\{int\}} and function \texttt{g} as modifying \texttt{x} to \texttt{\{float\}}. However to take advantage of this information we are required to manipulate the calling code somewhat. If we are stating that the functions change the state of the object then we need to explicitly indicate this as we did with `normal' variables with SSA naming. For example, consider the calling code for the class \texttt{C} example we gave above. We would edit this to be something similar to the following:
 \begin{lstlisting}[mathescape]
     # Using the class C
     c1 = C()
@@ -1267,8 +1267,8 @@ Whilst analysing the functions of a class, instead of recording all of the types
 where the $\theta$ function represents modifications to the class instance (the $\theta$ function is used since the function may return a value.) We assume that the function creates a special kind of assignment to the object with the old object information plus the changes to the global variables made by the function. On top of this we must also take into account the changes the function may perform on variables other than the ones it is called upon. For example, the function may take a class instance as parameter and perform modifications on it. \\
 \indent This method is much more accurate than the first as we keep track of how a object instance grows and changes with each function call made upon it. However the price we pay for this accuracy is a much more complex implementation process.
 
-The decision was made to use Method One. While Method Two is clearly more accurate, calculating the side-effects of a function would be complicated process and would not fit within the time-scale of the project. \\
-\indent To implement Method One we treat the class variables in the same manner as we treat module-wide global variables, and so their type is a union of all possible types they can have.
+The decision was made to use Method 1. While Method 2 is clearly more accurate, calculating the side-effects of a function would be complicated process and would not fit within the time-scale of the project. \\
+\indent To implement Method 1 we treat the class variables in the same manner as we treat module-wide global variables, and so their type is a union of all possible types they can have.
 
 
 \subsubsection{Inheritance}
@@ -1288,7 +1288,7 @@ In Python a programmer can indicate inheritance by inserting the name of the bas
 	  def h():
 	    self.y = "hi"
 \end{lstlisting}
-Class \textit{D} inherits from the base class \textit{C}. The function \textit{g} is inherited along with the variable \textit{x}. Python supports overloading of functions, so the function \textit{f} inherited from C is overridden by subclass \textit{D}. \\
+Class \texttt{D} inherits from the base class \texttt{C}. The function \texttt{g} is inherited along with the variable \texttt{x}. Python supports overloading of functions, so the function \texttt{f} inherited from C is overridden by subclass \texttt{D}. \\
 \indent Python supports multiple inheritance. This works by separating the base classes with commas in the class declaration. Consider the following example: 
 \begin{lstlisting}[mathescape]
 	class C():
@@ -1305,14 +1305,14 @@ Class \textit{D} inherits from the base class \textit{C}. The function \textit{g
 	class E(C, D):
 	  pass
 \end{lstlisting}
-When a function is called on a subclass Python initially looks for a declaration in the subclass definition. If it is not found the search is continued through the base classes, in the order they are given, until the referenced identifier is found. Therefore preference is given to the base classes listed first. So, in the previous example, if a call to the function \textit{f} is made on an instance of class \textit{E} the search will end at the function instance in class \textit{C}. \\
-\indent We support inheritance by constructing a relationship between the identifiers listed to be inherited from and the subclass being analysed. We need to compile a list of all possible identifiers accessible through the subclass. If an identifier listed in the base class has a type which can legally be inherited from then all the members in that class, along with their type variables, are inherited by the subclass. If the identifiers are not already in the class members of the subclass then they are added. \\
+When a function is called on a subclass Python initially looks for a declaration in the subclass definition. If it is not found the search is continued through the base classes, in the order they are given, until the referenced identifier is found. Therefore preference is given to the base classes listed first. So, in the previous example, if a call to the function \texttt{f} is made on an instance of class \texttt{E} the search will end at the function instance in class \texttt{C}. \\
+\indent We support inheritance by constructing a relationship between the identifiers listed to be inherited from and the subclass being analysed. We need to compile a list of all possible identifiers accessible through the subclass. If an identifier listed in the base class has a class type which can legally be inherited from then all the members in that class, along with their type variables, are inherited by the subclass. \\
 \indent A problem arises if we find that a base class has the type \texttt{any}. This most commonly arises when a identifier originating from an un-located import is used (see Chapter~\ref{chap:imports}.) In this case we cannot possibly have any idea which identifiers are inherited. In this case we label the subclass as having an \texttt{any} base type. If any identifier is referenced in the class which is not in the list of global identifiers for the class then we assume it originates from the base class with \texttt{any} type and return the value \texttt{any} type. \\
 \indent Python supports dynamic change in the list of base classes through tricks such as the following:
 \begin{lstlisting}[mathescape]
 CurrentClass = type('CurrentClass', (NewBaseClass,), dict(NewBaseClass.__dict__))
 \end{lstlisting}
-This behaviour is not supported. For what is likely a rare occurrence and considered `bad coding' by most, the time required to include support for this dynamic changing of base classes was deemed counter productive to the project as a whole.
+This behaviour is not supported. For what is likely a rare occurrence and considered `bad coding' by most\footnote{We came to this conclusion since the code is very unreadable. The technique also seems to be taboo on discussion websites, such as: \url{http://stackoverflow.com/questions/9539052/python-dynamically-changing-base-classes-at-runtime-how-to}}, the time required to include support for this dynamic changing of base classes was deemed counter productive to the project as a whole.
 
 \subsubsection{Getting and Setting Attributes}
 An attribute is the composition of two identifiers using the \texttt{.}, such as \texttt{x.f}. We will refer to the identifier preceding the \texttt{.}, \texttt{x}, as the \textit{value} and the identifier succeeding the \texttt{.} as the \textit{attr}.  We divide these attributes into two categories:
@@ -1326,27 +1326,27 @@ In both cases we create a special type variable which carries out the effect of 
 When we encounter a get attribute we create a \texttt{GetAttributeTypeVariable} which emits the resulting types of the attribute. The \texttt{GetAttributeTypeVariable} is bound to the type variable corresponding to the value of the attribute. For every type that the value can assume the type is tested to see whether it contains a global variable with the same identifier as the attr. A subset relationship is assumed between the \texttt{GetAttributeTypeVariable} and all successfully found global identifiers. The get attribute does not raise any errors providing that at least one global variable matching the identifier from a single type is successfully found.
 
 \paragraph*{Set Attribute}\mbox{} \\
-Similarly, for the set attributes we construct a \texttt{SetAttributeTypeVariable}. However we pass it the type variable of the value being passed to the attribute. The \texttt{SetAttributeTypeVariable} is also bound to the type variable corresponding to the value of the attribute. Except for every successfully found attribute we create a subset between the type variable found the the value passed to the \texttt{SetAttributeTypeVariable}. If a type variable is not found the attr identifier then one is created and the subset relationship is formed with the new variable. The \texttt{SetAttributeTypeVariable} does not emit any types.
+Similarly, for the set attributes we construct a \texttt{SetAttributeTypeVariable}. However we pass it the type variable of the value being passed to the attribute. The \texttt{SetAttributeTypeVariable} is also bound to the type variable corresponding to the value of the attribute. Except for every successfully found attribute we create a subset between the type variable found and the value passed to the \texttt{SetAttributeTypeVariable}. If a type variable matching the attr is not found then one is created and the subset relationship is formed between the new variable and the value. The \texttt{SetAttributeTypeVariable} does not emit any types.
 
 
 \subsubsection{`Magic' Functions}
 Python has a large number of special functions which can be implemented by the programmer which can then be used in a unorthodox way. All of these functions are characterised by having a double leading and trailing underscores. The most frequently used of these are \texttt{\_\_init\_\_} and \texttt{\_\_del\_\_} which act as a constructor and destructor respectively. \\
 \indent The functions \texttt{\_\_eq\_\_}, \texttt{\_\_ne\_\_}, \texttt{\_\_gt\_\_}, \texttt{\_\_ge\_\_}, \texttt{\_\_lt\_\_}, \texttt{\_\_le\_\_} are used to define comparisons between objects using the $==$, $\neq$, $\ge$, $\geq$, $<$, $\leq$ operators, respectively. No type errors can ever occur using the $==$, $\neq$, for instance $4 == ``Hi"$ simply returns false. However using the ordering operators, $>$, $\geq$, $<$, $\leq$, on a class which has not defined the respective function results in a type error. \\
-There are also `magic' functions for each of the binary operators and an additional one for the augmenting assignment equivalents. Currently, we do not support these particular `magic' functions. \\
+\indent There are also `magic' functions for each of the binary operators and an additional one for the augmenting assignment equivalents. Currently, we do not support these particular `magic' functions. \\
 \indent We will now discuss the more interesting `magic' functions which are supported.
 
-\paragraph*{\_\_iter\_\_}\mbox{} \\
-The \texttt{\_\_iter\_\_} (short for \textit{iterable} or \textit{iterator}) defines how an object should be traversed. It is typically used in \texttt{for} loops in the context: \texttt{for item\_name in object\_name}. If an object does not define the \texttt{\_\_iter\_\_} function then it can not be legally used in this context. Thus when an identifier is used in this context we check whether any of its possible types implement the \texttt{\_\_iter\_\_} method before assigning the target of the iteration the type of the object's contents, which, in our tool, is always \texttt{any}. \\
+\paragraph*{The \_\_iter\_\_ Function}\mbox{} \\
+The \texttt{\_\_iter\_\_} (short for \textit{iterable} or \textit{iterator}) function defines how an object should be traversed. It is typically used in \texttt{for} loops in the context: \texttt{for item\_name in object\_name}. If an object does not define the \texttt{\_\_iter\_\_} function then it can not be legally used in this context. Thus when an identifier is used in this context we check whether any of its possible types implement the \texttt{\_\_iter\_\_} method before assigning the target of the iteration the type of the object's contents, which, in our tool, is always \texttt{any}. \\
 \indent We keep track of all classes which support iteration in a type variable. This type variable is initially populated with all of the built-in classes supporting iteration. These are: \texttt{\{list, set, tuple, dict, string, bytes, generator\}}. A programmer defined class is added to this type variable if it defines the \texttt{\_\_iter\_\_} function.
 
-\paragraph*{\_\_contains\_\_}\mbox{} \\
+\paragraph*{The \_\_contains\_\_ Function}\mbox{} \\
 The \texttt{\_\_contains\_\_} method is used to test whether the object contains a particular item. The function is invoked, for example, in the expression \texttt{if item\_name in object\_name}. An object can only be used in this context if its definition implements the \_\_contains\_\_ method. \\
 \indent Similarly to \texttt{\_\_iter\_\_}, we keep track of all classes which support their contents being searched. The initialised type variable for \texttt{\_\_contains\_\_} is: \texttt{\{list, set, tuple, dict, string, bytes\}}. A programmer defined class is added to this type variable if it defines the \texttt{\_\_contains\_\_} function.
 
-\paragraph*{\_\_getitem\_\_ and \_\_setitem\_\_}\mbox{} \\
+\paragraph*{The \_\_getitem\_\_ and \_\_setitem\_\_ Functions}\mbox{} \\
 The \texttt{\_\_getitem\_\_} \texttt{\_\_setitem\_\_} are defined so that an object can be indexed. The load expression \texttt{object\_name[i]} is equivalent to the function call \texttt{\_\_getitem\_\_(i)}. The same expression in a store generates a similar call to \texttt{\_\_setitem\_\_} but with the value being stored alongside the index key.
 
-\paragraph*{\_\_call\_\_} \mbox{} \\
+\paragraph*{The \_\_call\_\_ Function} \mbox{} \\
 Consider the following class definition:
 \begin{lstlisting}[mathescape]
     class C():
@@ -1360,15 +1360,15 @@ A class instance is initialised using the following syntax: \texttt{instance = C
 \indent If a class instance is called then it must define the \texttt{\_\_call\_\_} method. We handle this by checking whether the identifier being called is an instance of a class. If it is then we check whether \texttt{\_\_call\_\_} is a class member.
 
 
-\subsubsection{Highly Dynamic Features}
+\subsubsection{Highly Dynamic Functions}
 \label{chap:highlyDynamic}
-Python provides highly dynamic features. We will describe the most common of these, how we accommodate them and any problems they may cause. 
-\paragraph*{eval}\mbox{} \\
+Python provides highly dynamic functions. We will describe the most common of these, how we accommodate them and any problems they may cause. 
+\paragraph*{The eval Function}\mbox{} \\
 The built-in function \texttt{eval} takes a section of code as a \texttt{string} and returns the result of the execution of the code. For example, \texttt{eval("1 + 2")} returns the integer \texttt{3} and  \texttt{eval(""hello " + "world"")} returns the string \texttt{"hello world"}. Without knowing all possible states the program can be in it is an impossible task to precisely calculate the set of types returned by \texttt{eval}. However we can eliminate any false positives by setting the return type to be \texttt{any}.
 
-\paragraph*{getattr and setattr}\mbox{} \\
-The built-in function \texttt{getattr} works by providing an object and a string parameter. The function then composes the two and returns the value of the attribute. For example, \texttt{getattr(c, "x")} returns the value of \texttt{c.x}. A default parameter can also be provided as a third parameter which will be returned in the event that attribute is not found. Similarly to \texttt{eval} it is impossible to accurately predict which attributes will be requested. We deal with it in the same way and eliminate any false positives by returning \texttt{any} type. \\
-\indent \texttt{setattr} works by providing three parameters: an object, a string attribute and a value. The attribute of the object is then set to the value given. For example, \texttt{setattr(c, "x", 5)} is equivalent to \texttt{c.x = 5}. The problem raised by \texttt{setattr} is when an attribute is only ever created by the use of this function or when a certain type is only ever set by this function. Since we are unable to calculate which attributes are being set we can not determine what effect it is has on the existence of an attribute or the change in possible types held by that attribute. As far as we are aware, there is no simple method of preventing these false positives.
+\paragraph*{The getattr and setattr Functions}\mbox{} \\
+The built-in function \texttt{getattr} works by providing an object and a string parameter. The function then composes the two and returns the value of the attribute. For example, \texttt{getattr(c, "x")} returns the value of \texttt{c.x}. A default parameter can also be provided as a third parameter which will be returned in the event that the attribute is not found. Similarly to \texttt{eval} it is impossible to accurately predict which attributes will be requested. We deal with it in the same way and eliminate any false positives by returning \texttt{any} type. \\
+\indent The \texttt{setattr} function works by providing three parameters: an object, a string attribute and a value. The attribute of the object is then set to the value given. For example, \texttt{setattr(c, "x", 5)} is equivalent to \texttt{c.x = 5}. The problem raised by \texttt{setattr} is when an attribute is only ever created by the use of this function or when a certain type is only ever set by this function. Since we are unable to calculate which attributes are being set we can not determine what effect it is has on the existence of an attribute or the change in possible types held by that attribute. As far as we are aware, there is no simple method of preventing these false positives.
 
 \subsubsection{Imports}
 \label{chap:imports}
@@ -1391,7 +1391,7 @@ At face value Python offers two ways to import foreign code into a module:
 Both types of import have their own rules on how they can be legally used. We discuss them in turn.
 
 \paragraph*{import \_} \mbox{} \\
-Assume we are creating an import in \texttt{travel.py} in the \texttt{src} directory in Figure~\ref{fig:directory}. If we wish to import the module \texttt{src/vehicles/car.py} using the \texttt{import \_} statement we write \texttt{import src.vehicles.car}. If we wish to reference this module then we must use the full name. i.e\ \texttt{x = src.vehicles.car\\.Car()}. Using this method, \texttt{src}, \texttt{src.vehicles} and \texttt{src.vehicles.car} all are of type \texttt{module}. However only \texttt{src.vehicles.car} contains usable types. For instance, having only imported \texttt{car}, \texttt{src.vehicles.train} will be undefined. The import can be assigned a more elegant name using the \texttt{as} keyword. \texttt{import src.vehicles.car as car} would bind the import to the identifier \texttt{car}. The \texttt{import \_} can only be used to import packages and modules~\cite{VanRossumImports}. Meaning that the statement \texttt{import src.vehicles.car.Car} would be illegal. \\
+Assume we are creating an import in \texttt{travel.py} in the \texttt{src} directory in Figure~\ref{fig:directory}. If we wish to import the module \texttt{src/vehicles/car.py} using the \texttt{import \_} statement we write \texttt{import src.vehicles.car}. If we wish to reference this module then we must use the full name. i.e.\ \texttt{x = src.vehicles.car\\.Car()}. Using this method, \texttt{src}, \texttt{src.vehicles} and \texttt{src.vehicles.car} all are of type \texttt{module}. However only \texttt{src.vehicles.car} contains usable types. For instance, having only imported \texttt{car}, \texttt{src.vehicles.train} will be undefined. The import can be assigned a more elegant name using the \texttt{as} keyword. \texttt{import src.vehicles.car as car} would bind the import to the identifier \texttt{car}. The \texttt{import \_} can only be used to import packages and modules~\cite{VanRossumImports}. Meaning that the statement \texttt{import src.vehicles.car.Car} would be illegal. \\
 \indent The path to the imported modules does not have to be absolute. From the \texttt{car} module we can import \texttt{train} by simply writing \texttt{import train}.
 
 \paragraph*{from \_ import \_} \mbox{} \\
@@ -1417,7 +1417,7 @@ With the exception of the first, each \texttt{.} represents one directory higher
 
 \paragraph*{Importing Items From Within A Project}\mbox{}\\
 As with the examples given above, imports are frequently used to import code from one module in a project to another. We support this by simulating the rules described for each import style. After having created all of the empty type variables for all of the global variables within each module we proceed to evaluate the the imports. By following the import rules we search through a tree replicating the project hierarchy. The leaves contain \texttt{module} types which then themselves contains a dictionary containing all of the empty type variables. The type variables corresponding to the target of the import are then added to the global variables of the module containing the import. \\
-\indent Both styles of import and all of the rules are supported. That is, except for \texttt{import a.b.c} with no \texttt{as} name specified (not to be confused with imports with no subpackages, such as \texttt{import a}, which are supported.) This is simply because this import is not used very frequently. However, adding support for this import is not difficult. It can be simulated by creating a new \texttt{module} type for all identifiers preceding the last, with each \texttt{module} type containing only a single global variable corresponding the the identifier succeeding it. So, for \texttt{a.b.c}, where \texttt{c} is the target module, we create a new \texttt{module} type for \texttt{a} and \texttt{b}, where \texttt{a} contains only the single global variable, \texttt{b}, and \texttt{b} contains only a single global variable which is the actual imported \texttt{module}, \texttt{c}.
+\indent Both styles of import and all of the rules are supported. That is, except for \texttt{import a.b.c} with no \texttt{as} name specified (not to be confused with imports with no subpackages, such as \texttt{import a}, which are supported.) This is simply because this import is not used very frequently. However, adding support for this import is not difficult. It can be simulated by creating a new \texttt{module} type for all identifiers preceding the last, with each \texttt{module} type containing only a single global variable corresponding to the identifier succeeding it. So, for \texttt{a.b.c}, where \texttt{c} is the target module, we create a new \texttt{module} type for \texttt{a} and \texttt{b}, where \texttt{a} contains only the single global variable, \texttt{b}, and \texttt{b} contains only a single global variable which is the actual imported \texttt{module}, \texttt{c}.
 
 
 \paragraph*{Unlocated imports}\mbox{} \\
@@ -1457,7 +1457,7 @@ The main limitations of our implementation are:
 	\item Not tracking type changes made during the lifetime of class instances. See \ref{chap:inferringClasses}.
 	\item Not tracking type changes made during the lifetime of global variables. See Chapter~\ref{chap:ssaGlobals}.
 	\item Not recognising changes made to an object using the \texttt{setattr} function. See Chapter \ref{chap:highlyDynamic}.
-	\item Not handling vaargs and kwargs. See Chapter~\ref{chap:inferringFuncArgs}.
+	\item Not handling varargs and kwargs. See Chapter~\ref{chap:inferringFuncArgs}.
 \end{itemize}
 Some of these limitations, such as tracking the state of an object, have already been discussed. We will now briefly mention the others.
 
