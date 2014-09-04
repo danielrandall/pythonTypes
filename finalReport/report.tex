@@ -629,7 +629,7 @@ Pyntch completely disregards execution order. In the following example given by 
     x = 1
     x = 'a'
 \end{lstlisting}
-The variable \textit{x} will always have the type \texttt{\{int, string\}} after analysing the second statement. \\
+The variable \texttt{x} will always have the type \texttt{\{int, string\}} after analysing the second statement. \\
 \indent Pyntch is unable to infer types in code which use the following functions: \texttt{globals},  \texttt{locals},  \texttt{getattr},  \texttt{setattr},  \texttt{eval},  \texttt{compile} or  \texttt{exec}. \\
 \indent As well as the inaccuracies listed, the Pyntch author states that ``sometimes Pyntch brings a lot of false positives in its result, which need to be further examined by human programmers.''
 
@@ -670,13 +670,13 @@ The function \texttt{f} has the return type \texttt{\{int, None\}}. In line 7, t
 \section{Implementation}
 All of the implementation was created using the Python language. As this allows us to use the built-in \texttt{ast} module which provided the base from which this project was built. No other language offered such a critical component out-of-the-box. \\
 \indent To implement flow-sensitivity for local variables, we use single static assignment. SSA allows us to use a flow-sensitive approach while implementing a simpler flow-insensitive algorithm in our type checker. \\
-\indent The basic structure of our system can be seen in Figure~\ref{fig:systemStructure}. The basic components are the AST, CFG, SSA, Preprocessing and Type Inference. Each component will be described here. \\
-\indent This traverser used to navigate the AST are taken from Edward K. Ream's \textit{stc}~\footnote{\url{https://code.launchpad.net/~edreamleo/python-static-type-checking/trunk} Revision \#448 was used for this project.}.
+\indent The basic structure of our system can be seen in Figure~\ref{fig:systemStructure}. The basic components are the Preprocessing, CFG generation, SSA renaming and Type Inference. Each component will be described here. \\
+\indent This traverser used to navigate the AST is taken from Edward K. Ream's \textit{stc}~\footnote{\url{https://code.launchpad.net/~edreamleo/python-static-type-checking/trunk} Revision \#448 was used for this project.}.
 
 
 \begin{figure}
 \centering
-\includegraphics[scale=0.5]{images/systemStructure.pdf}
+\includegraphics[scale=0.55]{images/systemStructure.pdf}
 \caption{Each box represents a key component of the system. Arrows represent the flow of information from each component to another.}
 \label{fig:systemStructure}
 \end{figure}
