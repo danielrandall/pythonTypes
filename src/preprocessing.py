@@ -51,26 +51,9 @@ class Preprocessor(AstFullTraverser):
         self.context = node.stc_context
         self.parent = node.stc_parent
         return result
-        
-    def define_name(self,cx,name,defined=True):
-        '''
-        Fix the scope of the given name to cx.
-        Set the bit in stc_defined_table if defined is True.
-        '''
-        st = cx.stc_symbol_table
-        d = st.d
-        if name not in d.keys():
-            d[name] = [] # The type list.
-        if defined:
-            st.defined.add(name)
 
     def do_Attribute(self, node):
         name = self.visit(node.value)
-        cx = node.stc_context
-        st = cx.stc_symbol_table
-        d = st.attrs_d
-        key = node.attr
-        val = node.value
         node.variable = isinstance(node.value, ast.Name)
         # Check if leftside is self
         if name == "self" and isinstance(node.ctx, ast.Store):
@@ -79,17 +62,7 @@ class Preprocessor(AstFullTraverser):
                 parent_class.self_variables.add(node.attr)
             else:
                 print("Error: self outside of class. ")
-        # The following lines are expensive!
-        # For Leo P1: 2.0 sec -> 2.5 sec.
-    #    if d.has_key(key):
-    #        d.get(key).add(val)
-    #    else:
-    #        aSet = set()
-    #        aSet.add(val)
-    #        d[key] = aSet
-        # self.visit(node.ctx)
-        if isinstance(node.ctx,(ast.Param,ast.Store)):
-            st.defined_attrs.add(key)
+
             
     def find_parent_class_def(self, node):
         if not node:
@@ -128,15 +101,11 @@ class Preprocessor(AstFullTraverser):
         assert parent_cx == node.stc_context
         # Add this function to its parents contents dict
         parent_cx.contents_dict[node.name] = node
-        # Inject the symbol table for this node.
-        node.stc_symbol_table = SymbolTable(parent_cx)
         # The contents of this module to which children add themselves.
         node.contents_dict = {}
         # Holds whether the node is callable and the relevant func node
         node.callable = False, None
         node.self_variables = set()
-        # Define the function name itself in the enclosing context.
-        self.define_name(parent_cx,node.name)
         # Visit the children in a new context.
         self.context = node
         for z in node.bases:
@@ -174,20 +143,14 @@ class Preprocessor(AstFullTraverser):
         assert parent_cx == node.stc_context
         # Add this function to its parents contents dict
         parent_cx.contents_dict[node.name] = node
-        # Inject the symbol table for this node.
-        node.stc_symbol_table = SymbolTable(parent_cx)
         # The contents of this module to which children add themselves.
         node.contents_dict = {}
-        # Add a list of all returns
-        node.stc_symbol_table.returns = []
         node.generator_function = False
         # Check special functions
         if isinstance(parent_cx, ast.ClassDef):
             parent_cx.self_variables.add(node.name)
             if node.name == "__call__":
                 parent_cx.callable = (True, node)
-        # Define the function name itself in the enclosing context.
-        self.define_name(parent_cx,node.name)
         # Visit the children in a new context.
         self.context = node
         
@@ -219,17 +182,11 @@ class Preprocessor(AstFullTraverser):
             self.visit(node.kwargs)
         
     def do_Return(self,node):
-        assert hasattr(self.context.stc_symbol_table, 'returns'), "Return outside of function"
-        self.context.stc_symbol_table.returns.append(node)
         if node.value:
             self.visit(node.value)
 
     def do_Global(self,node):
-        cx = self.u.compute_module_cx(node)
-        assert hasattr(cx,'stc_symbol_table'),cx
-        node.stc_scope = cx
         for name in node.names:
-            self.define_name(cx,name)
             self.global_variables.add(name)
             
     def do_Import(self, node):
@@ -267,22 +224,8 @@ class Preprocessor(AstFullTraverser):
     def do_Lambda(self, node):
         parent_cx = self.context
         assert parent_cx == node.stc_context
-        # Inject the symbol table for this node.
-        node.stc_symbol_table = SymbolTable(parent_cx)
         # There is no lambda name.
         # Handle the lambda args.
-        for arg in node.args.args:
-            if isinstance(arg,ast.Name):
-                # Python 2.x.
-                assert isinstance(arg.ctx,ast.Param),arg.ctx
-                # Define the arg in the lambda context.
-                self.define_name(node,arg.id)
-            else:
-                # Python 3.x.
-                assert isinstance(arg,ast.arg),arg
-                assert isinstance(arg,ast.arg),arg
-                self.define_name(node,arg.arg)
-            arg.stc_scope = node
         # Visit the children in the new context.
         self.context = node
         
@@ -299,8 +242,6 @@ class Preprocessor(AstFullTraverser):
         
         assert self.context is None
         assert node.stc_context is None
-        # Inject the symbol table for this node.
-        node.stc_symbol_table = SymbolTable(node)
         # The contents of this module to which children add themselves.
         node.contents_dict = {}
         node.import_dependents = []
@@ -395,18 +336,6 @@ class Preprocessor(AstFullTraverser):
         if isinstance(node.ctx, ast.Store) and (isinstance(node.stc_context, ast.Module) or isinstance(node.stc_context, ast.ClassDef)):
             self.global_variables.add(node.id)
         
-        cx = node.stc_context
-        if isinstance(node.ctx,(ast.Param,ast.Store)):
-            # The scope is unambigously cx, **even for AugAssign**.
-            # If there is no binding, we will get an UnboundLocalError at run time.
-            # However, AugAssigns do not actually assign to the var.
-            assert hasattr(cx,'stc_symbol_table'),cx
-            node.stc_scope = cx
-        else:
-            # ast.Store does *not* necessarily define the scope.
-            # For example, a += 1 generates a Store, but does not defined the symbol.
-            # Instead, only ast.Assign nodes really define a symbol.
-            node.stc_scope = None
         return node.id     
     
     def do_Yield(self, node):
