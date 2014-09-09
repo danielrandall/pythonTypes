@@ -117,6 +117,20 @@ class ContainsIssue(BaseIssue):
     def print_error(self):        
         print(self.module_name + ": " + "Line " + str(self.lineno) + ": cannot be searched for contents")
         
+class UnaryIssue(BaseIssue):
+    ''' Checks whether the given type is an int or a float. '''
+    def __init__(self, node, var, module_name, op_kind):
+        super().__init__(node, var, module_name)
+        self.op_kind = op_kind
+    
+    def check(self):
+        ''' This should be done in a type variable. '''
+        if not self.var_to_check.check_output():
+            self.print_error()
+        
+    def print_error(self):        
+        print(self.module_name + ": " + "Line " + str(self.lineno) + ": variable cannot be used with unary operator " + self.op_kind + ". Must be int or float.")
+        
 class MustContainTypeIssue(BaseIssue):
     pass
 

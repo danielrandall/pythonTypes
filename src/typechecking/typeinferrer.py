@@ -8,6 +8,7 @@ from src.typechecking.calltypevariable import CallTypeVariable
 from src.typechecking.contentstypevariable import ContentsTypeVariable
 from src.typechecking.itertypevariable import IterTypeVariable
 from src.typechecking.indextypevariable import IndexTypeVariable
+from src.typechecking.unarytypevariable import UnaryTypeVariable
 from src.typechecking.binoptypevariable import BinOpTypeVariable
 from src.typechecking.classtypevariable import ClassTypeVariable
 from src.typechecking.getattrtypevariable import GetAttrTypeVariable
@@ -582,14 +583,14 @@ class TypeInferrer(AstFullTraverser):
         ''' TODO: Check this. Should be able to return more than one type.
             Must create an end constraint of containing an int or float for
             ops other than 'Not'. '''
-        op_types = self.visit(node.operand)[0] # Will only have 1 element
+        value_type = self.visit(node.operand)[0] # Will only have 1 element
         op_kind = self.kind(node.op)
         if op_kind == 'Not':    # All types are valid
             return [BasicTypeVariable([Bool_Type()])]
-      #  for a_type in op_types:
-      #      if a_type == int_type or a_type == float_type:
-      #          return [set([a_type])]
-        return [BasicTypeVariable([Any_Type()])]
+        unary_op_var = UnaryTypeVariable([])
+        self.conduct_assignment([unary_op_var], [value_type], node)
+        self.error_issuer.add_issue(UnaryIssue(node, unary_op_var, self.module_name, op_kind))
+        return [unary_op_var]
     
     def do_IfExp (self, node):
         ''' For stuff like x = a if b else c.
