@@ -278,15 +278,15 @@ class TypeInferrer(AstFullTraverser):
             if node.name == "__init__":
                 self.error_issuer.add_issue(InitNoneIssue(node, self.return_variable, self.module_name))
                 
-   #         if node.name == "_send_internal":
-   #             print()
-   #             print("Final types")
-   #             print(node.lineno)
-   #             self.print_types()
-   #             print("Param types")
-   #             print([self.variableTypes[param].get() for param in params])
-   #             print("Return types")
-   #             print(self.return_variable.get())
+            if node.name == "f":
+                print()
+                print("Final types")
+                print(node.lineno)
+                self.print_types()
+                print("Param types")
+                print([self.variableTypes[param].get() for param in params])
+                print("Return types")
+                print(self.return_variable.get())
         finally:
             
             # Add the new function type
@@ -552,8 +552,13 @@ class TypeInferrer(AstFullTraverser):
             targets = self.visit(node.target)
         finally:
             self.currently_assigning = False 
-        value_types = self.visit(node.iter)
-        self.conduct_assignment(targets, value_types, node)
+        iters = self.visit(node.iter)
+        # Assign to the iter target
+        iter_contents = [IterTypeVariable() for x in iters]
+        self.conduct_assignment(iter_contents, iters, node)
+        self.conduct_assignment(targets, iter_contents, node)
+        
+     #   self.conduct_assignment(targets, value_types, node)
         for z in node.ifs:
             self.visit(z)
     
