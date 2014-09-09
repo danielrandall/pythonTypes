@@ -100,6 +100,11 @@ class Preprocessor(AstFullTraverser):
         assert parent_cx == node.stc_context
         # Add this function to its parents contents dict
         parent_cx.contents_dict[node.name] = node
+        
+        # Update the dynamic generator parent if there is one
+        if isinstance(parent_cx, ast.FunctionDef):
+            parent_cx.dynamic_fun_generator = True
+        
         # The contents of this module to which children add themselves.
         node.contents_dict = {}
         # Holds whether the node is callable and the relevant func node
@@ -143,8 +148,17 @@ class Preprocessor(AstFullTraverser):
         # Add this function to its parents contents dict
         parent_cx.contents_dict[node.name] = node
         # The contents of this module to which children add themselves.
+        
+        
+        # Update the dynamic generator parent if there is one
+        if isinstance(parent_cx, ast.FunctionDef):
+            parent_cx.dynamic_fun_generator = True
+        
         node.contents_dict = {}
         node.generator_function = False
+        # Shows whether then function dynamically generates a function or
+        # class
+        node.dynamic_fun_generator = False
         # Check special functions
         if isinstance(parent_cx, ast.ClassDef):
             parent_cx.self_variables.add(node.name)

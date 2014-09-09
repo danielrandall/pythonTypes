@@ -253,6 +253,12 @@ class TypeInferrer(AstFullTraverser):
         
             TODO: Find out possible types in *karg dict. '''
         self.stats.inc_num_funcs()
+        
+        # If the function dynamically generates a function or a class then skip it
+        if node.dynamic_fun_generator:
+            self.conduct_assignment([self.variableTypes[node.name]], [BasicTypeVariable([Any_Type()])], node)
+            return
+        # Begin typing the function
         self.variableTypes = node.variableTypes
         old_return = self.return_variable
         old_params = self.fun_params
