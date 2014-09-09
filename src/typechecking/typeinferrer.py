@@ -558,7 +558,9 @@ class TypeInferrer(AstFullTraverser):
         self.conduct_assignment(iter_contents, iters, node)
         self.conduct_assignment(targets, iter_contents, node)
         
-     #   self.conduct_assignment(targets, value_types, node)
+        for iter_typevar in iter_contents:
+            self.error_issuer.add_issue(IteratorIssue(node, iter_typevar, self.module_name))
+        
         for z in node.ifs:
             self.visit(z)
     
@@ -566,7 +568,7 @@ class TypeInferrer(AstFullTraverser):
         ''' For and/or
             Never fails.
             Boolean operators can return any types used in its values.
-            ie. len(x) or [] can return Int or List.
+            i.e. len(x) or [] can return Int or List.
             We create a subset constraint between the parameters. '''
         all_types = []
         for z in node.values:
@@ -576,7 +578,7 @@ class TypeInferrer(AstFullTraverser):
         self.conduct_assignment([bool_op_var] * len(all_types), all_types, node)
         return [bool_op_var]
     
-    def do_UnaryOp(self,node):
+    def do_UnaryOp(self, node):
         ''' TODO: Check this. Should be able to return more than one type.
             Must create an end constraint of containing an int or float for
             ops other than 'Not'. '''
