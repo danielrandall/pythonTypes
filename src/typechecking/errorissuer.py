@@ -1,4 +1,4 @@
-from src.typeclasses import None_Type, Any_Type
+from src.typeclasses import None_Type, Any_Type, Int_Type
 
 class ErrorIssuer():
     def __init__(self):
@@ -130,6 +130,20 @@ class UnaryIssue(BaseIssue):
         
     def print_error(self):        
         print(self.module_name + ": " + "Line " + str(self.lineno) + ": variable cannot be used with unary operator " + self.op_kind + ". Must be int or float.")
+        
+class SliceIssue(BaseIssue):
+    def __init__(self, node, var, module_name):
+        super().__init__(node, var, module_name)
+    
+    def check(self):
+        ''' This should be done in a type variable. '''
+        for possible_type in self.var_to_check.get():
+            if isinstance(possible_type, Int_Type) or isinstance(possible_type, Any_Type):
+                return
+        self.print_error()
+        
+    def print_error(self):        
+        print(self.module_name + ": " + "Line " + str(self.lineno) + ": variable cannot be used in a slice. Must be int type")
         
 class MustContainTypeIssue(BaseIssue):
     pass

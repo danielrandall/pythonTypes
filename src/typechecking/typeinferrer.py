@@ -496,10 +496,19 @@ class TypeInferrer(AstFullTraverser):
        # self.visit(node.body)
         return [BasicTypeVariable([Any_Type()])]
     
-   # def do_Slice(self, node):
-        ''' No need to return anything here.
-            TODO: Do better with awaiting_type '''
-    #   pass
+    def do_Slice (self, node):
+        ''' All slice elements must be an int. Create an issue for each. '''
+        if getattr(node, 'lower'):
+            lower = self.visit(node.lower)[0]
+            self.error_issuer.add_issue(SliceIssue(node, lower, self.module_name))
+            
+        if getattr(node, 'upper'):
+            upper = self.visit(node.upper)[0]
+            self.error_issuer.add_issue(SliceIssue(node, upper, self.module_name))
+            
+        if getattr(node, 'step'):
+            step = self.visit(node.step)[0]
+            self.error_issuer.add_issue(SliceIssue(node, step, self.module_name))  
     
     def do_Index(self, node):
         ''' Lists can only index with ints, but dicts can be anything.
