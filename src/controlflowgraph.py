@@ -335,11 +335,18 @@ class ControlFlowGraph(AstFullTraverser):
             No statements in this block after this are valid.
             In a try, returns go to the finally block. '''
         # Check if the block is an try-finally.
+        return_exit = None
+        current_finally = None
         for f_block_type, f_block in reversed(self.frame_blocks):
             if f_block_type == F_BLOCK_FINALLY:
-                return_exit = f_block
-                break
-        else:
+                if not return_exit:
+                    return_exit = f_block
+                if current_finally:
+                    self.add_to_exits(current_finally, f_block)
+                current_finally = f_block
+        if current_finally:
+            self.add_to_exits(current_finally, self.exit_block)
+        if not return_exit:
             return_exit = self.exit_block
         self.add_to_exits(self.current_block, return_exit)
         self.current_block.has_return = True
@@ -348,7 +355,9 @@ class ControlFlowGraph(AstFullTraverser):
         ''' Continues can not be in a finally block.
             TODO: Fix this up.  '''
         if not self.frame_blocks:
-            self.error("'continue' not properly in loop", node)
+            print("'continue' not properly in loop")
+            return
+        
         top_block, block = self.frame_blocks[-1]
         if top_block == F_BLOCK_LOOP:
             self.add_to_exits(self.current_block, block)
