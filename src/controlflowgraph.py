@@ -355,27 +355,39 @@ class ControlFlowGraph(AstFullTraverser):
         ''' Continues can not be in a finally block.
             TODO: Fix this up.  '''
         if not self.frame_blocks:
-            print("'continue' not properly in loop")
+            print("Line " + str(node.lineno) + " 'continue' not inside of a loop")
             return
         
-        top_block, block = self.frame_blocks[-1]
-        if top_block == F_BLOCK_LOOP:
+        f_type, block = self.frame_blocks[-1]
+        if f_type == F_BLOCK_LOOP:
             self.add_to_exits(self.current_block, block)
-        elif top_block == F_BLOCK_EXCEPT or \
-                top_block == F_BLOCK_FINALLY:
+        elif f_type == F_BLOCK_FINALLY_END:
+            print("Line " + str(node.lineno) + " 'continue' not supported inside 'finally' clause")
+        else:
             # Find the loop
+            stack_block = None
+            if f_type == F_BLOCK_FINALLY:
+                stack_block = block
+                self.add_to_exits(self.current_block, stack_block)
+                
             for i in range(len(self.frame_blocks) - 2, -1, -1):
                 f_type, block = self.frame_blocks[i]
+                if f_type == F_BLOCK_FINALLY:
+                    if stack_block:
+                        self.add_to_exits(stack_block, block)
+                        stack_block = block
+                    else:
+                        stack_block = block
+                        self.add_to_exits(self.current_block, stack_block)
                 if f_type == F_BLOCK_LOOP:
-                    self.add_to_exits(self.current_block, block)
+                    if stack_block:
+                        self.add_to_exits(stack_block, block)
+                    else:
+                        self.add_to_exits(self.current_block, block)
                     break
-                if f_type == F_BLOCK_FINALLY_END:
-                    print("Line " + str(node.lineno) + " 'continue' not supported inside 'finally' clause")
             else:
                 print("Line " + str(node.lineno) + " 'continue' not inside of a loop")
                 return
-        elif top_block == F_BLOCK_FINALLY_END:
-            print("Line " + str(node.lineno) + " 'continue' not supported inside 'finally' clause")
         self.current_block.has_return = True
     
     def do_Break(self, node):
