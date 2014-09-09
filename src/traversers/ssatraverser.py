@@ -61,8 +61,8 @@ class SSA_Traverser(AstFullTraverser):
             self.visit(statement)
         dict_to_pass = self.current_block.tracker.copy()
         
-     #   print("Block " + str(block.start_line_no) + " to")
-     #   print(block.exit_blocks)        
+        print("Block " + str(block.start_line_no) + " to")
+        print(block.exit_blocks)        
      #   print(block.statements)
         
         for an_exit in block.exit_blocks:
@@ -202,6 +202,9 @@ class SSA_Traverser(AstFullTraverser):
 
     def do_FunctionDef (self, node):
         ''' Variables defined in function should not exist outside. '''
+        # Don't ssa functions which dynamically generate functions or classes
+        if node.dynamic_fun_generator:
+            return
         # Store d so we can eradicate local variables
     #    old_args = self.fun_args.copy()
         old_globals = self.global_variables.copy()
@@ -241,10 +244,11 @@ class SSA_Traverser(AstFullTraverser):
         return [node.arg]
 
     def do_Lambda(self, node):
-        old_tracker = self.function_ssa_tracker.copy()
-        self.visit(node.args)
-        self.visit(node.body)
-        self.function_ssa_tracker = old_tracker
+        pass
+     #   old_tracker = self.function_ssa_tracker.copy()
+     #   self.visit(node.args)
+     #   self.visit(node.body)
+     #   self.function_ssa_tracker = old_tracker
 
     def do_Module (self, node):
    #     print("ssa-ing for Module code")
