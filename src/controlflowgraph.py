@@ -395,10 +395,21 @@ class ControlFlowGraph(AstFullTraverser):
             A break causes the current block to exit to block after the loop
             header (its next) '''
         # Find first loop in stack
+        stack_block = None
         for f_block_type, f_block in reversed(self.frame_blocks):
             if f_block_type == F_BLOCK_LOOP:
-                self.add_to_exits(self.current_block, f_block.next)
+                if not stack_block:
+                    self.add_to_exits(self.current_block, f_block.next)
+                else:
+                    self.add_to_exits(stack_block, f_block.next)
                 break
+            if f_block_type == F_BLOCK_FINALLY:
+                if not stack_block:
+                    stack_block = f_block
+                    self.add_to_exits(self.current_block, stack_block)
+                else:
+                    self.add_to_exits(stack_block, f_block)
+                    stack_block = f_block
         else:
             print("Line " + str(node.lineno) + " 'break' not inside of a loop")
         self.current_block.has_return = True
