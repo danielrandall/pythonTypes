@@ -51,8 +51,8 @@ class SSA_Traverser(AstFullTraverser):
         if not block.statements:
             return
         
-        if block.start_line_no == 21:
-            pass
+    #    if block.start_line_no == 21:
+    #        pass
         
         self.current_block = block
         # Update all but those created by phis
@@ -103,16 +103,16 @@ class SSA_Traverser(AstFullTraverser):
             new_phi = self.create_new_phi_node(ref_var, block)
             block.phi_nodes[ref_var] = new_phi
             block.statements[0].phi_nodes.append(new_phi)
-            print("Phi created for block " + str(block.start_line_no))
-            print(block.phi_nodes)
+    #        print("Phi created for block " + str(block.start_line_no))
+    #        print(block.phi_nodes)
         for ref_var in global_phis:
             new_phi = self.create_new_phi_node(ref_var, block)
             block.phi_nodes[ref_var] = new_phi
             block.statements[0].phi_nodes.append(new_phi)
             # Need to add un-labelled global
             new_phi.update_targets(ref_var)
-            print("Phi created for block " + str(block.start_line_no))
-            print(block.phi_nodes)
+    #        print("Phi created for block " + str(block.start_line_no))
+    #        print(block.phi_nodes)
         block.has_phi_nodes = True
         return global_phis
             
@@ -130,8 +130,8 @@ class SSA_Traverser(AstFullTraverser):
                     if var + str(num) == block.phi_nodes[var].get_var():
                         continue
                     block.phi_nodes[var].update_targets(var + str(num))
-                    print("Phis for: " + str(block.start_line_no))
-                    print(block.phi_nodes)
+     #               print("Phis for: " + str(block.start_line_no))
+     #               print(block.phi_nodes)
                     
     def create_new_phi_node(self, var, block):
         if var in self.function_ssa_tracker:  # Needed for before when var may not yet exist
@@ -150,8 +150,8 @@ class SSA_Traverser(AstFullTraverser):
         
     def do_Name(self, node):
         # We don't SSA a global variable
-        if node.id == "tag":
-            pass
+   #     if node.id == "tag":
+   #         pass
         if isinstance(node.stc_context, ast.Module) or isinstance(node.stc_context, ast.ClassDef):
             return
         if node.id == "self" or node.id == "cls":

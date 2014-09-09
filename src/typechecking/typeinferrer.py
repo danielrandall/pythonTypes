@@ -61,34 +61,15 @@ class TypeInferrer(AstFullTraverser):
         dependent_vars = {}
         root = file.get_source()
         #print(file_tree)
-        print("dependents for " + file.path_and_name)
-        if file.get_name() == "glances_monitor_list":
-            pass
+     #   print("dependents for " + file.path_and_name)
+     #   if file.get_name() == "glances_monitor_list":
+     #       pass
         for dependent in root.import_dependents:
             new_vars = dependent.find(file_tree, file.get_path())
-            print(new_vars)
+    #        print(new_vars)
             assert isinstance(new_vars, list)
             for name, var in new_vars:
                 dependent_vars[name] = var
-      #          assert isinstance(dependent, ImportDependent)
-      #          name = dependent.get_module_name()
-      #          as_name = dependent.get_as_name()
-      #          directory = dependent.get_directory_no_name()
-               # assert(directory in file_tree), "File not found"
-               
-                # If can't find it then just set it to any   
-          #      if not directory in file_tree or name not in file_tree[directory]:
-          #          dependent_vars[as_name] = BasicTypeVariable([Any_Type()])
-          #          continue
-          #      
-          #      dependent_file = file_tree[directory][name]
-                # Check if a specific global_var is imported from the module
-          #      dependent_module = dependent_file.get_module_type()
-         #       if dependent.is_import_from():
-          #          value = dependent_module.get_global_var(dependent.get_class_name())
-       #         else:
-        #            value = BasicTypeVariable([dependent_module])
-       #         dependent_vars[as_name] = value
         return dependent_vars 
             
     def file_tree_to_list(self, file_tree):
@@ -101,9 +82,9 @@ class TypeInferrer(AstFullTraverser):
     def type_file(self, file, dependents):   
         ''' Runs the type_checking on an individual file. '''
         root = file.get_source()     
-        print()
-        print("Printing module: |||||||||||||||||||||||||||||||||||************************ " + file.get_path() + " " + file.get_name() + " *******************|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||")   
-        print()
+    #    print()
+    #    print("Printing module: |||||||||||||||||||||||||||||||||||************************ " + file.get_path() + " " + file.get_name() + " *******************|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||")   
+    #    print()
         self.module_name = file.get_path() + " " + file.get_name()
         self.variableTypes = root.variableTypes
         self.initialise()
@@ -189,7 +170,8 @@ class TypeInferrer(AstFullTraverser):
     def conduct_assignment(self, targets, value_types, node):
         ''' Updates the type variables with the new types. '''
    #     print()
-   #     print(node.lineno)
+    #    if hasattr(node, "lineno:
+    #        print(node.lineno)
    #     print("targets")
    #     print(targets)
    #     print("values")
@@ -230,6 +212,8 @@ class TypeInferrer(AstFullTraverser):
         given_args = []
         for z in node.args:
             given_args.extend(self.visit(z))
+      #  if node.lineno == 427:
+      #      pass
         return_type = CallTypeVariable(given_args, node, func_indentifier)
         # Set up a constraint between the call and the identifier
         self.conduct_assignment([return_type], [func_indentifier], node)
@@ -242,8 +226,8 @@ class TypeInferrer(AstFullTraverser):
     def do_Attribute(self, node):
         return_type = None
         value = self.visit(node.value)[0]
-        if node.attr == "getKey":
-            pass
+   #    if node.attr == "getKey":
+   #         pass
         if isinstance(node.ctx, ast.Store):
             return_type = SetAttrTypeVariable(value, node.attr, node)
             # Create constraint between value and setattr
@@ -282,8 +266,8 @@ class TypeInferrer(AstFullTraverser):
             for z in node.decorator_list:
                 self.visit(z)
                 
-            if node.name == "__init__":
-                pass    
+        #    if node.name == "__init__":
+        #        pass    
                 
             # Add Any_Type() to args if we can't infer them
             for param, assigned in self.fun_params.items():
@@ -294,11 +278,15 @@ class TypeInferrer(AstFullTraverser):
             if node.name == "__init__":
                 self.error_issuer.add_issue(InitNoneIssue(node, self.return_variable, self.module_name))
                 
-            if node.name == "f":
-                print()
-                print("Final types")
-                print(node.lineno)
-                self.print_types()
+   #         if node.name == "_send_internal":
+   #             print()
+   #             print("Final types")
+   #             print(node.lineno)
+   #             self.print_types()
+   #             print("Param types")
+   #             print([self.variableTypes[param].get() for param in params])
+   #             print("Return types")
+   #             print(self.return_variable.get())
         finally:
             
             # Add the new function type
@@ -402,8 +390,8 @@ class TypeInferrer(AstFullTraverser):
         left_types = self.visit(node.left)[0]
         right_types = self.visit(node.right)[0]
         
-        if node.lineno == 81:
-            pass
+   #     if node.lineno == 81:
+   #         pass
         
         # Add constraints if they are function parameters
         if left_types in self.fun_params:
@@ -497,8 +485,8 @@ class TypeInferrer(AstFullTraverser):
         return [BasicTypeVariable([Dict_Type()])]
     
     def do_Lambda(self, node):
-        self.visit(node.args)
-        self.visit(node.body)
+       # self.visit(node.args)
+       # self.visit(node.body)
         return [BasicTypeVariable([Any_Type()])]
     
    # def do_Slice(self, node):
@@ -655,3 +643,8 @@ class TypeInferrer(AstFullTraverser):
     def do_Str(self, node):
         '''This represents a string constant.'''
         return [BasicTypeVariable([String_Type()])]
+    
+    def do_Module (self,node):
+        self.stats.inc_num_modules()
+        for z in node.body:
+            self.visit(z)

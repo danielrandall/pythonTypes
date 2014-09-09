@@ -3,7 +3,6 @@ import copy
 from pprint import pprint
 
 from src.typeclasses import BUILTIN_TYPE_DICT
-from src.symboltable import SymbolTable
 from src.utils import Utils
 from src.traversers.astfulltraverser import AstFullTraverser
 from src.importdependent import ImportDependent, Import, ImportFrom

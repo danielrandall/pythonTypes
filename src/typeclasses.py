@@ -1,16 +1,8 @@
 from utils import Utils
 from src.typechecking.basictypevariable import BasicTypeVariable
 
-''' TODO - add variables and functions to global_vars '''
-
 class BaseType:
     '''BaseType is the base class for all type classes.
-
-    Subclasses of BaseType represent inferenced types.
-
-    Do not change self.kind casually: self.kind (and __repr__ which simply
-    returns self.kind) are real data: they are used by the TypeInferer class.
-    The asserts in this class illustrate the contraints on self.kind.
 
     '''
     
@@ -22,8 +14,7 @@ class BaseType:
         return self.kind
     __str__ = __repr__
     
-    ''' Does not detect subtypes aside from those involving Any.
-        Previously used self.kind <= other.kind e.t.c. Not sure why... '''
+    ''' Does not detect subtypes aside from those involving Any. '''
     def is_type(self,other): return issubclass(other.__class__,BaseType)
     def __eq__(self, other): return self.is_type(other) and self.kind == other.kind
     def __ge__(self, other): return self.is_type(other) and ( (self.kind == 'Any' or other.kind == 'Any') or self.__eq__(other)  )
@@ -585,18 +576,6 @@ class Container_Type():
     def define_kind(self):
         ''' Override this. '''
         raise NotImplementedError
-    
-class ContainerUpdate():
-        ''' Used to indicate a slice/index update is occurring. '''
-        def __init__(self, container_list, slice_update):
-            self.container_list = container_list
-            self.slice_update = slice_update
-            
-        def get_container_list(self):
-            return self.container_list
-        
-        def is_slice(self):
-            return self.slice_update
         
 class Dict_Type(Container_Type, Class_Base, BaseType):
     ''' TODO: Add values contained in a dict. '''
@@ -882,6 +861,7 @@ class List_Type(Container_Type, Class_Base, BaseType):
                             'pop' : BasicTypeVariable([Def_Type([BasicTypeVariable([Int_Type()])],
                                                                     BasicTypeVariable([Any_Type()]),
                                                                     1)]),
+                            
                             # index(self, object: T, start: int = 0, stop: int = Undefined(int)) -> int
                             'index' : BasicTypeVariable([Def_Type([BasicTypeVariable([Any_Type()]), BasicTypeVariable([Int_Type()]), BasicTypeVariable([Int_Type()])],
                                                                     BasicTypeVariable([Int_Type()]),
@@ -1024,8 +1004,6 @@ class Tuple_Type(Container_Type, Class_Base, BaseType):
         BaseType.__init__(self, kind)
         
         self.global_vars = {
-                            
-                            
                             # __getitem__(self, x: int) -> Any
                             '__getitem__' : BasicTypeVariable([Def_Type([Int_Type()],
                                                                     BasicTypeVariable([Any_Type()]),
@@ -1745,7 +1723,7 @@ BUILTIN_TYPE_DICT = {
                      
   'list':  BasicTypeVariable([ List_Type() ]),    
                      
-            # Should this be a function or class?
+   # Should this be a function or a class? It's both.
   'set': BasicTypeVariable([ Set_Type() ]),
                      
   'dict': BasicTypeVariable([ Dict_Type() ]),
@@ -1759,7 +1737,7 @@ BUILTIN_TYPE_DICT = {
 } 
 
 
-ITERATOR_TYPES = BasicTypeVariable([List_Type(), Set_Type(), Tuple_Type(), Dict_Type(), String_Type(), Bytes_Type()])
+ITERATOR_TYPES = BasicTypeVariable([List_Type(), Set_Type(), Tuple_Type(), Dict_Type(), String_Type(), Bytes_Type(), Generator_Type()])
 CONTAINS_TYPES = BasicTypeVariable([ List_Type(), Set_Type(), Tuple_Type(), Dict_Type(), String_Type(), Bytes_Type() ])
 SLICE_TYPES = BasicTypeVariable([List_Type(), String_Type()])
 INDEX_TYPES = BasicTypeVariable([List_Type(), Dict_Type(), String_Type()])
