@@ -4,6 +4,7 @@ from pprint import pprint
 from src.traversers.astfulltraverser import AstFullTraverser
 from src.typechecking.errorissuer import *
 from src.typechecking.basictypevariable import BasicTypeVariable
+from src.typechecking.argtypevariable import ArgTypeVariable
 from src.typechecking.calltypevariable import CallTypeVariable
 from src.typechecking.contentstypevariable import ContentsTypeVariable
 from src.typechecking.itertypevariable import IterTypeVariable
@@ -569,6 +570,12 @@ class TypeInferrer(AstFullTraverser):
         finally:
             self.currently_assigning = False 
         iters = self.visit(node.iter)
+        # Update arg if it is one
+        for it in iters:
+            if it in self.fun_params:
+                # Assign param to any in iter types
+                self.conduct_assignment([it], [ITERATOR_TYPES], node)
+                self.fun_params[it] = True
         # Assign to the iter target
         iter_contents = [IterTypeVariable() for x in iters]
         self.conduct_assignment(iter_contents, iters, node)

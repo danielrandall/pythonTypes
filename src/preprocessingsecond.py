@@ -4,6 +4,7 @@ from pprint import pprint
 from src.traversers.astfulltraverser import AstFullTraverser
 from src.importdependent import ImportDependent
 from src.typechecking.basictypevariable import BasicTypeVariable
+from src.typechecking.argtypevariable import ArgTypeVariable
 from src.typeclasses import *
 from src.traversers.ssatraverser import Phi_Node
 
@@ -59,7 +60,7 @@ class PreprocessorSecond(AstFullTraverser):
             self.variableTypes = old_types
             
     def do_arg(self, node):
-        self.variableTypes[node.arg] = BasicTypeVariable()
+        self.variableTypes[node.arg] = ArgTypeVariable()
         
     def do_arguments(self,node):
         for z in node.args:
