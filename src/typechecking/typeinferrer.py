@@ -602,13 +602,17 @@ class TypeInferrer(AstFullTraverser):
         return [bool_op_var]
     
     def do_UnaryOp(self, node):
-        ''' TODO: Check this. Should be able to return more than one type.
-            Must create an end constraint of containing an int or float for
+        ''' Must create an end constraint of containing an int or float for
             ops other than 'Not'. '''
         value_type = self.visit(node.operand)[0] # Will only have 1 element
         op_kind = self.kind(node.op)
         if op_kind == 'Not':    # All types are valid
             return [BasicTypeVariable([Bool_Type()])]
+        # Parameters must be int or float. If arg then set it as such
+        if value_type in self.fun_params:
+            # Assign param to any in iter types
+            self.conduct_assignment([value_type], [BasicTypeVariable([Int_Type(), Float_Type()])], node)
+            self.fun_params[value_type] = True
         unary_op_var = UnaryTypeVariable([])
         self.conduct_assignment([unary_op_var], [value_type], node)
         self.error_issuer.add_issue(UnaryIssue(node, unary_op_var, self.module_name, op_kind))
