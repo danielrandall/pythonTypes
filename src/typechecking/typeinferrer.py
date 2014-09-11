@@ -501,14 +501,26 @@ class TypeInferrer(AstFullTraverser):
         ''' All slice elements must be an int. Create an issue for each. '''
         if getattr(node, 'lower'):
             lower = self.visit(node.lower)[0]
+            if lower in self.fun_params:
+                # Assign param to any in iter types
+                self.conduct_assignment([lower], [BasicTypeVariable([Int_Type()])], node)
+                self.fun_params[lower] = True
             self.error_issuer.add_issue(SliceIssue(node, lower, self.module_name))
             
         if getattr(node, 'upper'):
             upper = self.visit(node.upper)[0]
+            if upper in self.fun_params:
+                # Assign param to any in iter types
+                self.conduct_assignment([upper], [BasicTypeVariable([Int_Type()])], node)
+                self.fun_params[upper] = True
             self.error_issuer.add_issue(SliceIssue(node, upper, self.module_name))
             
         if getattr(node, 'step'):
             step = self.visit(node.step)[0]
+            if step in self.fun_params:
+                # Assign param to any in iter types
+                self.conduct_assignment([step], [BasicTypeVariable([Int_Type()])], node)
+                self.fun_params[step] = True
             self.error_issuer.add_issue(SliceIssue(node, step, self.module_name))  
     
     def do_Index(self, node):
