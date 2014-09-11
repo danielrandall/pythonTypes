@@ -265,9 +265,7 @@ class TypeInferrer(AstFullTraverser):
         old_return = self.return_variable
         old_params = self.fun_params
         try:
-            params = self.visit(node.args)
-            self.fun_params = {}
-            self.fun_params.update({self.variableTypes[param] : False for param in params})
+            self.fun_params = self.visit(node.args)
 
             self.return_variable = BasicTypeVariable()
             for z in node.body:
@@ -299,7 +297,7 @@ class TypeInferrer(AstFullTraverser):
         finally:
             
             # Add the new function type
-            param_types = [self.variableTypes[param] for param in params]
+            param_types = [self.variableTypes[param] for param in self.fun_params]
             has_kwarg_vararg = self.check_has_kwarg_or_vararg(node.args)
             defaults_length = self.get_defaults_length(node.args)
             # Check to see whether function is a generator
@@ -433,7 +431,6 @@ class TypeInferrer(AstFullTraverser):
             if it in self.fun_params:
                 # Assign param to any in iter types
                 self.conduct_assignment([it], [ITERATOR_TYPES], node)
-                self.fun_params[it] = True
         
         # Assign to the iter target#
         iter_contents = [IterTypeVariable() for x in iters]
@@ -505,7 +502,6 @@ class TypeInferrer(AstFullTraverser):
             if lower in self.fun_params:
                 # Assign param to any in iter types
                 self.conduct_assignment([lower], [BasicTypeVariable([Int_Type()])], node)
-                self.fun_params[lower] = True
             self.error_issuer.add_issue(SliceIssue(node, lower, self.module_name))
             
         if getattr(node, 'upper'):
@@ -513,7 +509,6 @@ class TypeInferrer(AstFullTraverser):
             if upper in self.fun_params:
                 # Assign param to any in iter types
                 self.conduct_assignment([upper], [BasicTypeVariable([Int_Type()])], node)
-                self.fun_params[upper] = True
             self.error_issuer.add_issue(SliceIssue(node, upper, self.module_name))
             
         if getattr(node, 'step'):
@@ -521,7 +516,6 @@ class TypeInferrer(AstFullTraverser):
             if step in self.fun_params:
                 # Assign param to any in iter types
                 self.conduct_assignment([step], [BasicTypeVariable([Int_Type()])], node)
-                self.fun_params[step] = True
             self.error_issuer.add_issue(SliceIssue(node, step, self.module_name))  
     
     def do_Index(self, node):
@@ -545,7 +539,6 @@ class TypeInferrer(AstFullTraverser):
             # Update function parameters if used as an index
             if value_types[0] in self.fun_params:
                 self.conduct_assignment(value_types, [INDEX_TYPES], node)
-                self.fun_params[value_types[0]] = True
             
             index_var = IndexTypeVariable()
             self.conduct_assignment([index_var], value_types, node)
@@ -588,7 +581,6 @@ class TypeInferrer(AstFullTraverser):
             if it in self.fun_params:
                 # Assign param to any in iter types
                 self.conduct_assignment([it], [ITERATOR_TYPES], node)
-                self.fun_params[it] = True
         # Assign to the iter target
         iter_contents = [IterTypeVariable() for x in iters]
         self.conduct_assignment(iter_contents, iters, node)
@@ -625,7 +617,6 @@ class TypeInferrer(AstFullTraverser):
         if value_type in self.fun_params:
             # Assign param to any in iter types
             self.conduct_assignment([value_type], [BasicTypeVariable([Int_Type(), Float_Type()])], node)
-            self.fun_params[value_type] = True
         unary_op_var = UnaryTypeVariable([])
         self.conduct_assignment([unary_op_var], [value_type], node)
         self.error_issuer.add_issue(UnaryIssue(node, unary_op_var, self.module_name, op_kind))
@@ -661,7 +652,6 @@ class TypeInferrer(AstFullTraverser):
             # if comp is a parameter then constrain types
             if comp in self.fun_params:
                 self.conduct_assignment([comp], [CONTAINS_TYPES], node)
-                self.fun_params[comp] = True
             self.error_issuer.add_issue(ContainsIssue(node, comp, self.module_name))
             
         return [BasicTypeVariable([Bool_Type()])]
