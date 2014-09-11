@@ -410,15 +410,15 @@ class Class_Type(Class_Base, BaseType):
         if "__class__" not in self.global_vars:
             self.global_vars["__class__"] = BasicTypeVariable([Any_Type()])
         if "__dict__" not in self.global_vars:
-            self.global_vars["__class__"] = BasicTypeVariable([Any_Type()])
+            self.global_vars["__dict__"] = BasicTypeVariable([Any_Type()])
         if "__doc__" not in self.global_vars:
-            self.global_vars["__class__"] = BasicTypeVariable([Any_Type()])
+            self.global_vars["__doc__"] = BasicTypeVariable([Any_Type()])
         if "__weakref__" not in self.global_vars:
-            self.global_vars["__class__"] = BasicTypeVariable([Any_Type()])
+            self.global_vars["__weakref__"] = BasicTypeVariable([Any_Type()])
         if "__init__" not in self.global_vars:
-            self.global_vars["__class__"] = BasicTypeVariable([Any_Type()])
+            self.global_vars["__init__"] = BasicTypeVariable([Def_Type([], BasicTypeVariable([None_Type()]), 0, False)])
         if "__module__" not in self.global_vars:
-            self.global_vars["__class__"] = BasicTypeVariable([Any_Type()])
+            self.global_vars["__module__"] = BasicTypeVariable([Any_Type()])
         
             
         
@@ -1741,4 +1741,3 @@ ITERATOR_TYPES = BasicTypeVariable([List_Type(), Set_Type(), Tuple_Type(), Dict_
 CONTAINS_TYPES = BasicTypeVariable([ List_Type(), Set_Type(), Tuple_Type(), Dict_Type(), String_Type(), Bytes_Type() ])
 SLICE_TYPES = BasicTypeVariable([List_Type(), String_Type()])
 INDEX_TYPES = BasicTypeVariable([List_Type(), Dict_Type(), String_Type()])
-#ALL_TYPES = [List_Type(), Dict_Type(), Int_Type(), Float_Type(), Bool_Type(), String_Type(), Bytes_Type()]
