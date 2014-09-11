@@ -76,7 +76,7 @@ class GetAttrIssue(BaseIssue):
             self.print_error()
         
     def print_error(self):        
-        print(self.module_name + ": " + "Line " + str(self.lineno) + ": Cannot find atrribute: " + self.attr)
+        print(self.module_name + ": " + "Line " + str(self.lineno) + ": Cannot find attribute: " + self.attr)
         
 class IteratorIssue(BaseIssue):
     ''' Checks whether the given type is an iterator. '''
