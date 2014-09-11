@@ -87,7 +87,7 @@ class TypeInferrer(AstFullTraverser):
     #    print()
     #    print("Printing module: |||||||||||||||||||||||||||||||||||************************ " + file.get_path() + " " + file.get_name() + " *******************|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||")   
     #    print()
-        self.module_name = file.get_path() + " " + file.get_name()
+        self.module_name = file.get_path() + "/" + file.get_name()
         self.variableTypes = root.variableTypes
         self.initialise()
    #     print("-DEPENDENTS-")
