@@ -9,11 +9,12 @@ class CallTypeVariable(BasicTypeVariable):
         If type is a class def then check __init__
         If function - obvious
         If class instance - call '''
-    def __init__(self, args, node, function_ident):
+    def __init__(self, args, node, function_ident, fun_args):
         self.lineno = node.lineno
         self.has_callable_type = False
         self.args = args
         self.function_ident = function_ident
+        self.fun_args = fun_args
         
         super().__init__()
         
@@ -53,7 +54,12 @@ class CallTypeVariable(BasicTypeVariable):
         len(self.args) > len(parameter_types):
             return False
         
+        given_params_and_types = []
         for i in range(len(self.args)):
+            # Check if given arg is a function parameter
+            if self.args[i] in self.fun_args:
+                given_params_and_types.append((self.args[i], parameter_types[i]))
+                continue
             given_arg = self.args[i].get()
             accepted_types = parameter_types[i].get()
             # If either are any_type then it succeeds
@@ -62,6 +68,9 @@ class CallTypeVariable(BasicTypeVariable):
             if any([x <= y for x, y in product(given_arg, accepted_types)]):
                 continue
             return False
+        # All other arguments are acceptable so assign types to any function parameters
+        for given_param, accepted_types in given_params_and_types:
+            accepted_types.add_new_dependent(given_param)
         return True
                 
         
