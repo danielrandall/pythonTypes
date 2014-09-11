@@ -265,21 +265,14 @@ class TypeInferrer(AstFullTraverser):
         old_return = self.return_variable
         old_params = self.fun_params
         try:
-            self.fun_params = self.visit(node.args)
+            params = self.visit(node.args)
+            self.fun_params = [self.variableTypes[param] for param in params]
 
             self.return_variable = BasicTypeVariable()
             for z in node.body:
                 self.visit(z)
             for z in node.decorator_list:
                 self.visit(z)
-                
-        #    if node.name == "__init__":
-        #        pass    
-                
-            # Add Any_Type() to args if we can't infer them
-    #        for param, assigned in self.fun_params.items():
-    #            if not assigned:
-    #                self.conduct_assignment([param], [BasicTypeVariable([Any_Type()])], node)
                     
             # Create error issue for init. Should only return None
             if node.name == "__init__":
@@ -291,13 +284,12 @@ class TypeInferrer(AstFullTraverser):
                 print(node.lineno)
                 self.print_types()
                 print("Param types")
-                print([self.variableTypes[param].get() for param in params])
+                print([param.get() for param in self.fun_params])
                 print("Return types")
                 print(self.return_variable.get())
         finally:
             
             # Add the new function type
-            param_types = [self.variableTypes[param] for param in self.fun_params]
             has_kwarg_vararg = self.check_has_kwarg_or_vararg(node.args)
             defaults_length = self.get_defaults_length(node.args)
             # Check to see whether function is a generator
@@ -307,7 +299,7 @@ class TypeInferrer(AstFullTraverser):
             else:
                 return_types = self.return_variable
             # Create the function type
-            fun_type = BasicTypeVariable([Def_Type(param_types, return_types, defaults_length, has_kwarg_vararg)])
+            fun_type = BasicTypeVariable([Def_Type(self.fun_params, return_types, defaults_length, has_kwarg_vararg)])
             
             # Restore parent variables
             self.variableTypes = node.stc_context.variableTypes
