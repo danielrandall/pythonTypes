@@ -148,12 +148,13 @@ class ControlFlowGraph(AstFullTraverser):
                 self.use_next_block(test_block)
                 self.check_block_num(node)
         self.current_line_num = node.lineno
+        
+        in_except_or_finally = False
         for f_block_type, f_block in reversed(self.frame_blocks):
             if f_block_type == F_BLOCK_EXCEPT or f_block_type == F_BLOCK_FINALLY:
                 # Statement is in a try - set exits to next statement and
                 # excepts
-                self.current_block.statements.append(node)
-                
+                in_except_or_finally = True
                 if f_block_type == F_BLOCK_EXCEPT:
                     for handler in f_block:
                         self.add_to_exits(self.current_block, handler)
@@ -161,20 +162,22 @@ class ControlFlowGraph(AstFullTraverser):
                     # Need to check or it will add it twice
                     if not hasattr(node, "last_try_body_statement"):
                         self.add_to_exits(self.current_block, f_block)
-                # Special cases - we don't need to create new blocks here as they diverge.
-                if isinstance(node, ast.While) or isinstance(node, ast.For) \
+                
+        self.current_block.statements.append(node)
+        # # We need to create new block if it was in an except
+        if in_except_or_finally:
+            # Special cases - we don't need to create new blocks here as they diverge.
+            if isinstance(node, ast.While) or isinstance(node, ast.For) \
                 or isinstance(node, ast.If) or isinstance(node, ast.Continue) \
                 or isinstance(node, ast.Break) or isinstance(node, ast.Return) \
                  or isinstance(node, ast.Try):
-                    break
-           #     print(self.current_block.start_line_no)
-           #     print(self.current_block.exit_blocks)
-                next_statement_block = self.new_block()
-                self.add_to_exits(self.current_block, next_statement_block)
-                self.use_next_block(next_statement_block)
-                break
-        else:
-            self.current_block.statements.append(node)
+                return
+    #     print(self.current_block.start_line_no)
+    #     print(self.current_block.exit_blocks)
+            next_statement_block = self.new_block()
+            self.add_to_exits(self.current_block, next_statement_block)
+            self.use_next_block(next_statement_block)
+            
     
     def run(self, root):
         self.visit(root)
