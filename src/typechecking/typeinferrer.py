@@ -278,9 +278,9 @@ class TypeInferrer(AstFullTraverser):
         #        pass    
                 
             # Add Any_Type() to args if we can't infer them
-            for param, assigned in self.fun_params.items():
-                if not assigned:
-                    self.conduct_assignment([param], [BasicTypeVariable([Any_Type()])], node)
+    #        for param, assigned in self.fun_params.items():
+    #            if not assigned:
+    #                self.conduct_assignment([param], [BasicTypeVariable([Any_Type()])], node)
                     
             # Create error issue for init. Should only return None
             if node.name == "__init__":
@@ -402,14 +402,14 @@ class TypeInferrer(AstFullTraverser):
    #         pass
         
         # Add constraints if they are function parameters
-        if left_types in self.fun_params:
-            self.conduct_assignment([left_types], [get_op_types(op)], node)
-            self.fun_params[left_types] = True
-        if right_types in self.fun_params:
-            self.conduct_assignment([right_types], [get_op_types(op)], node)
-            self.fun_params[right_types] = True
+      #  if left_types in self.fun_params:
+      #      self.conduct_assignment([left_types], [get_op_types(op)], node)
+      #      self.fun_params[left_types] = True
+      #  if right_types in self.fun_params:
+      #      self.conduct_assignment([right_types], [get_op_types(op)], node)
+      #      self.fun_params[right_types] = True
         
-        binop_var = BinOpTypeVariable(node, left_types, right_types, op)
+        binop_var = BinOpTypeVariable(node, left_types, right_types, op, left_types in self.fun_params, right_types in self.fun_params)
         # Create the dependents
         self.conduct_assignment([binop_var] * 2, [left_types, right_types], node)
         

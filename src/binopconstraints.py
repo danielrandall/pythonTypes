@@ -1,4 +1,5 @@
 from src.typeclasses import *
+from src.typechecking.basictypevariable import BasicTypeVariable
 
 BASE_ADD_TYPES = BasicTypeVariable([List_Type(), Int_Type(), Float_Type(), String_Type(), Bytes_Type(), Bool_Type()])
 BASE_SUB_TYPES = BasicTypeVariable([Int_Type(), Float_Type(), String_Type(), Bytes_Type(), Bool_Type()])
@@ -175,16 +176,47 @@ OP_BASES = {'Add' : BASE_ADD_TYPES,
            }
 
 def get_left_return_types(op, left_type):
+    ''' Takes a single left type and an op and returns all possible return types '''
     op_dict = OP_DICTS[op]
     possible_combos = [(x, y) for (x, y) in op_dict if x == left_type.__class__ or x == Any_Type]
     return_types = [op_dict[x]() for x in possible_combos]
     return set(return_types)
 
 def get_right_return_types(op, right_type):
+    ''' Takes a single right type and an op and returns all possible return
+        types. '''
     op_dict = OP_DICTS[op]
     possible_combos = [(x, y) for (x, y) in op_dict if y == right_type.__class__ or y == Any_Type]
     return_types = [op_dict[x]() for x in possible_combos]
     return set(return_types)
+
+def get_possible_right_types(op, left_type):
+    op_dict = OP_DICTS[op]
+    possible_rights = [y for (x, y) in op_dict if x == left_type.__class__ or x == Any_Type]
+    return_types = [x() for x in possible_rights]
+    return set(return_types)
+
+def get_possible_left_types(op, right_type):
+    op_dict = OP_DICTS[op]
+    possible_lefts = [x for (x, y) in op_dict if y == right_type.__class__ or y == Any_Type]
+    return_types = [x() for x in possible_lefts]
+    return set(return_types)
+
+def get_all_right_types(op, left_types):
+    ''' Takes a number of left types and returns all possible right types. '''
+    assert isinstance(left_types, BasicTypeVariable)
+    return_types = set()
+    for possible_type in left_types.get():
+        return_types |= get_possible_right_types(op, possible_type)
+    return BasicTypeVariable(list(return_types))
+    
+def get_all_left_types(op, right_types):
+    ''' Takes a number of left types and returns all possible right types. '''
+    assert isinstance(right_types, BasicTypeVariable)
+    return_types = set()
+    for possible_type in right_types.get():
+        return_types |= get_possible_left_types(op, possible_type)
+    return BasicTypeVariable(list(return_types))
 
 def get_return_type(op, left_type, right_type):
     return_type = set()
@@ -202,3 +234,6 @@ def get_return_type(op, left_type, right_type):
 
 def get_op_types(op):
     return OP_BASES[op]
+
+
+print(get_all_left_types('Add', BasicTypeVariable([Int_Type(), Float_Type()])))

@@ -43,8 +43,8 @@ class ArgTypeVariable(BasicTypeVariable):
     
     def receive_update(self, other):
         ''' Can receive updates from its use cases.
-             We don't want to check extracted is a subset, but has changes
-             since it can get smaller. '''
+             We don't want to check extracted is a subset of current types,
+             but has changes since it can get smaller. '''
         assert isinstance(other, BasicTypeVariable)
         # Add it to the possible uses
         self.arg_uses.add(other)

@@ -6,7 +6,7 @@ class BinOpTypeVariable(BasicTypeVariable):
     ''' Represents a binary operation. The types must be given in the order
         left-right.
         self.types represents the types the binop can result in. '''
-    def __init__(self, node, left, right, op):
+    def __init__(self, node, left, right, op, left_param, right_param):
         assert isinstance(left, BasicTypeVariable)
         assert isinstance(right, BasicTypeVariable)
         
@@ -14,6 +14,8 @@ class BinOpTypeVariable(BasicTypeVariable):
         self.left_types = left
         self.right_types = right
         self.op = op
+        self.left_param = left_param
+        self.right_param = right_param
         
         output_types = self.extract_types()
         super().__init__(list(output_types))
@@ -31,6 +33,8 @@ class BinOpTypeVariable(BasicTypeVariable):
         # If any or empty then we can't do anything
         if len(left_ts) == 0 or len(right_ts) == 0:
             return set()
+                  
+        self.infer_arguments()
         
         extracted = set()
         for left in left_ts:
@@ -46,6 +50,24 @@ class BinOpTypeVariable(BasicTypeVariable):
                     continue
                 extracted |= binop_cons.get_return_type(self.op, left, right)
         return extracted
+    
+    def infer_arguments(self):
+        ''' If function arguments are used in a binop then infer their possible
+            types. '''
+        # In this case the op dictates the types
+        if self.left_param and self.right_param:
+            binop_cons.get_op_types(self.op).add_new_dependent(self.left_types)
+            binop_cons.get_op_types(self.op).add_new_dependent(self.right_types)
+            return
+        
+        # Check there's one
+        if self.right_param:
+            binop_cons.get_all_right_types(self.op, self.left_types).add_new_dependent(self.right_types)
+            return
+        
+        if self.left_param:
+            binop_cons.get_all_left_types(self.op, self.right_types).add_new_dependent(self.left_types)
+            return
     
     def update_types(self, other):
         assert isinstance(other, BasicTypeVariable)
