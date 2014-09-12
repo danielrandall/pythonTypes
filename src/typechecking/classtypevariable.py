@@ -50,7 +50,8 @@ class ClassTypeVariable(BasicTypeVariable):
         self.class_variables.update(self_variables)
                 
     def check_new_vars(self, base_class):
-         ''' Add any new global variables. '''
+         ''' Add any new global variables.
+             The __init__ function is not inherited. '''
          assert isinstance(base_class, BasicTypeVariable)
          change = False
          for possible_type in base_class:
@@ -70,8 +71,8 @@ class ClassTypeVariable(BasicTypeVariable):
                 # If there is a clash, the first instance will be used
                 new_vars = {k:v for k,v in possible_type.get_vars().items() if k not in self.class_variables}
                 
-                # If there's a clash, share the types
-                shared_keys = [k for k,_ in possible_type.get_vars().items() if k in self.class_variables]
+                # If there's a clash, share the types except for __init__!
+                shared_keys = [k for k,_ in possible_type.get_vars().items() if k in self.class_variables and k != "__init__"]
                 for k in shared_keys:
                     their_shared_var = possible_type.get_vars()[k]
                     this_shared_var = self.class_variables[k]

@@ -415,12 +415,10 @@ class Class_Type(Class_Base, BaseType):
             self.global_vars["__doc__"] = BasicTypeVariable([Any_Type()])
         if "__weakref__" not in self.global_vars:
             self.global_vars["__weakref__"] = BasicTypeVariable([Any_Type()])
-        if "__init__" not in self.global_vars:
-            self.global_vars["__init__"] = BasicTypeVariable([Def_Type([], BasicTypeVariable([None_Type()]), 0, False)])
         if "__module__" not in self.global_vars:
             self.global_vars["__module__"] = BasicTypeVariable([Any_Type()])
-        
-            
+        if "__init__" not in self.global_vars:
+            self.global_vars["__init__"] = BasicTypeVariable([Def_Type([], BasicTypeVariable([None_Type()]), 0, False)])
         
     def get_contents_types(self):
         return set([Any_Type()])

@@ -214,8 +214,8 @@ class TypeInferrer(AstFullTraverser):
         given_args = []
         for z in node.args:
             given_args.extend(self.visit(z))
-      #  if node.lineno == 427:
-      #      pass
+     #   if node.lineno == 65:
+     #       pass
         args = self.fun_params if self.fun_params else []
         return_type = CallTypeVariable(given_args, node, func_indentifier, args)
         # Set up a constraint between the call and the identifier
