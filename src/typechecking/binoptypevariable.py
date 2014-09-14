@@ -55,6 +55,10 @@ class BinOpTypeVariable(BasicTypeVariable):
         ''' If function arguments are used in a binop then infer their possible
             types. '''
         # In this case the op dictates the types
+        if self.left_types is self.right_types:
+            binop_cons.get_symmetrical_types(self.op).add_new_dependent(self.left_types)
+            return
+        
         if self.left_param and self.right_param:
             binop_cons.get_op_types(self.op).add_new_dependent(self.left_types)
             binop_cons.get_op_types(self.op).add_new_dependent(self.right_types)

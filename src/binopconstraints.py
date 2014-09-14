@@ -52,7 +52,6 @@ MULT_DICT = { (Int_Type, Int_Type) : Int_Type,
              (Float_Type, Int_Type) : Float_Type,
              (Float_Type, Float_Type) : Float_Type,
              (Float_Type, Bool_Type) : Float_Type,
-             (String_Type, String_Type) : String_Type,
              (String_Type, Int_Type) : String_Type,
              (String_Type, Bool_Type) : String_Type,
              (Bytes_Type, Int_Type) : Bytes_Type,
@@ -201,6 +200,12 @@ def get_possible_left_types(op, right_type):
     possible_lefts = [x for (x, y) in op_dict if y == right_type.__class__ or y == Any_Type]
     return_types = [x() for x in possible_lefts]
     return set(return_types)
+
+def get_symmetrical_types(op):
+    op_dict = OP_DICTS[op]
+    possible_types = [x for (x, y) in op_dict if y == x or y == Any_Type or x == Any_Type]
+    return_types = [x() for x in possible_types]
+    return BasicTypeVariable(return_types)
 
 def get_all_right_types(op, left_types):
     ''' Takes a number of left types and returns all possible right types. '''
