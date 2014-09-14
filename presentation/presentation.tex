@@ -1,0 +1,184 @@
+\documentclass{beamer}
+
+\usepackage{listings}
+\usepackage{color}
+
+% code definitions
+\definecolor{dkgreen}{rgb}{0,0.6,0}
+\definecolor{gray}{rgb}{0.5,0.5,0.5}
+\definecolor{mauve}{rgb}{0.58,0,0.82}
+\lstset{frame=tb,
+  language=Python,
+  aboveskip=3mm,
+  belowskip=3mm,
+  showstringspaces=false,
+  columns=flexible,
+  basicstyle={\small\ttfamily},
+  numbers=left,
+  numberstyle=\tiny\color{gray},
+  keywordstyle=\color{blue},
+  commentstyle=\color{dkgreen},
+  stringstyle=\color{mauve},
+  breaklines=true,
+  breakatwhitespace=true
+  tabsize=2
+}
+
+\title{Practical Types for Python}
+\author{Daniel Randall}
+\institute{Imperial College London} % (optional)
+
+\date{16th September 2014}
+
+\begin{document}
+
+	\frame{\titlepage}
+
+\begin{frame}
+    \frametitle{Introduction}
+   	\framesubtitle{Defining the problem}
+   	Python is a dynamically typed language
+   	\begin{block}{Problem}
+   		\begin{itemize}
+   		  \item Lack of a static compiler means simple type errors are not caught
+   		  \item Variables can be a number of different types at a given point
+   		\end{itemize}
+   	\end{block}
+
+	\begin{block}{What this means}
+		\begin{itemize}
+		  \item Type errors can go unhidden
+		  \item Finding the cause of the type error may take time
+		\end{itemize}
+   	\end{block}
+\end{frame}	
+	
+  % Frame 1.1 - Examples
+\begin{frame}[fragile]
+    \frametitle{Introduction}
+   	\framesubtitle{Problem examples}
+   	\begin{lstlisting}
+        5 + "Hello world"
+    \end{lstlisting}
+   	\begin{lstlisting}
+        abs("Hello world")
+    \end{lstlisting}
+    \begin{lstlisting}
+        def f(x):
+          abs(x)
+          x + "Hello world"
+    \end{lstlisting}
+\end{frame}
+  
+  % Frame 1.5 - Current solutions
+  \begin{frame}
+    \frametitle{Introduction}
+   	\framesubtitle{Current tools}
+   	The current tools  suffer from the following problems:
+   	\begin{itemize}
+    		\item Limited type checking
+    		\item Require modifications to source code
+    		\item Suffer from false positives
+    \end{itemize}
+  \end{frame}
+  
+  % Frame 2 - Discuss solution
+  \begin{frame}
+    \frametitle{Our solution}
+    %\framesubtitle{A bit more information about this}
+    We attempt to solve this problem using the following techniques: \\
+    \begin{itemize}
+    		\item Inferring the types of function arguments
+    		\item Taking a cautious approach to \texttt{try}/\texttt{except} control flow
+    		\item Distinguishing between global and local variables
+    \end{itemize}
+    We apply these techniques to a subset of the Python language
+  \end{frame}
+
+
+  % Frame 3 - Discuss Function parameters
+\begin{frame}[fragile]
+    \frametitle{Inferring function parameters}
+    \begin{block}{}
+    We use the restrictions on how the parameter is used in the function body to narrow the set of possible types the parameter can assume.
+    \end{block}
+    
+    \begin{block}{}
+    \begin{lstlisting}
+        def f(x):
+          abs(x)
+    \end{lstlisting}
+    \begin{lstlisting}
+        def f(x):
+          for y in x:
+            # Do something
+          x + "Hello world"
+    \end{lstlisting}
+    \begin{lstlisting}
+        def f(x, y):
+          x + y
+    \end{lstlisting}
+    \end{block}
+\end{frame}
+ 
+  
+  % Frame 4 - Discuss Trys/Excepts
+\begin{frame}[fragile]
+    \frametitle{Inferring types in try/excepts}
+    We assume that every statement within a \texttt{try} can pass control to exception blocks
+
+    \begin{lstlisting}
+        try:
+          x = 5 / possible_zero
+          x = some_file.readline()
+        except:
+          y = x
+    \end{lstlisting}
+    \begin{lstlisting}
+        try:
+        	  try:
+        	    x = 5 / possible_zero
+        	  except SomeException:
+        	    y = x
+        	except OtherException:
+        	  z = x
+    \end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile]
+    \frametitle{Global and local variables}
+    \begin{itemize}
+    		\item \textbf{Global variables} - The type of a global variable is the union of every assignment
+    		\item \textbf{Local variables} - At a given point, a local variable is limited to the types of the immediately previous assignment(s)
+    \end{itemize}
+    
+    \begin{lstlisting}
+        def f(x):
+          x = 5
+          x = "Hi"
+    \end{lstlisting}
+    \begin{lstlisting}
+        x = 5
+        def f(x):
+          global x
+          x = "Hi"
+          y = x
+    \end{lstlisting}
+\end{frame}
+  
+  
+  % Frame 4 - Demo
+  \begin{frame}
+    \frametitle{Demo}
+    We will now show our tool finding some type errors
+  \end{frame}
+  
+  
+  
+  
+  
+  
+  
+  
+  
+\end{document}
