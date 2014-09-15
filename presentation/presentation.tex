@@ -37,7 +37,7 @@
 \begin{frame}
     \frametitle{Introduction}
    	\framesubtitle{Defining the problem}
-   	Python is a dynamically typed language
+  % 	Python is a dynamically typed language
    	\begin{block}{Problem}
    		\begin{itemize}
    		  \item Lack of a static compiler means simple type errors are not caught
@@ -47,7 +47,7 @@
 
 	\begin{block}{What this means}
 		\begin{itemize}
-		  \item Type errors can go unhidden
+		  \item Type errors can be hidden in the source code
 		  \item Finding the cause of the type error may take time
 		\end{itemize}
    	\end{block}
@@ -57,17 +57,18 @@
 \begin{frame}[fragile]
     \frametitle{Introduction}
    	\framesubtitle{Problem examples}
-   	\begin{lstlisting}
-        5 + "Hello world"
-    \end{lstlisting}
+   	\begin{block}{}
    	\begin{lstlisting}
         abs("Hello world")
     \end{lstlisting}
+    \end{block}
+    \begin{block}{}
     \begin{lstlisting}
         def f(x):
           abs(x)
           x + "Hello world"
     \end{lstlisting}
+    \end{block}
 \end{frame}
   
   % Frame 1.5 - Current solutions
@@ -88,6 +89,7 @@
     %\framesubtitle{A bit more information about this}
     We attempt to solve this problem using the following techniques: \\
     \begin{itemize}
+        \item Modelling the flow of types
     		\item Inferring the types of function arguments
     		\item Taking a cautious approach to \texttt{try}/\texttt{except} control flow
     		\item Distinguishing between global and local variables
@@ -106,17 +108,9 @@
     \begin{block}{}
     \begin{lstlisting}
         def f(x):
-          abs(x)
-    \end{lstlisting}
-    \begin{lstlisting}
-        def f(x):
           for y in x:
-            # Do something
+            print(y)
           x + "Hello world"
-    \end{lstlisting}
-    \begin{lstlisting}
-        def f(x, y):
-          x + y
     \end{lstlisting}
     \end{block}
 \end{frame}
@@ -126,42 +120,36 @@
 \begin{frame}[fragile]
     \frametitle{Inferring types in try/excepts}
     We assume that every statement within a \texttt{try} can pass control to exception blocks
-
+    \begin{block}{}
     \begin{lstlisting}
-        try:
-          x = 5 / possible_zero
-          x = some_file.readline()
-        except:
-          y = x
+        	try:
+        	  x = 5 / possible_zero
+        	  x = some_file.readline()
+        	except IOError:
+        	  y = x
     \end{lstlisting}
-    \begin{lstlisting}
-        try:
-        	  try:
-        	    x = 5 / possible_zero
-        	  except SomeException:
-        	    y = x
-        	except OtherException:
-        	  z = x
-    \end{lstlisting}
+    \end{block}
 \end{frame}
 
 \begin{frame}[fragile]
     \frametitle{Global and local variables}
     \begin{itemize}
-    		\item \textbf{Global variables} - The type of a global variable is the union of every assignment
-    		\item \textbf{Local variables} - At a given point, a local variable is limited to the types of the immediately previous assignment(s)
+    \item \textbf{Local variables} - At a given point, a local variable is limited to the types of the immediately previous assignment(s)
+    		\item \textbf{Global variables} - The type of a global variable is the union of every possible type it can assume in the program
     \end{itemize}
     
     \begin{lstlisting}
-        def f(x):
+        def f():
           x = 5
           x = "Hi"
     \end{lstlisting}
     \begin{lstlisting}
         x = 5
-        def f(x):
+        def f():
           global x
           x = "Hi"
+          
+        def g():
           y = x
     \end{lstlisting}
 \end{frame}
@@ -170,6 +158,7 @@
   % Frame 4 - Demo
   \begin{frame}
     \frametitle{Demo}
+    Thank you for listening \\
     We will now show our tool finding some type errors
   \end{frame}
   
