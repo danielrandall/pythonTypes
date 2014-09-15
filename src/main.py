@@ -2,6 +2,7 @@ import src.extractpysfromdirectory as file_extractor
 from src.typechecking.typeinferrer import TypeInferrer
 from src.typechecking.errorissuer import ErrorIssuer
 from src.stats import Statistics
+from src.traversers.printtypes import Print_Types
 from src.typechecking.basictypevariable import BasicTypeVariable
 from src.typechecking.argtypevariable import ArgTypeVariable
 from src.typeclasses import Int_Type, Float_Type, String_Type
@@ -43,6 +44,10 @@ if __name__ == '__main__':
     ti.run(file_tree)
     print("Statistics:")
     stats.print_stats() 
+    print()
+    print("Inferred Types:")
+    type_printer = Print_Types()
+    type_printer.run(file_tree)
     print()
     print("Errors:")
     issuer.check_for_errors()
