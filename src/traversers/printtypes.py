@@ -51,5 +51,6 @@ class Print_Types(AstFullTraverser):
         
     def do_FunctionDef(self, node):
         print("Types in function: " + node.name)
+        print("Return types: " + str(node.return_types))
         to_print = {k:v for k,v in node.variableTypes.items() if k not in node.stc_context.variableTypes and k != "self"}
         self.print_all(to_print)
